@@ -1,1 +1,58 @@
-# VoiceFirst
+# VoiceFirst · Bloque técnico 01
+
+**Proyecto nuevo e independiente.** Prototipo de una aplicación *audio-first* para aprender seis idiomas entre sí, construida para usuarios con preferencias de atención configurables. Este paquete no incluye código de WHGo, Wivra ni otros repositorios.
+
+## Incluye
+- `packages/core`: motor básico de estado de sesión, comandos ES/EN/FR/PT/DE/IT (parciales), preferencias, misiones originales de muestra A0-C2 y agenda simple de repaso.
+- `mobile`: interfaz React Native con Expo SDK 57, visual de órbita sonora, elección de 30 pares de idiomas, siete etiquetas de niveles, ajuste de ritmo, modo de baja estimulación y demostración **real de texto a voz** mediante `expo-speech`.
+- `packages/core/test`: pruebas automatizadas del núcleo (no prueban micrófono real).
+- `docs/STATUS.md`: distinción entre implementado, pendiente y sin pruebas físicas.
+
+## Ejecutar pruebas del motor
+
+Desde la raíz:
+
+```sh
+npm run check
+```
+
+Estas pruebas solo requieren Node 22+ y TypeScript 5.8+ (o `npm install` cuando haya conexión). El motor no depende de servicios de IA.
+
+## Ejecutar la app en el teléfono
+
+Con Node 22.13+ e Internet para instalar Expo:
+
+```sh
+npm install
+npm run build:core
+npm start
+```
+
+En un teléfono compatible abre Expo Go si Expo SDK 57 está soportado por la versión instalada. Para integrar más adelante un módulo de reconocimiento de voz de bajo nivel y Meta DAT puede ser obligatorio usar una **development build**; no asumir que funcionarán en Expo Go. En iPhone, `expo-speech` puede requerir desactivar modo silencioso para oír el ejemplo.
+
+## Importante
+No existe todavía escucha de micrófono, conversación generativa, comandos de voz en ejecución ni sesiones de audio de fondo. La UI indica esas limitaciones explícitamente. El parser de comandos en el núcleo **sí funciona y está probado**, pero aún no está conectado a un motor ASR. La TTS móvil está programada, pero no ha sido ejecutada físicamente por el asistente.
+
+## Arquitectura planeada
+`Microphone/ASR -> command router/turn detector -> pedagogical tutor -> TTS/audio routing`, con un servicio de tokens efímeros y controles presupuestarios para proveedores online, además de packs de audio offline. El motor de decisiones y preferencias se mantiene desacoplado del proveedor de voz.
+
+## Fuentes técnicas
+- https://docs.expo.dev/versions/v57.0.0/sdk/speech/
+- https://docs.expo.dev/versions/v57.0.0/sdk/audio/
+- https://developer.apple.com/documentation/avfaudio/avaudiosession
+- https://developers.meta.com/wearables/device-access-toolkit/
+
+Documentación del proyecto: https://drive.google.com/drive/folders/13ccLxx3GZHKXBiPu63Jduu5SamonXGzL
+
+## Language expansion (six mutual languages)
+
+Language selection now supports en-CA, fr-CA, es, pt-BR, de, and it, in **30 distinct native→target pairings**, with one original demonstration situation per seven prototype levels per target language (42 total). This **does not** imply finished translations, voice recognition, real-time instruction for each direction, or a validated CEFR A1-C2 curriculum. The native-language value is stored in the in-memory UI only.
+
+## Bloque 03: Proveedor OpenAI + laboratorio de micrófono
+
+Se agregó un gateway solo para desarrollo local (`backend/src/server.mjs`), un preparador de sesiones Realtime con secretos efímeros y un laboratorio de turnos grabados en la interfaz. Las pruebas usan respuestas simuladas: **no** se han validado aún las llamadas reales de API, el micrófono físico, iOS/Android ni el modo manos libres.
+
+Para detalles de seguridad, API y preparación de pruebas, leer `docs/OPENAI_VOICE_ARCHITECTURE.md` y `docs/STATUS.md`. **La API de OpenAI se factura aparte de ChatGPT y jamás se debe poner la clave API en `EXPO_PUBLIC_*` ni en GitHub.**
+
+## Bloque 04: enrutador seguro de traductores
+Se incorpora un enrutador `translateWithFallback` (6 idiomas) con privacidad explícita, selección contextual y manejo de cuotas. Por ahora usa adaptadores inyectados/simulados: **DeepL, Google o LibreTranslate todavía no están conectados**. No convierte un servicio de traducción textual en tutor de voz; ver `docs/FREE_PROVIDER_FALLBACK.md`.

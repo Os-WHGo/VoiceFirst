@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {ageCourseProfiles,officialCefrBands,planCourseRoute,defaultPreferences,examPreparationCatalog,preparationFor,targetLanguages,learningPairs} from '../dist/index.js';
+test('six official CEFR levels, never C3',()=>assert.deepEqual(officialCefrBands,['A1','A2','B1','B2','C1','C2']));
+test('age stages independent from six target languages and achievement',()=>{for(const s of Object.keys(ageCourseProfiles)){const r=planCourseRoute(s,'C2',defaultPreferences);assert.equal(r.cefr,'C2');assert.equal(r.curriculumStatus,'planned');}});
+test('youngest users require guardian and restrict free chat',()=>{for(const s of ['preschool','primary','preteen']){assert.equal(ageCourseProfiles[s].guardianRequired,true);assert.equal(ageCourseProfiles[s].unrestrictedConversationEnabled,false);}});
+test('every age stage has unrestricted AI disabled pending review',()=>{for(const profile of Object.values(ageCourseProfiles))assert.equal(profile.unrestrictedConversationEnabled,false);});
+test('a preschooler never receives a 30 minute default class',()=>assert.ok(planCourseRoute('preschool','A1',{...defaultPreferences,microLessonMinutes:30}).preferredMinutes<=5));
+test('adult can keep a requested 30 minute session',()=>assert.equal(planCourseRoute('adult','A1',{...defaultPreferences,microLessonMinutes:30}).preferredMinutes,30));
+test('accessibility preferences transfer without collecting a diagnosis',()=>{const route=planCourseRoute('adult','B1',{...defaultPreferences,lowStimulation:false,interactionStyle:'flexible'});assert.equal(route.accessibility.lowStimulation,false);assert.equal(route.accessibility.interactionStyle,'flexible');assert.ok(!('diagnosis' in route));});
+test('all 30 ordered pairs keep their language identities',()=>{assert.equal(learningPairs().length,30);for(const [known,target] of learningPairs()){const r=planCourseRoute('teen','C1',{...defaultPreferences,nativeLanguage:known,target});assert.equal(r.knownLanguage,known);assert.equal(r.targetLanguage,target);}});
+test('every initial language has an exam track but no official affiliation claims',()=>{for(const lang of targetLanguages){assert.ok(preparationFor(lang).length>0)}for(const item of examPreparationCatalog)assert.equal(item.officialExamAffiliation,false)});
+test('Canada Express Entry catalog never includes TOEFL or IELTS Academic',()=>{assert.deepEqual(preparationFor('en-CA','canada-express-entry').map(x=>x.id).sort(),['celpip-general','ielts-general','pte-core'].sort());assert.deepEqual(preparationFor('fr-CA','canada-express-entry').map(x=>x.id).sort(),['tcf-canada','tef-canada']);});
+test('Portuguese Brazil regional track warns about European Portuguese',()=>{const caple=preparationFor('pt-BR').find(e=>e.id==='caple');assert.match(caple.notes,/European Portuguese/);});
+test('course refuses same known/target language',()=>assert.throws(()=>planCourseRoute('adult','B2',{...defaultPreferences,nativeLanguage:'it',target:'it'}),/differ/));
