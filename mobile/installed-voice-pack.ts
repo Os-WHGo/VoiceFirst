@@ -35,7 +35,7 @@ export async function findVerifiedRecordedCue(line:VoiceCue):Promise<LocalCueRes
  */
 export type InstalledNarrationStatus=
   |{kind:'not-installed';language:TargetLanguage}
-  |{kind:'valid';language:TargetLanguage;verified:number;missing:number}
+  |{kind:'valid';language:TargetLanguage;verified:number;missing:number;sampleCueId:string}
   |{kind:'invalid';language:TargetLanguage;reason:string;verified:number};
 export async function inspectInstalledNarrations(language:TargetLanguage):Promise<InstalledNarrationStatus>{
  let verified=0;
@@ -61,6 +61,6 @@ export async function inspectInstalledNarrations(language:TargetLanguage):Promis
     return{kind:'invalid',language,verified,reason:'Un audio no coincide con el manifiesto.'};
    verified++;
   }
-  return{kind:'valid',language,verified,missing:checked.missingCueIds.length};
+  return{kind:'valid',language,verified,missing:checked.missingCueIds.length,sampleCueId:checked.recordings[0]!.cueId};
  }catch{return{kind:'invalid',language,verified,reason:'No se pudo revisar el almacenamiento local.'};}
 }

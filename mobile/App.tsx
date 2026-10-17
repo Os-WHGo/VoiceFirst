@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, SafeAreaView, StatusBar, StyleSheet, View, Text, Pressable } from 'react-native';
+import { ScrollView, SafeAreaView, StatusBar, StyleSheet, View, Text, Pressable, AppState } from 'react-native';
 import * as Speech from 'expo-speech';
 import { VoicePractice } from './VoicePractice';
 import { OfflineCourse } from './OfflineCourse';
@@ -8,6 +8,7 @@ import { FreeResources } from './FreeResources';
 import { RegionalComparisons } from './RegionalComparisons';
 import { LearningAdjustments } from './LearningAdjustments';
 import { VoicePackImporter } from './VoicePackImporter';
+import {stopCuratedVoice} from './curated-voice-output';
 import { useLearningPreferences } from './use-learning-preferences';
 import { missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage, type LearningFocus } from '@voicefirst/core';
 
@@ -24,11 +25,16 @@ export default function App() {
   const [focus,setFocus]=useState<LearningFocus>('balanced');
   const [speaking, setSpeaking] = useState(false);
   const mission = missionsFor(target, level)[0];
-  const stop = useCallback(() => { void Speech.stop().finally(()=>setSpeaking(false)); },[]);
-  useEffect(() => () => { void Speech.stop(); }, []);
+  const stop = useCallback(() => {void stopCuratedVoice().finally(()=>setSpeaking(false));},[]);
+  useEffect(()=>{
+    const subscription=AppState.addEventListener('change',state=>{
+      if(state!=='active')stop();
+    });
+    return()=>{subscription.remove();void stopCuratedVoice();};
+  },[stop]);
   const preview = () => {
     if (!mission) return;
-    void Speech.stop();
+    stop();
     setSpeaking(true);
     Speech.speak(mission.prompt, {
       language: target, rate,
@@ -76,7 +82,7 @@ export default function App() {
         <LearningAdjustments settings={experience} onChange={learning.change}/>
         {!!learning.error && <Text style={styles.note}>{learning.error}</Text>}
         <RegionalComparisons key={'regional-'+target} target={target} rate={rate}/>
-        <VoicePackImporter/>
+        <VoicePackImporter target={target}/>
         <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} rate={rate} experience={experience} />
         <FreeResources target={target}/>

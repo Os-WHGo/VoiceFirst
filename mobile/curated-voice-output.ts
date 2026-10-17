@@ -4,7 +4,7 @@
  * No VoiceFirst/third-party generative API is called.
  */
 import * as Speech from 'expo-speech';
-import {createAudioPlayer,type AudioPlayer} from 'expo-audio';
+import {createAudioPlayer,setAudioModeAsync,type AudioPlayer} from 'expo-audio';
 import {planVoiceOutput,type VoiceCue,type InstalledVoice} from '@voicefirst/core';
 import {findVerifiedRecordedCue} from './installed-voice-pack';
 
@@ -25,6 +25,8 @@ export async function playCuratedVoice(line:VoiceCue,rate:number,
   await stopCuratedVoice();
   const request=generation;
   try{
+    await setAudioModeAsync({playsInSilentMode:true,shouldPlayInBackground:false,interruptionMode:'doNotMix'});
+    if(request!==generation)return;
     const local=await findVerifiedRecordedCue(line);
     if(request!==generation)return;
     if(local.kind==='invalid'){
