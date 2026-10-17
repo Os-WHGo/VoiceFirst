@@ -15,3 +15,12 @@ export function voiceTranscriptDisposition(args:{
 export function currentVoiceTurn(expectedId:string|null,heardId:string,enabled:boolean):boolean{
  return enabled && !!expectedId && expectedId===heardId;
 }
+
+/** Native engines may omit confidence or return malformed values. Only a
+ * finite probability in [0,1] can qualify as high confidence. Even a high
+ * confidence transcript is not a pronunciation score.
+ */
+export function classifyVoiceConfidence(value:unknown):VoiceConfidence{
+ return typeof value==='number' && Number.isFinite(value) &&
+  value>=0.75 && value<=1 ? 'high' : 'unknown';
+}
