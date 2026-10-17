@@ -6,7 +6,7 @@
  *  node scripts/voice-pack.mjs verify <output-folder>
  * For build the source contains rights.json and WAV recordings named by SHA-256 cue ID.
  */
-import {mkdir,readFile,writeFile,lstat,copyFile,readdir,rm} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,lstat,copyFile,readdir,rm,rename} from 'node:fs/promises';
 import {resolve,join,dirname,basename} from 'node:path';
 import {createHash} from 'node:crypto';
 import {authoredVoiceCues,voiceLocales,cueFingerprint,inspectVoicePack,targetLanguages,inspectPcmWav} from '../packages/core/dist/index.js';
@@ -47,6 +47,9 @@ async function plan(lang,dir){
 async function build(lang,src,out){
   if(!isLang(lang))fail('Invalid language');
   if(resolve(src)===resolve(out))fail('Input and output must differ');
+  // Previously this utility deleted the existing output with rm(out) before rename.
+  // A finished, previously reviewed pack must never be silently replaced.
+  if(await lstat(resolve(out)).then(()=>true,()=>false))fail('Output pack already exists; choose a new destination.');
   const rights=JSON.parse(await readFile(join(src,'rights.json'),'utf8'));
   if(rights.schema!==1||rights.language!==lang||!Array.isArray(rights.recordings))fail('Invalid rights.json');
   const sourceRights=new Map();
@@ -54,7 +57,8 @@ async function build(lang,src,out){
   const cues=authoredVoiceCues.filter(c=>c.language===lang);
   if([...sourceRights.keys()].some(id=>!cues.some(c=>c.id===id)))fail('Unknown cue in rights manifest');
   const tmp=`${resolve(out)}.staging-${process.pid}`;
-  await rm(tmp,{recursive:true,force:true});await mkdir(join(tmp,'clips'),{recursive:true});
+  if(await lstat(tmp).then(()=>true,()=>false))fail('An unfinished staging directory already exists. Refusing to replace it.');
+  await mkdir(join(tmp,'clips'),{recursive:true});
   try {
     const recordings=[];
     for(const c of cues){
@@ -77,9 +81,9 @@ async function build(lang,src,out){
     if(extra.some(x=>x.endsWith('.wav')&&!expected.has(x)))fail('Unregistered WAV recording in source folder');
     await writeFile(join(tmp,'pack.json'),JSON.stringify(result,null,2)+'\n');
     await verify(tmp);
-    await rm(out,{recursive:true,force:true});
     await mkdir(dirname(resolve(out)),{recursive:true});
-    const {rename}=await import('node:fs/promises');await rename(tmp,resolve(out));
+    if(await lstat(resolve(out)).then(()=>true,()=>false))fail('Output pack appeared during construction; refusing to replace it.');
+    await rename(tmp,resolve(out));
     console.log(`Verified ${recordings.length} WAV recordings for ${lang} in ${out}; missing ${v.missingCueIds.length} cues.`);
   }catch(e){await rm(tmp,{recursive:true,force:true});throw e;}
 }
