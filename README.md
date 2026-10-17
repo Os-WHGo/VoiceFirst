@@ -70,3 +70,6 @@ Se incorpora un enrutador `translateWithFallback` (6 idiomas) con privacidad exp
 El módulo de diálogos dispone de un esquema versionado para guardar el turno y los repasos con SQLite local; no se guardan archivos de audio ni transcripciones. Se agregó un adaptador a `expo-speech-recognition` para intentar ASR **únicamente en el dispositivo** y un fallback de texto cuando el modelo de idioma o la extensión nativa no esté disponible. Las clases con micrófono requieren **development build** (no Expo Go), y no se ha validado pantalla bloqueada ni Bluetooth. La disponibilidad de ASR local depende de SO, modelo descargado y locale. La base SQLite de esta fase no cifra los contadores. Revisa `docs/OFFLINE_PROGRESS_AND_SPEECH.md`.
 
 Pruebas: `npm run check` para el núcleo, `npm run check:mobile` para TypeScript móvil cuando las dependencias estén instaladas.
+
+### Bloque 09: currículo y comprobación de respuestas
+`OfflineCourse` usa ahora dos evidencias separadas de recuperación y control de aprendizaje para dar por completada una microlección; guarda datos por idioma y reabre lecciones según prerrequisitos y repasos. Las respuestas se introducen por **texto** temporalmente; el camino oral requiere integrar el adaptador nativo con este flujo. Véase `packages/core/src/course-state.ts`.

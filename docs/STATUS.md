@@ -76,3 +76,11 @@
 - [x] Configuración de plugins Expo y comprobación de tipos móvil añadidas a CI.
 - [ ] No comprobado iPhone/Android físico, ni funcionamiento con pantalla bloqueada o micrófonos Bluetooth, ni uso móvil completo del sistema de almacenamiento.
 - [ ] No hay todavía currículo completo C2, procesamiento semántico libre, puntuación de pronunciación, ni acceso infantil autorizado.
+
+
+## Bloque 09 · Microcurso evaluado y estado recuperable (2026-10-16)
+- [x] Motor `course-state.ts` con serialización defensiva, progresión por prerrequisitos, elección de lección siguiente, repaso y prevención de logros falsificados.
+- [x] `OfflineCourse.tsx` ahora exige dos pasos verificables (recuperación y checkpoint) antes de completar una microlección y guarda resultados en SQLite por idioma, sin transcripciones ni grabaciones.
+- [x] UI muestra bloqueos, progreso, errores de almacenamiento y retoma desde una lección disponible.
+- [ ] La interacción de microcurso sigue usando respuesta escrita y ejemplos propios de A0/A1; no puede evaluar respuestas orales, acento ni rango C2 todavía.
+- [ ] Hay que probar binarios en iPhone/Android y resolver accesibilidad del modo pantalla bloqueada.
