@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {targetLanguages,lessonsFor,newCourseProgress,checkUtterance,recordCourseAttempt,finishLesson,
- courseStateToJSON,loadCourseState,chooseCourseLesson,voiceTranscriptDisposition,currentVoiceTurn} from '../dist/index.js';
+ courseStateToJSON,loadCourseState,chooseCourseLesson,voiceTranscriptDisposition,currentVoiceTurn,classifyVoiceConfidence} from '../dist/index.js';
 
 const day='2026-10-16';
 test('offline spoken lesson: safe transcription, confirmed recall, persisted checkpoint and next lesson in all six languages',()=>{
@@ -55,4 +55,13 @@ test('voice policy refuses interim, blank, stale and disabled turns',()=>{
  assert.equal(currentVoiceTurn(id,id,false),false);
  assert.equal(currentVoiceTurn(null,id,true),false);
  assert.equal(currentVoiceTurn(id,'fr-CA:lesson-1:recall',true),false);
+});
+
+test('native ASR confidence rejects malformed or out-of-range scores',()=>{
+ for(const value of [undefined,null,NaN,Infinity,-Infinity,-1,1.01,'0.99',{},0,0.749]){
+  assert.equal(classifyVoiceConfidence(value),'unknown',String(value));
+ }
+ for(const value of [0.75,0.9,1]){
+  assert.equal(classifyVoiceConfidence(value),'high',String(value));
+ }
 });
