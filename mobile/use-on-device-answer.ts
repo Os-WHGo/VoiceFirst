@@ -4,7 +4,7 @@
  */
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Platform} from 'react-native';
-import type {TargetLanguage} from '@voicefirst/core';
+import {localModelState,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
 type Subscription={remove:()=>void};
 type NativeRecognition={
  isRecognitionAvailable:()=>boolean; supportsOnDeviceRecognition:()=>boolean;
@@ -12,6 +12,7 @@ type NativeRecognition={
  addListener:(event:string,callback:(event:any)=>void)=>Subscription;
  start:(opts:{lang:string;requiresOnDeviceRecognition:true;interimResults:boolean;continuous:false;maxAlternatives:1;recordingOptions:{persist:false};iosCategory:{category:'playAndRecord';categoryOptions:string[];mode:'measurement'}})=>void;
  abort:()=>void;
+ getSupportedLocales?:()=>Promise<{locales:string[];installedLocales:string[]}>;
  androidTriggerOfflineModelDownload?:(opts:{locale:string})=>Promise<{status:string}>;
 };
 const locale:Readonly<Record<TargetLanguage,string>>={
@@ -34,6 +35,8 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  const [native,setNative]=useState<NativeRecognition|null>(null);
  const [listening,setListening]=useState(false);
  const [issue,setIssue]=useState('');
+ const [model,setModel]=useState<LocalModelState>('unknown');
+ const [checkingModel,setCheckingModel]=useState(false);
  const active=useRef<{id:string;token:number}|null>(null);
  const epoch=useRef(0);
  const requesting=useRef(false);
@@ -42,6 +45,24 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  const callbacks=useRef({onFinal,onPartial});
  callbacks.current={onFinal,onPartial};
  useEffect(()=>{setNative(getRecognizer());},[]);
+ const checkModel=useCallback(async()=>{
+  if(Platform.OS!=='android'||!native?.getSupportedLocales){setModel('unknown');return;}
+  setCheckingModel(true);
+  try{
+   const info=await native.getSupportedLocales();
+   setModel(localModelState(locale[language],info));
+  }catch{setModel('unknown');}
+  finally{setCheckingModel(false);}
+ },[native,language]);
+ useEffect(()=>{
+  let live=true;
+  if(Platform.OS!=='android'||!native?.getSupportedLocales){setModel('unknown');return;}
+  setCheckingModel(true);
+  void native.getSupportedLocales().then(info=>{
+   if(live)setModel(localModelState(locale[language],info));
+  }).catch(()=>{if(live)setModel('unknown');}).finally(()=>{if(live)setCheckingModel(false);});
+  return()=>{live=false;};
+ },[native,language]);
  const stop=useCallback(()=>{
   epoch.current++;
   active.current=null;
@@ -85,6 +106,10 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  },[native,language]);
  const start=useCallback(async(exerciseId:string):Promise<boolean>=>{
   if(!native){setIssue('Este dispositivo no dispone de reconocimiento local compatible.');return false;}
+  if(Platform.OS==='android'&&model==='missing'){
+   setIssue('El idioma elegido figura como disponible pero no instalado para reconocer voz offline. Instala el modelo y comprueba de nuevo.');
+   return false;
+  }
   if(requesting.current||active.current)return false;
   setIssue('');
   const token=++epoch.current;requesting.current=true;
@@ -106,14 +131,15 @@ export function useOnDeviceAnswer(language:TargetLanguage,
    }
    return false;
   }finally{if(epoch.current===token)requesting.current=false;}
- },[native,language,stop]);
+ },[native,language,stop,model]);
  const downloadModel=useCallback(async()=>{
   if(Platform.OS!=='android'||!native?.androidTriggerOfflineModelDownload)return;
   try{
    const response=await native.androidTriggerOfflineModelDownload({locale:locale[language]});
    setIssue('Modelo local: '+response.status+'. Comprueba disponibilidad antes de iniciar.');
+   if(response.status==='download_success')await checkModel();
   }catch{setIssue('No se pudo solicitar el modelo local para este idioma.');}
- },[native,language]);
- return {available:!!native,listening,issue,start,stop,downloadModel,
+ },[native,language,checkModel]);
+ return {available:!!native,listening,issue,model,checkingModel,checkModel,start,stop,downloadModel,
   canDownload:!!native&&Platform.OS==='android'&&!!native.androidTriggerOfflineModelDownload};
 }

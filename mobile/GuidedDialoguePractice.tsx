@@ -221,7 +221,10 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
       </View>
       {showExamples&&<Text style={s.hint}>{turn?.acceptedReplies.join(' · ')}</Text>}
       {experience.subtitles && !!latestSpeech && <Text style={s.sub}>Transcripción local: {latestSpeech}</Text>}
+      {mic.model==='missing'&&<Text style={s.warning}>Este idioma necesita instalar un modelo local para responder hablando.</Text>}
+      {mic.model==='installed'&&<Text style={s.sub}>El sistema informa un modelo local instalado; funcionamiento real pendiente de verificar.</Text>}
       {!!mic.issue && <Text style={s.warning}>{mic.issue}</Text>}
+      {mic.canDownload&&<Action label={mic.checkingModel?'Revisando modelos…':'Revisar modelo local'} onPress={()=>void mic.checkModel()}/>}
       {!!feedback&&<Text style={s.sub}>{feedback}</Text>}
       {!!pendingSuggestion&&<Action label="Mostrar sugerencia" onPress={()=>{setFeedback(pendingSuggestion);setPendingSuggestion('');}}/>}
     </>):null}

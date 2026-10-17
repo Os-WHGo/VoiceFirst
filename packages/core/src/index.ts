@@ -29,3 +29,5 @@ export * from './voice-turn-policy.js';
 export * from './pcm-wav.js';
 
 export * from './voice-pack-import-policy.js';
+
+export * from './local-model-status.js';

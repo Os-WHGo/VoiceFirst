@@ -174,7 +174,10 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
           {mic.canDownload&&<Action label="Preparar modelo local (Android)" onPress={()=>void mic.downloadModel()}/>}
         </View>
         {!mic.available&&<Text style={s.warning}>Reconocimiento local no disponible. Puedes responder por escrito; nunca enviamos el audio a una API alternativa automáticamente.</Text>}
+        {mic.model==='missing'&&<Text style={s.warning}>Falta instalar el modelo offline de este idioma; la respuesta escrita sigue disponible.</Text>}
+        {mic.model==='installed'&&<Text style={s.note}>El sistema informa de un modelo local instalado. Todavía necesita validación física.</Text>}
         {!!mic.issue&&<Text style={s.warning}>{mic.issue}</Text>}
+        {mic.canDownload&&<Action label="Comprobar modelo local" onPress={()=>void mic.checkModel()}/>}
         {!!feedback&&<Text style={s.muted}>{feedback}</Text>}
         {!!requestedDetail&&<Action label="Mostrar explicación" onPress={()=>{setFeedback(requestedDetail);setRequestedDetail('');}}/>}
         <Text style={s.note}>Puedes responder hablando si tu teléfono dispone de reconocimiento local. Se evalúan transcripciones confiables, no la pronunciación ni todas las variantes válidas.</Text>
