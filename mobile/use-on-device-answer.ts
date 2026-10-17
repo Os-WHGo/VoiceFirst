@@ -10,7 +10,7 @@ type NativeRecognition={
  isRecognitionAvailable:()=>boolean; supportsOnDeviceRecognition:()=>boolean;
  requestMicrophonePermissionsAsync:()=>Promise<{granted:boolean}>;
  addListener:(event:string,callback:(event:any)=>void)=>Subscription;
- start:(opts:{lang:string;requiresOnDeviceRecognition:true;interimResults:boolean;continuous:false;maxAlternatives:1;recordingOptions:{persist:false}})=>void;
+ start:(opts:{lang:string;requiresOnDeviceRecognition:true;interimResults:boolean;continuous:false;maxAlternatives:1;recordingOptions:{persist:false};iosCategory:{category:'playAndRecord';categoryOptions:string[];mode:'measurement'}})=>void;
  abort:()=>void;
  androidTriggerOfflineModelDownload?:(opts:{locale:string})=>Promise<{status:string}>;
 };
@@ -95,7 +95,8 @@ export function useOnDeviceAnswer(language:TargetLanguage,
    if(microphoneOwner && microphoneOwner!==owner.current)microphoneOwner.stop();
    const ours:Owner={stop};owner.current=ours;microphoneOwner=ours;
    active.current={id:exerciseId,token};setListening(true);
-   native.start({lang:locale[language],requiresOnDeviceRecognition:true,interimResults:true,continuous:false,maxAlternatives:1,recordingOptions:{persist:false}});
+   native.start({lang:locale[language],requiresOnDeviceRecognition:true,interimResults:true,continuous:false,maxAlternatives:1,recordingOptions:{persist:false},
+    iosCategory:{category:'playAndRecord',categoryOptions:['allowBluetooth','defaultToSpeaker'],mode:'measurement'}});
    return true;
   }catch{
    if(epoch.current===token){

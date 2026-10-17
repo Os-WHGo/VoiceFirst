@@ -17,6 +17,14 @@ import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 import {useOnDeviceAnswer,type DictationResult} from './use-on-device-answer';
 
 const localDay=()=>{const now=new Date(),year=now.getFullYear();return `${year}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;};
+const finishedSpeech:Record<TargetLanguage,string>={
+ 'en-CA':'Practice finished. You can choose another situation.',
+ 'fr-CA':'Exercice terminé. Vous pouvez choisir une autre situation.',
+ es:'Práctica terminada. Puedes elegir otra situación.',
+ 'pt-BR':'Prática concluída. Você pode escolher outra situação.',
+ de:'Übung abgeschlossen. Du kannst eine weitere Situation wählen.',
+ it:'Esercizio completato. Puoi scegliere un’altra situazione.'
+};
 
 export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,experience=defaultExperiencePreferences}:{
   nativeLanguage:TargetLanguage;target:TargetLanguage;focus:LearningFocus;rate?:number;
@@ -31,6 +39,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
   const [draft,setDraft]=useState('');
   const [feedback,setFeedback]=useState('');
   const [pendingSuggestion,setPendingSuggestion]=useState('');
+  const [deferredCorrections,setDeferredCorrections]=useState<string[]>([]);
   const [showSupport,setShowSupport]=useState(false);
   const [showExamples,setShowExamples]=useState(false);
   const [handsFree,setHandsFree]=useState(false);
@@ -133,8 +142,10 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
     applyAttempt(outcome,dialogue!);
     const suggestion=outcome.verdict==='accepted'?'Respuesta reconocida dentro del catálogo.':'La frase podría ser válida, pero no coincide con nuestras respuestas de ejemplo.';
     if(correctionTiming==='on-request'){setPendingSuggestion(suggestion);setFeedback('Respuesta registrada; explicación disponible cuando la pidas.');}
-    else if(correctionTiming==='after-exercise'&&outcome.verdict==='accepted'){setFeedback('Respuesta aceptada.');setPendingSuggestion(suggestion);}
-    else setFeedback(suggestion);
+    else if(correctionTiming==='after-exercise'){
+      setDeferredCorrections(old=>[...old,suggestion].slice(-15));
+      setFeedback(outcome.verdict==='accepted'?'Respuesta aceptada.':'No coincide todavía con las respuestas de ejemplo. Puedes volver a intentarlo.');
+    }else setFeedback(suggestion);
     if(outcome.verdict==='accepted'&&handsFree&&experience.answerControl==='auto-after-silence'){
       autoNextRef.current=true;setLatestSpeech('');
     }
@@ -145,7 +156,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
   useEffect(()=>{
     if(!autoNextRef.current||!run||!dialogue)return;
     autoNextRef.current=false;
-    if(run.completed){setHandsFree(false);Speech.speak('Práctica terminada. Puedes elegir otra situación.',{language:'es-ES',rate});return;}
+    if(run.completed){setHandsFree(false);Speech.speak(finishedSpeech[nativeLanguage],{language:nativeLanguage,rate});return;}
     speak(false,()=>void beginRecognition());
   },[run?.turnIndex,run?.completed,dialogue?.id,speak,beginRecognition]);
 
@@ -156,19 +167,21 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
     applyAttempt(outcome,dialogue);
     const suggestion=outcome.verdict==='accepted'?'Respuesta admitida para este ejercicio.':'Puede ser una expresión válida que nuestro catálogo todavía no contempla. Puedes revisar los ejemplos.';
     if(correctionTiming==='on-request'){setPendingSuggestion(suggestion);setFeedback('Respuesta guardada. Puedes pedir una sugerencia cuando quieras.');}
-    else if(correctionTiming==='after-exercise'&&outcome.verdict==='accepted'){setPendingSuggestion(suggestion);setFeedback('Respuesta guardada.');}
-    else setFeedback(suggestion);
+    else if(correctionTiming==='after-exercise'){
+      setDeferredCorrections(old=>[...old,suggestion].slice(-15));
+      setFeedback(outcome.verdict==='accepted'?'Respuesta guardada.':'No se ha aceptado esa variante todavía. Puedes reintentar.');
+    }else setFeedback(suggestion);
     if(outcome.verdict==='accepted'){setDraft('');setShowExamples(false);}
   };
   const changeDialogue=(id:string)=>{
     stopListening();void stopCuratedVoice();autoNextRef.current=false;setHandsFree(false);
-    setDialogueId(id);setDraft('');setFeedback('');setShowExamples(false);setPendingSuggestion('');setShowSupport(false);
+    setDialogueId(id);setDraft('');setFeedback('');setShowExamples(false);setPendingSuggestion('');setDeferredCorrections([]);setShowSupport(false);
   };
   const repeatCompleted=()=>{
     if(!progress||!dialogue)return;
     const next=startDialogueReview(progress,dialogue);
     progressRef.current=next;setProgress(next);void writer(next).catch(()=>setStorageError('No se pudo guardar el repaso.'));
-    setDraft('');setFeedback('');setShowExamples(false);
+    setDraft('');setFeedback('');setShowExamples(false);setPendingSuggestion('');setDeferredCorrections([]);
   };
   const downloadOfflineModel=async()=>{await mic.downloadModel();};
   if(!dialogue)return null;
@@ -181,6 +194,9 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
     {progress && run ? (run.completed ? <>
       <Text style={s.success}>¡Completaste las preguntas de esta situación!</Text>
       <Text style={s.sub}>Próximo repaso: {progress.dialogues[dialogue.id]?.reviewDueOn??'pendiente'}. No equivale a dominar el nivel MCER.</Text>
+      {correctionTiming==='after-exercise'&&deferredCorrections.length>0&&<Text style={s.sub}>Correcciones del ejercicio: {deferredCorrections.join(' · ')}</Text>}
+      {correctionTiming==='on-request'&&!!pendingSuggestion&&<Action label="Mostrar explicación" onPress={()=>{setFeedback(pendingSuggestion);setPendingSuggestion('');}}/>}
+      {!!feedback&&<Text style={s.sub}>{feedback}</Text>
       <Action label="Repetir esta situación" onPress={repeatCompleted}/>
     </>:<>
       <Text style={s.step}>Pregunta {run.turnIndex+1}/{dialogue.turns.length}</Text>
