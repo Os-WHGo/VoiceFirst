@@ -16,4 +16,5 @@ jobs:
       - run: npm run check:mobile
 
       - run: npm run check:expo-config
+      - run: node scripts/check-ios-introspection.mjs
       - run: npm run check:android-prebuild
