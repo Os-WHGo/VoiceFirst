@@ -20,3 +20,7 @@ export async function loadLocalProgress(target:TargetLanguage):Promise<StoredPro
 export async function storeLocalProgress(p:LocalLearningProgress):Promise<void>{
   await Storage.setItem(key(p.target),serializeLearningProgress(p));
 }
+
+export async function storeSerializedLocalProgress(target:TargetLanguage,raw:string):Promise<void>{
+  await Storage.setItem(key(target),raw);
+}

@@ -12,7 +12,7 @@ import {selectGuidedDialogues,newDialogueRun,dialogueAudioCue,evaluateDialogueTu
   getSavedDialogueRun,newLearningProgress,chooseDialogue,saveDialogueAttempt,startDialogueReview,
   makeProgressWriter,type DialogueAttempt,type LocalLearningProgress,type TargetLanguage,type LearningFocus,
   type GuidedDialogue} from '@voicefirst/core';
-import {loadLocalProgress,storeLocalProgress} from './progress-storage';
+import {loadLocalProgress,storeSerializedLocalProgress} from './progress-storage';
 
 type Subscription={remove:()=>void};
 type NativeASR={
@@ -54,7 +54,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
   const mounted=useRef(true);
   const progressRef=useRef<LocalLearningProgress|null>(null);
   const autoNextRef=useRef(false);
-  const writer=useMemo(()=>makeProgressWriter(storeLocalProgress),[target]);
+  const writer=useMemo(()=>makeProgressWriter(raw=>storeSerializedLocalProgress(target,raw)),[target]);
   const dialogue=dialogues.find(x=>x.id===dialogueId)??dialogues[0]??null;
   const run=progress&&dialogue?getSavedDialogueRun(progress,dialogue):null;
   const turn=run&&dialogue?dialogue.turns[run.turnIndex]:undefined;
@@ -67,8 +67,10 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
       if(result.kind==='blocked'){setStorageError(result.reason);return;}
       const p=result.value;progressRef.current=p;setProgress(p);
       const selected=chooseDialogue(p,dialogues,localDay());
-      const previous=p.lastDialogueId && dialogues.find(d=>d.id===p.lastDialogueId);
-      setDialogueId((selected && p.dialogues[selected.id]?.reviewDueOn && p.dialogues[selected.id]?.reviewDueOn!<=localDay()) ? selected.id : previous?.id??selected?.id??null);
+      const previous=p.lastDialogueId ? dialogues.find(d=>d.id===p.lastDialogueId) : undefined;
+      const overdue=selected && p.dialogues[selected.id]?.run.completed && p.dialogues[selected.id]?.reviewDueOn && p.dialogues[selected.id]?.reviewDueOn!<=localDay();
+      const unfinishedPrevious=previous && !p.dialogues[previous.id]?.run.completed ? previous : undefined;
+      setDialogueId(overdue ? selected!.id : unfinishedPrevious?.id??selected?.id??null);
     });
     return()=>{valid=false;mounted.current=false;};
   },[target]); // interest changes only ordering, never erases per-language progress

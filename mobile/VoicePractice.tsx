@@ -60,7 +60,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim}:VoicePr
       const data=reply as {transcript?:string;answer?:string};
       if(typeof data.transcript!=='string'||typeof data.answer!=='string')throw new Error('INVALID_REPLY');
       setTranscript(data.transcript);setAnswer(data.answer);
-      history.current=[...history.current,{role:'user',text:data.transcript},{role:'assistant',text:data.answer}].slice(-6);
+      history.current=[...history.current,{role:'user' as const,text:data.transcript},{role:'assistant' as const,text:data.answer}].slice(-6);
       setPhase('speaking');
       Speech.speak(data.answer,{language:target,rate,
         onDone:()=>setPhase('ready'),onStopped:()=>setPhase('ready'),onError:()=>setPhase('ready')});
