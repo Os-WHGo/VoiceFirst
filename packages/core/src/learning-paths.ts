@@ -89,3 +89,29 @@ export const examPreparationCatalog: readonly ExamPreparationTrack[] = [
 export function preparationFor(language: TargetLanguage, purpose?: ExamPurpose): ExamPreparationTrack[] {
   return examPreparationCatalog.filter(e=>e.language===language && (!purpose||e.purposes.includes(purpose)));
 }
+
+/** Content-first curriculum roadmap, independent from speech recognition.
+ * These are authoring targets, NOT completed lessons or CEFR accreditation.
+ * A0 onboarding is handled separately from the six official CEFR bands.
+ */
+export const curriculumUnitBlueprint = {
+ A1:['greetings-and-introductions','personal-information','numbers-time-and-dates','family-and-people','daily-routines','food-and-shopping','places-and-directions','basic-needs-and-help'],
+ A2:['past-experiences','plans-and-invitations','housing-and-services','health-and-wellbeing','work-and-study','travel-problems','opinions-and-preferences','everyday-storytelling'],
+ B1:['narrating-events','explaining-opinions','workplace-collaboration','media-and-culture','handling-unexpected-situations','personal-goals','community-and-society','extended-conversations'],
+ B2:['argument-and-evidence','complex-instructions','professional-communication','abstract-topics','negotiation','critical-reading','extended-writing','discussion-and-debate'],
+ C1:['nuance-and-register','implicit-meaning','academic-argument','professional-presentations','advanced-text-analysis','intercultural-pragmatics','complex-synthesis','precision-and-style'],
+ C2:['idiomatic-mastery','subtle-implications','specialized-discourse','multi-source-synthesis','rhetorical-control','literary-interpretation','high-stakes-communication','near-native-flexibility'],
+} as const satisfies Record<(typeof officialCefrBands)[number],readonly string[]>;
+export type CurriculumUnitStatus='planned'|'draft'|'reviewed'|'published';
+export interface CurriculumUnitPlan{
+ targetLanguage:TargetLanguage;
+ level:(typeof officialCefrBands)[number];
+ unitId:string;
+ status:CurriculumUnitStatus;
+}
+/** Generates a transparent planning inventory without pretending content exists. */
+export function curriculumPlanFor(targetLanguage:TargetLanguage):CurriculumUnitPlan[]{
+ return officialCefrBands.flatMap(level=>curriculumUnitBlueprint[level].map(unitId=>({
+  targetLanguage,level,unitId,status:'planned' as const
+ })));
+}
