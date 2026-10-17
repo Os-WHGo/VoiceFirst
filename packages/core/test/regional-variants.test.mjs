@@ -21,7 +21,7 @@ test('comparison disabled by default and opt-in displays regional examples',()=>
 test('settings only retain supported accents, never cross English and French',()=>{
   const p=validateRegionalPreferences('fr-CA',{primary:'en-GB',compare:['en-US','fr-FR','fr-FR','fr-CA'],display:'always'});
   assert.equal(p.primary,'fr-CA');assert.deepEqual(p.compare,['fr-FR']);
-  assert.equal(regionalExamplesFor('fr-CA',p).length,1);
+  assert.equal(regionalExamplesFor('fr-CA',p).length,2);
   assert.equal(validateRegionalPreferences('de',p),null);
 });
 test('all 30 directed learning pairs stay independent of regional preferences',()=>{
