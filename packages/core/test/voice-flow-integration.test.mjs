@@ -41,3 +41,18 @@ test('no score is awarded to uncertain or semantically unmatched speech until th
  assert.equal(p.completed.length,0);
  assert.equal(p.correct[recall.id],0);
 });
+
+test('voice policy refuses interim, blank, stale and disabled turns',()=>{
+ const id='en-CA:lesson-1:recall';
+ for(const text of ['', '   ', null, 123]){
+  assert.equal(voiceTranscriptDisposition({text,confidence:'high',answerControl:'auto-after-silence',final:true}),'ignore');
+ }
+ assert.equal(voiceTranscriptDisposition({text:'hello',confidence:'high',answerControl:'auto-after-silence',final:false}),'ignore');
+ assert.equal(voiceTranscriptDisposition({text:'hello',confidence:'high',answerControl:'auto-after-silence',final:true}),'evaluate');
+ assert.equal(voiceTranscriptDisposition({text:'hello',confidence:'unknown',answerControl:'auto-after-silence',final:true}),'confirm');
+ assert.equal(voiceTranscriptDisposition({text:'hello',confidence:'high',answerControl:'wait-for-me',final:true}),'confirm');
+ assert.equal(currentVoiceTurn(id,id,true),true);
+ assert.equal(currentVoiceTurn(id,id,false),false);
+ assert.equal(currentVoiceTurn(null,id,true),false);
+ assert.equal(currentVoiceTurn(id,'fr-CA:lesson-1:recall',true),false);
+});
