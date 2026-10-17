@@ -16,3 +16,4 @@ jobs:
       - run: npm run check:mobile
 
       - run: npm run check:expo-config
+      - run: npm run check:android-prebuild

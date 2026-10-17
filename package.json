@@ -15,6 +15,7 @@
     "check:mobile": "npm run build:core && tsc -p mobile/tsconfig.json --noEmit",
     "voices:plan": "npm run build:core && node scripts/voice-cue-plan.mjs",
     "voices:pack": "npm run build:core && node scripts/voice-pack.mjs",
-    "check:expo-config": "node scripts/check-expo-config.mjs"
+    "check:expo-config": "node scripts/check-expo-config.mjs",
+    "check:android-prebuild": "node scripts/check-android-prebuild.mjs"
   }
 }
