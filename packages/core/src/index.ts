@@ -17,3 +17,5 @@ export * from './free-resources.js';
 export * from './learning-progress.js';
 
 export * from './course-state.js';
+export * from './voice-library.js';
+export * from './audio-routing.js';

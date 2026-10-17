@@ -73,3 +73,9 @@ Pruebas: `npm run check` para el núcleo, `npm run check:mobile` para TypeScript
 
 ### Bloque 09: currículo y comprobación de respuestas
 `OfflineCourse` usa ahora dos evidencias separadas de recuperación y control de aprendizaje para dar por completada una microlección; guarda datos por idioma y reabre lecciones según prerrequisitos y repasos. Las respuestas se introducen por **texto** temporalmente; el camino oral requiere integrar el adaptador nativo con este flujo. Véase `packages/core/src/course-state.ts`.
+
+### Voces del curso sin generación de lecciones en vivo
+
+El bloque 10 introduce `voice-library.ts`, `audio-routing.ts` y `mobile/curated-voice-output.ts`.
+Para obtener el guion original de **194** fragmentos de voz (preguntas, respuestas modelo y microlecciones), ejecuta `npm run voices:plan`. Genera `build/voice-cue-plan.json`, no audios. La app lee preguntas y un ejemplo de respuesta con voces disponibles del sistema. No se han instalado motores, packs o grabaciones de terceros; no se garantiza operación offline o con pantalla bloqueada en dispositivos reales.
+Consulta [Voces, licencias y reutilización de Wivra](docs/VOICE_LIBRARY_AND_WIVRA_REUSE.md).

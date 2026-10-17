@@ -6,3 +6,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Generated voice-clip authoring manifests (not published recordings)
+build/

@@ -12,6 +12,7 @@
     "start": "npm run build:core && npm --workspace mobile run start",
     "check": "npm test",
     "backend:dev": "node backend/src/server.mjs",
-    "check:mobile": "npm run build:core && tsc -p mobile/tsconfig.json --noEmit"
+    "check:mobile": "npm run build:core && tsc -p mobile/tsconfig.json --noEmit",
+    "voices:plan": "npm run build:core && node scripts/voice-cue-plan.mjs"
   }
 }

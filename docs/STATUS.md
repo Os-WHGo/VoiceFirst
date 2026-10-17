@@ -84,3 +84,12 @@
 - [x] UI muestra bloqueos, progreso, errores de almacenamiento y retoma desde una lección disponible.
 - [ ] La interacción de microcurso sigue usando respuesta escrita y ejemplos propios de A0/A1; no puede evaluar respuestas orales, acento ni rango C2 todavía.
 - [ ] Hay que probar binarios en iPhone/Android y resolver accesibilidad del modo pantalla bloqueada.
+
+## Bloque 10 · Voces del curso y reutilización arquitectónica de Wivra (2026-10-16)
+- [x] Contrato puro de identidad de micrófono y cambio de ruta basado en lecciones de Wivra, **sin copiar su código de captura de video** ni tocar su repositorio. `audio-routing.ts` comprueba input seleccionado vs activo y exige parar si se desconecta. Puentes nativos pendientes.
+- [x] `voice-library.ts` prepara cues originales por pregunta, respuesta modelo y frase de microlección, con idioma y huella de contenido. `npm run voices:plan` produce **194 tareas de grabación/síntesis**, sin generar audio ni consumir IA.
+- [x] `planVoiceOutput` exige comprobación de archivos locales, formato, identidad de voz, licencia, identificador y estado real de offline. Un inventario de sistema **no certifica offline**.
+- [x] `curated-voice-output.ts` permite escuchar pregunta y respuesta modelo a través de voces que ofrece el sistema, cuando estén disponibles. No hace llamadas a nuestra API; NO se garantiza que el TTS del propio sistema no utilice red.
+- [x] Ejecutado `npm run check`: **106/106 pruebas Node/TypeScript core aprobadas**.
+- [ ] Grabaciones preproducidas reales, hashes de audio verificados y reproducción de packs; todavía no están integrados.
+- [ ] Compilación móvil CI tras push y prueba de voces en dispositivos/auriculares con pantalla bloqueada. Revisión legal de las licencias de cada modelo y voz es obligatoria antes de distribuirlos.

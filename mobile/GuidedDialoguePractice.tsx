@@ -11,8 +11,9 @@ import * as Speech from 'expo-speech';
 import {selectGuidedDialogues,newDialogueRun,dialogueAudioCue,evaluateDialogueTurn,
   getSavedDialogueRun,newLearningProgress,chooseDialogue,saveDialogueAttempt,startDialogueReview,
   makeProgressWriter,type DialogueAttempt,type LocalLearningProgress,type TargetLanguage,type LearningFocus,
-  type GuidedDialogue} from '@voicefirst/core';
+  type GuidedDialogue,audioCueForDialogue,answerAudioCuesForDialogue} from '@voicefirst/core';
 import {loadLocalProgress,storeSerializedLocalProgress} from './progress-storage';
+import {playCuratedVoice} from './curated-voice-output';
 
 type Subscription={remove:()=>void};
 type NativeASR={
@@ -104,9 +105,18 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
     if(!dialogue||!run||run.completed)return;
     const cue=dialogueAudioCue(dialogue,run.turnIndex,nativeLanguage,hint);
     if(!cue)return;
+    if(!hint && turn){
+      const authored=audioCueForDialogue(dialogue.id,turn.id);
+      if(authored){void playCuratedVoice(authored,rate,onDone,message=>setFeedback(message));return;}
+    }
     void Speech.stop();
     Speech.speak(cue.text,{language:cue.language,rate,onDone,onError:()=>setFeedback('La voz seleccionada no está disponible en este dispositivo.')});
-  },[dialogue,run,nativeLanguage,rate]);
+  },[dialogue,run,turn,nativeLanguage,rate]);
+  const speakModelAnswer=()=>{
+    if(!dialogue||!turn)return;
+    const model=answerAudioCuesForDialogue(dialogue.id,turn.id)[0];
+    if(model)void playCuratedVoice(model,rate,undefined,message=>setFeedback(message));
+  };
 
   const beginRecognition=useCallback(async()=>{
     if(!recognizer||!dialogue||!turn||!progress||storageError){setFeedback('Reconocimiento local no disponible. Puedes continuar con el campo de texto.');return;}
@@ -202,6 +212,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
       <View style={s.row}>
         <Action label="Escuchar pregunta" onPress={()=>speak(false)}/>
         <Action label="Ayuda en mi idioma" onPress={()=>speak(true)}/>
+        <Action label="Escuchar respuesta modelo" onPress={speakModelAnswer}/>
       </View>
       <View style={s.row}>
         <Action label={listening?'Detener micrófono':'Responder con mi voz (offline)'} onPress={()=>listening?stopListening():void beginRecognition()}/>
@@ -220,7 +231,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
     </>):null}
     <Text style={s.step}>Otras situaciones y repasos</Text>
     <View style={s.row}>{dialogues.map(d=><Action key={d.id} label={`${d.domain==='foundation'?'Vida diaria':d.domain==='work'?'Trabajo':'Viajes'}${(progress?.dialogues[d.id]?.run.completed?' ✓':'')}`} onPress={()=>changeDialogue(d.id)}/>)}</View>
-    <Text style={s.note}>Avance guardado en SQLite local, sin guardar audio ni transcripciones. El ASR del sistema solo se activa si está disponible sin red; los mensajes con baja confianza no puntúan. Bluetooth y pantalla bloqueada aún necesitan pruebas físicas. Este prototipo está dirigido a adultos; acceso infantil pendiente de aprobación.</Text>
+    <Text style={s.note}>Avance guardado en SQLite local, sin guardar audio ni transcripciones. El ASR del sistema solo se activa si está disponible sin red; los mensajes con baja confianza no puntúan. La selección de TTS aquí no garantiza voces instaladas offline, y el sistema puede usar sus propios servicios. Bluetooth y pantalla bloqueada aún necesitan pruebas físicas. Este prototipo está dirigido a adultos; acceso infantil pendiente de aprobación.</Text>
   </View>;
 }
 function Action({label,onPress}:{label:string;onPress:()=>void;key?:string}){return <Pressable accessibilityRole="button" style={s.button} onPress={onPress}><Text style={s.buttonText}>{label}</Text></Pressable>}
