@@ -34,8 +34,51 @@ For physical iPhones, internal ad hoc provisioning or TestFlight requires approp
 8. **Reliability**: native launch, crash logs, battery/CPU, local storage migration, latency from prompt end to mic readiness, locale-specific quality, and any device-dependent limitations.
 9. **Locked screen**: currently unsupported and intentionally not enabled. Evaluate native iOS AVAudioSession and Android foreground service requirements and platform policy before promising or enabling.
 
+
+## Bloque 18: APK offline CI generado, aceptación física pendiente (2026-10-17)
+
+**Evidencia de compilación:** GitHub Actions `Android offline internal candidate`, ejecución
+https://github.com/Os-WHGo/VoiceFirst/actions/runs/39057479132, concluyó SUCCESS
+en el commit `8a99325e33c2220d8da42d6e2e86cfd580f35ca4`.
+El artefacto interno se conserva solo 3 días. Incluye JS/assets empaquetados y
+firma de prueba temporal, no firma de producción. La compilación no demuestra
+que TTS, ASR, importación de WAV ni clases funcionen en modo avión.
+
+**La compilación debug del mismo commit falló** al resolver dependencias
+Gradle/Kotlin/Java. El éxito release no invalida ese fallo. Antes de cambiar
+dependencias, reproducir con logs completos y comprobar conectividad del runner.
+
+### Procedimiento mínimo de aceptación de una lección (Android físico)
+
+Registrar dispositivo, versión de Android, idioma de interfaz, idioma objetivo,
+dialecto de reconocimiento, modelo ASR instalado y versión del APK. No guardar
+grabaciones de menores ni datos personales en el informe.
+
+1. Instalar el APK interno y abrirlo **sin Metro**. Registrar si inicia o se cierra.
+2. Crear un perfil adulto de prueba, elegir par de idiomas y abrir una microlección.
+3. Completar un ejercicio por texto y cerrar forzosamente la app. Reabrir y
+   confirmar progreso, posición y preferencias conservadas.
+4. Activar modo avión, reiniciar la aplicación y repetir el ejercicio. Registrar
+   por separado: contenido local, persistencia, narración y reconocimiento.
+5. Probar voz con un modelo ASR **ya instalado** para el dialecto exacto.
+   Comprobar solicitud de permiso, resultado incierto, corrección manual y que
+   ninguna transcripción de baja confianza puntúe automáticamente.
+6. Repetir sin modelo local disponible o denegando el micrófono. La lección
+   debe seguir siendo utilizable por texto, sin activar reconocimiento cloud.
+7. Cambiar de actividad mientras escucha o responde; verificar que el micrófono
+   se detiene y que un resultado tardío no modifica la puntuación.
+8. Importar solo un WAV autorizado de prueba mediante el flujo existente.
+   Comprobar hash, reproducción en modo avión y rechazo de archivo alterado.
+9. Anotar resultados **PASS / FAIL / NO PROBADO**, pasos reproducibles y
+   versión del artefacto. No declarar soporte offline completo por una sola
+   prueba exitosa.
+
+**Puerta de salida:** no denominar «beta offline validada» hasta completar
+instalación real, persistencia, voz local, permisos, interrupciones y regresión
+en al menos un Android físico. Para iOS hace falta una validación independiente.
+
 ## Known barriers
-- No physical iOS/Android binary built in ChatGPT and no native device tests executed.
+- Existe un APK Android interno compilado por GitHub Actions, pero no se ha instalado ni probado en un dispositivo físico; no existe IPA iOS verificado.
 - No real curated recordings of the approximately 194 planned voice cues, no proven regional TTS voices, no high-accuracy accent assessment.
 - No on-device audio input route bridge, user-facing model inventory, or Android foreground service verified.
 - Full A1–C2 curriculum remains unfinished and children's launch requires legal/pedagogical/privacy review.
