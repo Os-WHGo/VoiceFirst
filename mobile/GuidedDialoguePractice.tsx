@@ -10,7 +10,7 @@ import {View,Text,Pressable,TextInput,StyleSheet,AppState} from 'react-native';
 import * as Speech from 'expo-speech';
 import {selectGuidedDialogues,newDialogueRun,dialogueAudioCue,evaluateDialogueTurn,
   getSavedDialogueRun,newLearningProgress,chooseDialogue,saveDialogueAttempt,startDialogueReview,
-  makeProgressWriter,type DialogueAttempt,type LocalLearningProgress,type TargetLanguage,type LearningFocus,
+  decideTutorFeedback,tutorFeedbackForLanguage,makeProgressWriter,type DialogueAttempt,type LocalLearningProgress,type TargetLanguage,type LearningFocus,
   type GuidedDialogue,type ExperiencePreferences,defaultExperiencePreferences,audioCueForDialogue,answerAudioCuesForDialogue,currentVoiceTurn,voiceTranscriptDisposition} from '@voicefirst/core';
 import {loadLocalProgress,storeSerializedLocalProgress} from './progress-storage';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
