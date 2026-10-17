@@ -149,7 +149,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
         {!mic.available&&<Text style={s.warning}>Reconocimiento local no disponible. Puedes responder por escrito; nunca enviamos el audio a una API alternativa automáticamente.</Text>}
         {!!mic.issue&&<Text style={s.warning}>{mic.issue}</Text>}
         {!!feedback&&<Text style={s.muted}>{feedback}</Text>}
-        {!!requestedDetail&&<Action label="Mostrar explicación" onPress={()=>{setFeedback(requestedDetail);setRequestedDetail('');}}/>
+        {!!requestedDetail&&<Action label="Mostrar explicación" onPress={()=>{setFeedback(requestedDetail);setRequestedDetail('');}}/>}
         <Text style={s.note}>Puedes responder hablando si tu teléfono dispone de reconocimiento local. Se evalúan transcripciones confiables, no la pronunciación ni todas las variantes válidas.</Text>
       </>}
     </>:<>
