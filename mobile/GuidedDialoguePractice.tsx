@@ -139,13 +139,14 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
       return;
     }
     const outcome=evaluateDialogueTurn(turn!,spoken,target,'high');
+    const tutor=decideTutorFeedback(turn!,outcome,run?.attempts[turn!.id]??0);
     applyAttempt(outcome,dialogue!);
     const suggestion=outcome.verdict==='accepted'?'Respuesta reconocida dentro del catálogo.':'La frase podría ser válida, pero no coincide con nuestras respuestas de ejemplo.';
     if(correctionTiming==='on-request'){setPendingSuggestion(suggestion);setFeedback('Respuesta registrada; explicación disponible cuando la pidas.');}
     else if(correctionTiming==='after-exercise'){
       setDeferredCorrections(old=>[...old,suggestion].slice(-15));
       setFeedback(outcome.verdict==='accepted'?'Respuesta aceptada.':'No coincide todavía con las respuestas de ejemplo. Puedes volver a intentarlo.');
-    }else setFeedback(suggestion);
+    }else setFeedback(tutorFeedbackForLanguage(tutor,nativeLanguage)+' '+suggestion);
     if(outcome.verdict==='accepted'&&handsFree&&experience.answerControl==='auto-after-silence'){
       autoNextRef.current=true;setLatestSpeech('');
     }
