@@ -4,6 +4,7 @@
  */
 import type {TargetLanguage} from './types.js';
 import type {AgeStage} from './learning-paths.js';
+import type {LocalLearningProgress} from './learning-progress.js';
 import {selectGuidedDialogues,type LearningFocus,type DialogueTurn,type DialogueDomain} from './guided-dialogues.js';
 
 export interface TutorPracticeHistory {
@@ -13,6 +14,18 @@ export interface TutorPracticeHistory {
   retries:Readonly<Record<string,number>>;
   /** Most recent practiced turn, to avoid immediate repetition where possible. */
   lastTurnId?:string;
+}
+/** Derive tutor selection evidence from the persisted, versioned dialogue snapshot. */
+export function practiceHistoryFromProgress(progress:LocalLearningProgress):TutorPracticeHistory {
+ const successes:Record<string,number>={};
+ const retries:Record<string,number>={};
+ for(const saved of Object.values(progress.dialogues)){
+  for(const id of saved.run.acceptedTurnIds)successes[id]=(successes[id]||0)+1;
+  for(const [id,n] of Object.entries(saved.run.attempts)){
+   retries[id]=(retries[id]||0)+Math.max(0,n-(saved.run.acceptedTurnIds.includes(id)?1:0));
+  }
+ }
+ return {successes,retries,lastTurnId:progress.lastDialogueId ? Object.values(progress.dialogues).find(x=>x.run.dialogueId===progress.lastDialogueId)?.run.acceptedTurnIds.at(-1):undefined};
 }
 export type NextTutorPractice=
  |{status:'requires-child-safety-review'|'no-authored-content'}
