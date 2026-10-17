@@ -107,3 +107,16 @@
 - Preferencias para adultos neurodivergentes y neurotípicos sin diagnóstico: instrucciones paso a paso, cuándo mostrar correcciones y estimulación visual. Persistencia local para preferencias; ninguna edad impone techo MCER.
 - Perfiles adolescentes y niños **todavía no habilitados**; requieren auditoría específica. Los ajustes regionales solo cambian la comparación y la lectura solicitada en esa pantalla, no el ASR del currículo general.
 - `REGIONAL_VARIANTS_AND_ADULT_ACCESSIBILITY.md` reúne bibliografía y límites. Core TypeScript y tests pasaron localmente; revisión móvil CI pendiente al publicar.
+
+## Bloque 13 · Preferencias unificadas, regiones y audio por importación (2026-10-16)
+
+**Código integrado sobre PR #1 (borrador, sin cambiar main):**
+- `mobile/use-learning-preferences.ts` centraliza preferencias en SQLite KV para lecciones preparadas, diálogos y laboratorio opcional. Guarda ritmo de voz, presentación, momentos de corrección, visibilidad de transcripción, control de turno y reanudación. No registra diagnósticos, voz ni transcripciones. Lee ajustes existentes de la clave anterior sin reinicializarlos; bloquea la edición si la lectura/estructura no es segura.
+- `OfflineCourse.tsx` guarda el cursor de ejercicio por idioma, permite retomar cuando se elige la opción, y deja avanzar explícitamente al aceptar la respuesta. Añadido resumen de correcciones diferidas e instrucciones de un paso o contexto completo. La validación conserva límites de coincidencia textual y no puntúa fonética.
+- `GuidedDialoguePractice.tsx` aplica la misma elección de correcciones, subtítulos, control de paso siguiente y reanudación, sin permitir captura en segundo plano.
+- `RegionalComparisons.tsx` permite elegir países de comparación, visualizar registro y escoger voz del sistema no verificada; catálogo inicial ampliado de 3 situaciones / 8 frases a **5 situaciones / 13 frases originales**. No presume exclusividad de vocabulario por país.
+- `mobile/install-voice-pack.ts` y `VoicePackImporter.tsx` añaden importación por selección de carpeta local de narraciones WAV. Requieren manifiesto válido, derechos, revisión de narración, límites de bytes, comprobación SHA-256 de cada archivo antes y después de copiar, copia temporal y movimiento final; no reemplazan paquetes existentes. SHA-256 acredita integridad respecto del manifiesto pero NO firma ni autoría. Los 194 fragmentos siguen pendientes de producir.
+
+**Verificación externa:** `e40226aaa940b803f96f1ae9c039b6cbffe36ece` pasó `npm run check` (125/125) y `check:mobile` por GitHub Actions: https://github.com/Os-WHGo/VoiceFirst/actions/runs/39003950466 . El importador quedó agregado después, en `b13abad2d80ec58655a229c17c90fc126b1981f5`, y requiere confirmar el resultado de su propia ejecución CI antes de atribuirle compilación móvil aprobada.
+
+**Pendientes críticos:** importar y reproducir narración genuina autorizada en hardware, calidad de acentos y ASR, comprobar permisos del selector de archivos y compatibilidad Android/iOS, probar Bluetooth y modelos locales, construir binarios, validar pantalla bloqueada con restricciones de SO. No se presenta como beta instalada ni currículo completo hasta C2. Menores bloqueados a falta de privacidad/consentimiento/revisión.
