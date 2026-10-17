@@ -165,6 +165,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
     if(!turn||!dialogue||!draft.trim())return;
     stopListening();
     const outcome=evaluateDialogueTurn(turn,draft,target,'high'); // explicitly user-confirmed transcript, not a phonetic score
+    const guidance=decideTutorFeedback(turn,outcome,run?.attempts[turn.id]??0);
     applyAttempt(outcome,dialogue);
     const suggestion=outcome.verdict==='accepted'?'Respuesta admitida para este ejercicio.':'Puede ser una expresión válida que nuestro catálogo todavía no contempla. Puedes revisar los ejemplos.';
     if(correctionTiming==='on-request'){setPendingSuggestion(suggestion);setFeedback('Respuesta guardada. Puedes pedir una sugerencia cuando quieras.');}
