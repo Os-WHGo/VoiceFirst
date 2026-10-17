@@ -38,6 +38,8 @@ jobs:
         run: npm install --ignore-scripts
       - name: Generate audited Android project
         run: npm run check:android-prebuild
+      - name: Validate resolved Expo native modules
+        run: node scripts/check-android-autolinking.mjs
       - name: Assemble unsigned-for-distribution, debug-signed Android APK
         working-directory: mobile/android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
