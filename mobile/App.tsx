@@ -44,7 +44,7 @@ export default function App() {
         <View style={styles.card}>
           <View style={styles.orbitOuter}><View style={styles.orbitMid}><View style={styles.orbitInner}><Text style={styles.orbitIcon}>{speaking ? '♫' : '◦'}</Text></View></View></View>
           <Text style={styles.centerHeading}>{speaking ? 'Reproduciendo ejemplo' : 'Tu espacio de aprendizaje'}</Text>
-          <Text style={styles.centerSub}>Ejemplo de 30 rutas de estudio. La captura de micrófono y el control por comandos aún no están conectados.</Text>
+          <Text style={styles.centerSub}>Seis idiomas combinables. Los diálogos pueden usar reconocimiento local en primer plano si el dispositivo lo admite; falta validar pantalla bloqueada.</Text>
           <Pressable accessibilityRole="button" style={styles.primary} onPress={speaking ? stop : preview}>
             <Text style={styles.primaryText}>{speaking ? 'Detener audio' : 'Escuchar ejemplo'}</Text>
           </Pressable>
@@ -75,10 +75,9 @@ export default function App() {
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} />
         <Text style={styles.section}>Preferencias de atención</Text>
         <View style={styles.row}>
-          <Chip label={lowStim ? 'Baja estimulación ✓' : 'Estimulación normal'} active={lowStim} onPress={()=>setLowStim(!lowStim)} />
           <Chip label={rate<0.95?'Voz pausada':'Voz normal'} active={rate<0.95} onPress={()=>setRate(rate<0.95?1.0:0.85)} />
         </View>
-        <Text style={styles.note}>Seis idiomas seleccionables, con una muestra por nivel. Ahora hay un laboratorio de práctica por turnos mediante micrófono, que requiere servidor local y cuenta API. Aún no funciona manos libres ni con pantalla bloqueada. La sección de diálogos usa texto de prueba y no puntúa pronunciación. Sin registro ni anuncios ni grabaciones en este prototipo. No se está realizando una evaluación de nivel. El micrófono solo se solicita al iniciar una grabación.</Text>
+        <Text style={styles.note}>Seis idiomas combinables y lecciones preparadas de muestra, no un curso completo C2. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio generativo es opcional y separado. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
       </ScrollView>
     </SafeAreaView>
   );
