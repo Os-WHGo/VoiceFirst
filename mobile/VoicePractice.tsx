@@ -3,14 +3,14 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { File } from 'expo-file-system';
 import * as Speech from 'expo-speech';
-import { defaultPreferences, validatePreferences, type CefrBand, type TargetLanguage } from '@voicefirst/core';
+import { defaultPreferences, validatePreferences, type CefrBand, type TargetLanguage,type ExperiencePreferences,defaultExperiencePreferences } from '@voicefirst/core';
 
 /** Experimental turn-by-turn microphone route. NOT hands-free/background yet. */
 const DEV_URL = process.env.EXPO_PUBLIC_VOICEFIRST_DEV_URL ?? '';
 const colors = { bg:'#142339', border:'#37536A', ink:'#F2F7FC', muted:'#A6BBD0', accent:'#89D4C5' };
 interface HistoryTurn {role:'user'|'assistant';text:string}
-interface VoicePracticeProps { nativeLanguage: TargetLanguage; target: TargetLanguage; level: CefrBand; rate: number; lowStim: boolean }
-export function VoicePractice({nativeLanguage,target,level,rate,lowStim}:VoicePracticeProps) {
+interface VoicePracticeProps { nativeLanguage: TargetLanguage; target: TargetLanguage; level: CefrBand; rate: number; lowStim: boolean; experience?:ExperiencePreferences }
+export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experience=defaultExperiencePreferences}:VoicePracticeProps) {
   const recorder=useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [devToken,setDevToken]=useState('');
   const [phase,setPhase]=useState<'ready'|'recording'|'sending'|'speaking'>('ready');
@@ -76,14 +76,14 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim}:VoicePr
   const clear=()=>{history.current=[];setTranscript('');setAnswer('');setError('');};
   return <View style={styles.container}>
     <Text style={styles.header}>Laboratorio de conversación con IA</Text>
-    <Text style={styles.description}>Grabación breve por turnos. El audio se envía para transcribirlo y obtener una respuesta contextual de OpenAI. No es aún el modo manos libres definitivo.</Text>
+    {experience.instructionFormat==='full-context'&&<Text style={styles.description}>Grabación breve por turnos. El audio se envía para transcribirlo y obtener una respuesta contextual de OpenAI. No es aún el modo manos libres definitivo.</Text>}
     {!DEV_URL && <Text style={styles.warning}>Sin servidor de desarrollo configurado. El micrófono de esta función permanece inactivo.</Text>}
     {!!DEV_URL && <TextInput accessibilityLabel="Token de desarrollo local" secureTextEntry placeholder="Token de desarrollo local" placeholderTextColor={colors.muted} style={styles.input} autoCapitalize="none" value={devToken} onChangeText={setDevToken}/>}
     <Pressable accessibilityRole="button" disabled={phase==='sending'||(!DEV_URL)} onPress={phase==='recording'?finishRecording:phase==='speaking'?stopSpeaking:startRecording} style={[styles.cta,phase==='sending'&&{opacity:0.5}]}>
       <Text style={styles.ctaText}>{phase==='recording'?'Terminar de hablar':phase==='sending'?'Procesando voz…':phase==='speaking'?'Detener respuesta':'Hablar con el profesor'}</Text>
     </Pressable>
     {phase==='recording' && <Text accessibilityLiveRegion="polite" style={styles.note}>Grabando. Pulsa para enviar tu respuesta.</Text>}
-    {!!transcript && <Text style={styles.result}><Text style={styles.strong}>Dijiste: </Text>{transcript}</Text>}
+    {experience.subtitles&&!!transcript && <Text style={styles.result}><Text style={styles.strong}>Dijiste: </Text>{transcript}</Text>}
     {!!answer && <Text style={styles.result}><Text style={styles.strong}>Profesor: </Text>{answer}</Text>}
     {!!error && <Text accessibilityLiveRegion="polite" style={styles.warning}>{error}</Text>}
     {(!!transcript||!!answer)&&<Pressable accessibilityRole="button" onPress={clear} style={styles.secondary}><Text style={styles.secondaryText}>Borrar texto de esta práctica</Text></Pressable>}

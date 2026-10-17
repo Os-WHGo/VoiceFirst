@@ -9,11 +9,12 @@ import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 import Storage from 'expo-sqlite/kv-store';
 import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
   chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,
-  type CourseProgress,type TargetLanguage,voiceCueById} from '@voicefirst/core';
+  type CourseProgress,type TargetLanguage,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences} from '@voicefirst/core';
 
 const localDay=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const storeKey=(language:TargetLanguage)=>`voicefirst.curriculum.v1.${language}`;
-export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:TargetLanguage;target:TargetLanguage;rate?:number}) {
+const cursorKey=(language:TargetLanguage)=>`voicefirst.curriculum.cursor.v1.${language}`;
+export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaultExperiencePreferences}:{nativeLanguage:TargetLanguage;target:TargetLanguage;rate?:number;experience?:ExperiencePreferences}) {
   const lessons=useMemo(()=>lessonsFor(target),[target]);
   const [progress,setProgress]=useState<CourseProgress|null>(null);
   const [locked,setLocked]=useState('');
@@ -23,6 +24,11 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
   const [speaking,setSpeaking]=useState(false);
   const [answer,setAnswer]=useState('');
   const [feedback,setFeedback]=useState('');
+  const [passed,setPassed]=useState(false);
+  const [requestedDetail,setRequestedDetail]=useState('');
+  const [sessionSummary,setSessionSummary]=useState('');
+  const [showContext,setShowContext]=useState(false);
+  const deferred=useRef<string[]>([]);
   const mounted=useRef(true);
   const writeQueue=useRef(Promise.resolve());
   const onDictation=useRef<(r:DictationResult,id:string)=>void>(()=>undefined);
@@ -31,16 +37,37 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
   const current=lesson?.exercises[step];
   useEffect(()=>{
     mounted.current=true;let valid=true;
-    setProgress(null);setLocked('');setStep(0);setActive(false);setAnswer('');
-    void Storage.getItem(storeKey(target)).then(raw=>{
+    setProgress(null);setLocked('');setStep(0);setActive(false);setAnswer('');setPassed(false);setSessionSummary('');deferred.current=[];
+    void Promise.all([Storage.getItem(storeKey(target)),Storage.getItem(cursorKey(target))]).then(([raw,cursor])=>{
       if(!valid)return;
       const result=raw===null?{kind:'ok',progress:newCourseProgress(target)} as const:loadCourseState(raw,target);
       if(result.kind!=='ok'){setLocked('Los datos de este curso no pueden leerse. No se han borrado; continúa sin reemplazarlos.');return;}
       setProgress(result.progress);
-      setChosenId(chooseCourseLesson(result.progress,localDay())?.id??lessons[0]?.id??null);
+      const suggested=chooseCourseLesson(result.progress,localDay())?.id??lessons[0]?.id??null;
+      let resume: {lessonId:string;step:number;active:boolean}|null=null;
+      if(cursor!==null && experience.returnToLastStep){
+        try{
+          const value:unknown=JSON.parse(cursor);
+          if(value && typeof value==='object'){
+            const c=value as {lessonId?:unknown;step?:unknown;active?:unknown};
+            const old=lessons.find(x=>x.id===c.lessonId);
+            if(old && (old.prerequisite===undefined||result.progress.completed.includes(old.prerequisite)) &&
+                Number.isSafeInteger(c.step) && typeof c.step==='number' && c.step>=0 && c.step<old.exercises.length && c.active===true){
+              resume={lessonId:old.id,step:c.step,active:true};
+            }
+          }
+        }catch{/* Cursor is optional; never overwrite or lose course evidence because of it. */}
+      }
+      setChosenId(resume?.lessonId??suggested);setStep(resume?.step??0);setActive(resume?.active??false);
     }).catch(()=>{if(valid)setLocked('No se pudo abrir la base de datos local.');});
     return()=>{valid=false;mounted.current=false;void stopCuratedVoice();};
   },[target]);
+  useEffect(()=>{
+    if(!progress||!chosenId)return;
+    const raw=JSON.stringify({lessonId:chosenId,step,active});
+    writeQueue.current=writeQueue.current.catch(()=>undefined).then(()=>Storage.setItem(cursorKey(target),raw));
+    void writeQueue.current.catch(()=>{if(mounted.current){setLocked('No se pudo guardar el punto de reanudación. El curso queda pausado.');setActive(false);}});
+  },[target,progress===null,chosenId,step,active]);
   const save=(next:CourseProgress)=>{
     setProgress(next);
     // Serialize writes. This screen persists no audio, transcripts or personal profiles.
@@ -57,15 +84,16 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
   };
   const forward=()=>{
     if(!lesson)return;
-    mic.stop();void stopCuratedVoice();setSpeaking(false);setAnswer('');setFeedback('');
+    mic.stop();void stopCuratedVoice();setSpeaking(false);setAnswer('');setFeedback('');setRequestedDetail('');setPassed(false);setShowContext(false);
     if(step<lesson.exercises.length-1){setStep(s=>s+1);return;}
-    setStep(0);setActive(false);
+    setSessionSummary(experience.correctionTiming==='after-exercise'&&deferred.current.length ? deferred.current.join(' · ') : 'Ejercicio terminado. Puedes continuar con otra clase o repasar.');
+    deferred.current=[];setStep(0);setActive(false);
   };
   const verify=(spoken=answer,confidence:'high'|'unknown'='high')=>{
-    if(!progress||!lesson||!current||!spoken.trim()||locked)return;
+    if(!progress||!lesson||!current||!spoken.trim()||locked||passed)return;
     if(confidence!=='high'){
       setAnswer(spoken);
-      setFeedback('La transcripción no tiene certeza suficiente. Puedes revisarla y confirmarla manualmente, sin penalización.');
+      setFeedback('La transcripción no tiene certeza suficiente. Revísala y confírmala manualmente, sin penalización.');
       return;
     }
     const result=checkUtterance(current,spoken,target,'high');
@@ -73,18 +101,21 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
     if(result.kind==='match'){
       const final=current.type==='checkpoint'?finishLesson(next,lesson):next;
       save(final);
-      setFeedback('Respuesta de ejemplo aceptada.');
       if(current.type==='checkpoint' && !final.completed.includes(lesson.id)){
-        setFeedback('Faltan resultados de recuperación para completar la lección.');return;
+        setFeedback('Todavía faltan resultados de recuperación para terminar la lección.');return;
       }
-      forward();
-      if(current.type==='checkpoint'){
-        setChosenId(chooseCourseLesson(final,localDay())?.id??lesson.id);
-      }
+      setPassed(true);
+      const detail='Respuesta de ejemplo aceptada. Puedes revisar otras alternativas en futuras prácticas.';
+      deferred.current.push(detail);
+      setRequestedDetail(experience.correctionTiming==='on-request'?detail:'');
+      setFeedback(experience.correctionTiming==='after-each-answer'?detail:'Respuesta aceptada. Puedes continuar.');
+      if(current.type==='checkpoint')setChosenId(lesson.id);
     }else if(result.kind==='retry'){
       save(next);
-      setFeedback('Todavía no coincide con nuestras respuestas de ejemplo. Puedes escuchar otra vez y elegir tus palabras.');
-    }else setFeedback('No pudimos interpretar la respuesta; no se contó como fallo.');
+      const detail='No coincide con las respuestas revisadas. Podría existir otra formulación válida. Escucha la pista y vuelve a intentarlo.';
+      setRequestedDetail(experience.correctionTiming==='on-request'?detail:'');
+      setFeedback(experience.correctionTiming==='after-each-answer'?detail:'Todavía no podemos aceptar esta respuesta. Puedes intentarlo de nuevo.');
+    }else setFeedback('La respuesta no se interpretó con seguridad. No se contó como error.');
   };
   onDictation.current=(result,id)=>{
     if(!current||id!==current.id||current.type==='listen'||current.type==='repeat')return;
@@ -102,14 +133,15 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
       <Text style={s.stage}>Paso {step+1}/{lesson.exercises.length}: {current?.type}</Text>
       {current?.type==='listen'||current?.type==='repeat'?<>
         <Text style={s.phrase}>{current?.utterance}</Text>
-        <Text style={s.muted}>{current?.meaning[nativeLanguage]}</Text>
+        {(experience.instructionFormat==='full-context'||showContext)&&<Text style={s.muted}>{current?.meaning[nativeLanguage]}</Text>}
+        {experience.instructionFormat==='one-step'&&<Action label={showContext?'Ocultar ayuda':'Mostrar significado'} onPress={()=>setShowContext(x=>!x)}/>}
         <View style={s.row}><Action label={speaking?'Reproduciendo…':'Escuchar modelo'} onPress={play}/><Action label="Continuar" onPress={forward}/></View>
         <Text style={s.note}>Escuchar y repetir son práctica, no prueba de aprendizaje. La comprobación llegará después.</Text>
       </>:<>
-        <Text style={s.muted}>Responde en {target}. Recuerda una frase apropiada para esta situación:</Text>
+        {experience.instructionFormat==='full-context'&&<Text style={s.muted}>Responde en {target}. Recuerda una frase apropiada para esta situación:</Text>}
         <Text style={s.phrase}>{current?.meaning[nativeLanguage]}</Text>
         <TextInput accessibilityLabel="Respuesta de recuperación en el idioma objetivo" value={answer} onChangeText={setAnswer} style={s.input} placeholder="Tu respuesta aquí" placeholderTextColor="#9FB4C6" autoCorrect={false}/>
-        <View style={s.row}><Action label="Comprobar y guardar" onPress={()=>verify()}/><Action label="Escuchar pista" onPress={play}/></View>
+        <View style={s.row}>{!passed&&<Action label="Comprobar y guardar" onPress={()=>verify()}/>}<Action label="Escuchar pista" onPress={play}/>{passed&&<Action label="Continuar al siguiente paso" onPress={forward}/>}</View>
         <View style={s.row}>
           <Action label={mic.listening?'Detener micrófono':'Responder hablando (offline)'} onPress={()=>{if(mic.listening)mic.stop();else{void stopCuratedVoice();setSpeaking(false);void mic.start(current!.id);}}}/>
           {mic.canDownload&&<Action label="Preparar modelo local (Android)" onPress={()=>void mic.downloadModel()}/>}
@@ -117,15 +149,17 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
         {!mic.available&&<Text style={s.warning}>Reconocimiento local no disponible. Puedes responder por escrito; nunca enviamos el audio a una API alternativa automáticamente.</Text>}
         {!!mic.issue&&<Text style={s.warning}>{mic.issue}</Text>}
         {!!feedback&&<Text style={s.muted}>{feedback}</Text>}
+        {!!requestedDetail&&<Action label="Mostrar explicación" onPress={()=>{setFeedback(requestedDetail);setRequestedDetail('');}}/>
         <Text style={s.note}>Puedes responder hablando si tu teléfono dispone de reconocimiento local. Se evalúan transcripciones confiables, no la pronunciación ni todas las variantes válidas.</Text>
       </>}
     </>:<>
-      <Text style={s.muted}>Objetivo: {lesson.context}. Escucha, repite, recuerda sin ver la respuesta y supera el control para guardar tu avance.</Text>
-      <View style={s.row}><Action label="Empezar / continuar clase" onPress={()=>{setStep(0);setActive(true);setFeedback('');}}/></View>
+      <Text style={s.muted}>{experience.instructionFormat==='one-step'?'Escucha la pregunta y avanza a tu ritmo.':`Objetivo: ${lesson.context}. Escucha, repite y supera el control para guardar tu avance.`}</Text>
+      {!!sessionSummary&&<Text style={s.muted}>{sessionSummary}</Text>}
+      <View style={s.row}><Action label="Empezar / continuar clase" onPress={()=>{setStep(0);setActive(true);setPassed(false);setFeedback('');setSessionSummary('');deferred.current=[];}}/></View>
     </>)}
     {progress&&!locked&&<View style={s.row}>{lessons.map(l=><Action key={l.id} label={`${l.band}: ${l.focusTag}${progress.completed.includes(l.id)?' ✓':''}`} onPress={()=>{
       if(courseLessonStatus(progress,l)==='locked'){setFeedback('Primero completa la lección anterior.');return;}
-      setChosenId(l.id);setStep(0);setActive(false);setAnswer('');setFeedback('');mic.stop();void stopCuratedVoice();
+      setChosenId(l.id);setStep(0);setActive(false);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];mic.stop();void stopCuratedVoice();
     }}/>)}</View>}
     <Text style={s.note}>Se guarda progreso local sin audio ni transcripciones. Reconocimiento limitado al primer plano, al idioma y modelos instalados; no hay audio de fondo garantizado. La síntesis de voz del sistema tampoco está verificada sin Internet. Falta probar en hardware y cifrar datos sensibles.</Text>
   </View>;
