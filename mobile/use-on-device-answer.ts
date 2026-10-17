@@ -79,6 +79,9 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   const sub=AppState.addEventListener('change',state=>{if(state!=='active')stop();});
   return()=>{mounted.current=false;stop();sub.remove();};
  },[stop]);
+ // A locale change invalidates the old mic turn before another lesson can start.
+ // Otherwise a late native result could be attributed to the newly selected language.
+ useEffect(()=>{stop();},[language,stop]);
  useEffect(()=>{
   if(!native)return;
   const subs:Subscription[]=[
