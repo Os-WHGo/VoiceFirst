@@ -1,0 +1,47 @@
+# Non-production Android debug build. No EAS, release signing, Store upload or paid account.
+# Public repository Actions runners are free on GitHub's public-project allowance.
+name: Android native debug APK
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'packages/core/src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/check-android-prebuild.mjs'
+      - '.github/workflows/android-debug.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-debug-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned npm dependencies
+        run: npm install --ignore-scripts
+      - name: Generate audited Android project
+        run: npm run check:android-prebuild
+      - name: Assemble unsigned-for-distribution, debug-signed Android APK
+        working-directory: mobile/android
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Upload internal debug candidate only
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicefirst-android-debug-${{ github.sha }}
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3
+          if-no-files-found: error
