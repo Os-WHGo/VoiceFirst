@@ -15,7 +15,9 @@
     "react-native": "0.86.0",
     "@voicefirst/core": "file:../packages/core",
     "expo-audio": "~57.0.5",
-    "expo-file-system": "~57.0.0"
+    "expo-file-system": "~57.0.0",
+    "expo-sqlite": "~57.0.4",
+    "expo-speech-recognition": "57.1.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

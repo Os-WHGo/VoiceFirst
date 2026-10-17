@@ -20,6 +20,13 @@
           "enableBackgroundPlayback": false,
           "enableBackgroundRecording": false
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "VoiceFirst accede al micrófono solo cuando inicias una práctica hablada.",
+          "speechRecognitionPermission": "VoiceFirst usa reconocimiento de voz del dispositivo cuando está disponible."
+        }
       ]
     ]
   }

@@ -64,7 +64,7 @@ export default function App() {
         <View style={styles.row}>
           {([['balanced','Curso completo'],['work','Trabajo'],['daily-life','Vida cotidiana'],['travel','Viajes']] as const).map(([code,label])=><Chip key={code} active={focus===code} label={label} onPress={()=>setFocus(code)}/>)}
         </View>
-        <GuidedDialoguePractice nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate}/>
+        <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate}/>
         <OfflineCourse nativeLanguage={nativeLanguage} target={target} rate={rate} />
         <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} />

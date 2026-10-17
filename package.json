@@ -11,6 +11,7 @@
     "test": "npm run build:core && node --test packages/core/test/*.test.mjs backend/test/*.test.mjs",
     "start": "npm run build:core && npm --workspace mobile run start",
     "check": "npm test",
-    "backend:dev": "node backend/src/server.mjs"
+    "backend:dev": "node backend/src/server.mjs",
+    "check:mobile": "npm run build:core && tsc -p mobile/tsconfig.json --noEmit"
   }
 }

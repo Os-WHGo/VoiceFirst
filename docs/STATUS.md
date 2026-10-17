@@ -67,3 +67,12 @@
 - [x] Niños: rutas cerradas por defecto hasta consentimiento, seguridad y validación pedagógica. Preferencias neuroinclusivas por necesidad, sin diagnóstico.
 - [x] `npm run check`: 75/75 pruebas automatizadas de lógica superadas y paquete TypeScript compilado. CI GitHub pendiente de ejecución sobre commit de este bloque.
 - [ ] Sin micrófono offline, manos libres real, bloqueo de pantalla, persistencia local ni lecciones avanzadas verificadas; simulador/dispositivo iOS/Android pendiente.
+
+
+## Bloque 08 · Progreso local y reconocedor offline de sistema (2026-10-16)
+- [x] Motor puro versionado de progreso de diálogos con reanudación de turno, agenda de repasos, protección de estado corrupto y escritura ordenada; pruebas Node.
+- [x] Adaptador de persistencia local `expo-sqlite/kv-store` en aplicación móvil, con almacenamiento exclusivamente de IDs y contadores, NO cifrado y SIN audio/transcripción.
+- [x] Prototipo de micrófono con `expo-speech-recognition` en dispositivo y `requiresOnDeviceRecognition: true`, sin respaldo a nube, con permiso explícito. Sólo compatible con native development build, modelo instalado y soporte de idioma.
+- [x] Configuración de plugins Expo y comprobación de tipos móvil añadidas a CI.
+- [ ] No comprobado iPhone/Android físico, ni funcionamiento con pantalla bloqueada o micrófonos Bluetooth, ni uso móvil completo del sistema de almacenamiento.
+- [ ] No hay todavía currículo completo C2, procesamiento semántico libre, puntuación de pronunciación, ni acceso infantil autorizado.

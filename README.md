@@ -64,3 +64,9 @@ Se incorpora un enrutador `translateWithFallback` (6 idiomas) con privacidad exp
 - `packages/core/src/free-resources.ts` and `mobile/FreeResources.tsx`: link-only curated free learning sites in six languages; no scraping/rehosting media. YouTube live search is not integrated.
 - `docs/COURSE_DIALOGUES_RESEARCH_2026_10_16.md`: evidence, licensing, pedagogy and remaining milestones.
 - Child profiles remain disabled pending legal/guardian/pedagogical review; see Drive documents 13 and 14.
+
+
+### Bloque 08: progreso y voz local (prototipo)
+El módulo de diálogos dispone de un esquema versionado para guardar el turno y los repasos con SQLite local; no se guardan archivos de audio ni transcripciones. Se agregó un adaptador a `expo-speech-recognition` para intentar ASR **únicamente en el dispositivo** y un fallback de texto cuando el modelo de idioma o la extensión nativa no esté disponible. Las clases con micrófono requieren **development build** (no Expo Go), y no se ha validado pantalla bloqueada ni Bluetooth. La disponibilidad de ASR local depende de SO, modelo descargado y locale. La base SQLite de esta fase no cifra los contadores. Revisa `docs/OFFLINE_PROGRESS_AND_SPEECH.md`.
+
+Pruebas: `npm run check` para el núcleo, `npm run check:mobile` para TypeScript móvil cuando las dependencias estén instaladas.
