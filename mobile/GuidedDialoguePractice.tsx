@@ -13,7 +13,7 @@ import {selectGuidedDialogues,newDialogueRun,dialogueAudioCue,evaluateDialogueTu
   makeProgressWriter,type DialogueAttempt,type LocalLearningProgress,type TargetLanguage,type LearningFocus,
   type GuidedDialogue,audioCueForDialogue,answerAudioCuesForDialogue} from '@voicefirst/core';
 import {loadLocalProgress,storeSerializedLocalProgress} from './progress-storage';
-import {playCuratedVoice} from './curated-voice-output';
+import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 
 type Subscription={remove:()=>void};
 type NativeASR={
@@ -76,7 +76,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
     return()=>{valid=false;mounted.current=false;};
   },[target]); // interest changes only ordering, never erases per-language progress
   useEffect(()=>{setRecognizer(getRecognizer());setCanInstallModel(Platform.OS==='android');},[]);
-  useEffect(()=>()=>{void Speech.stop();try{recognizer?.abort();}catch{}},[recognizer]);
+  useEffect(()=>()=>{void stopCuratedVoice();try{recognizer?.abort();}catch{}},[recognizer]);
 
   const stopListening=useCallback(()=>{
     captureRef.current=null;busyRef.current=false;setListening(false);
@@ -86,7 +86,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
   // background audio and lock screen will need explicit OS-specific tests and consent.
   useEffect(()=>{
     const sub=AppState.addEventListener('change',state=>{
-      if(state!=='active'){stopListening();setHandsFree(false);void Speech.stop();}
+      if(state!=='active'){stopListening();setHandsFree(false);void stopCuratedVoice();}
     });
     return()=>sub.remove();
   },[stopListening]);
@@ -109,7 +109,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
       const authored=audioCueForDialogue(dialogue.id,turn.id);
       if(authored){void playCuratedVoice(authored,rate,onDone,message=>setFeedback(message));return;}
     }
-    void Speech.stop();
+    void stopCuratedVoice();
     Speech.speak(cue.text,{language:cue.language,rate,onDone,onError:()=>setFeedback('La voz seleccionada no está disponible en este dispositivo.')});
   },[dialogue,run,turn,nativeLanguage,rate]);
   const speakModelAnswer=()=>{
@@ -132,7 +132,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
       setFeedback('Este idioma necesita un modelo de reconocimiento local compatible. No se envió audio a Internet.');
     }
   },[recognizer,dialogue,turn,progress,storageError,target]);
-  const startVoiceLesson=async()=>{setHandsFree(true);speak(false,()=>void beginRecognition());};
+  const startVoiceLesson=async()=>{if(!recognizer){setHandsFree(false);setFeedback('Se necesita un modelo de reconocimiento local antes de iniciar el modo continuo.');return;}setHandsFree(true);speak(false,()=>void beginRecognition());};
   useEffect(()=>{
     if(!recognizer)return;
     const subscriptions:Subscription[]=[
@@ -180,7 +180,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
     if(outcome.verdict==='accepted'){setDraft('');setShowExamples(false);}
   };
   const changeDialogue=(id:string)=>{
-    stopListening();void Speech.stop();autoNextRef.current=false;setHandsFree(false);
+    stopListening();void stopCuratedVoice();autoNextRef.current=false;setHandsFree(false);
     setDialogueId(id);setDraft('');setFeedback('');setShowExamples(false);
   };
   const repeatCompleted=()=>{

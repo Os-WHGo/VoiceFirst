@@ -1,14 +1,15 @@
 /** Curated course with genuine recall/checkpoints and durable local-only progress.
- * The exercise currently uses typed answers; it is not a phonetic assessment or ASR.
+ * Written answers or strictly on-device ASR when available; not a phonetic assessment.
  * Speech playback is native, with offline availability depending on installed voices.
  */
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {View,Text,Pressable,TextInput,StyleSheet} from 'react-native';
-import * as Speech from 'expo-speech';
+import {useOnDeviceAnswer,type DictationResult} from './use-on-device-answer';
+import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 import Storage from 'expo-sqlite/kv-store';
-import {lessonsFor,nextAudioStep,newCourseProgress,loadCourseState,courseStateToJSON,
+import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
   chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,
-  type CourseProgress,type OfflineLesson,type TargetLanguage} from '@voicefirst/core';
+  type CourseProgress,type TargetLanguage,voiceCueById} from '@voicefirst/core';
 
 const localDay=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const storeKey=(language:TargetLanguage)=>`voicefirst.curriculum.v1.${language}`;
@@ -24,6 +25,8 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
   const [feedback,setFeedback]=useState('');
   const mounted=useRef(true);
   const writeQueue=useRef(Promise.resolve());
+  const onDictation=useRef<(r:DictationResult,id:string)=>void>(()=>undefined);
+  const mic=useOnDeviceAnswer(target,(result,id)=>onDictation.current(result,id));
   const lesson=lessons.find(x=>x.id===chosenId)??lessons[0];
   const current=lesson?.exercises[step];
   useEffect(()=>{
@@ -36,7 +39,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
       setProgress(result.progress);
       setChosenId(chooseCourseLesson(result.progress,localDay())?.id??lessons[0]?.id??null);
     }).catch(()=>{if(valid)setLocked('No se pudo abrir la base de datos local.');});
-    return()=>{valid=false;mounted.current=false;void Speech.stop();};
+    return()=>{valid=false;mounted.current=false;void stopCuratedVoice();};
   },[target]);
   const save=(next:CourseProgress)=>{
     setProgress(next);
@@ -46,21 +49,26 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
     void writeQueue.current.catch(()=>{if(mounted.current){setLocked('No se pudo guardar el progreso. Se detuvo el curso para proteger tus datos.');setActive(false);}});
   };
   const play=()=>{
-    if(!lesson)return;
-    const audio=nextAudioStep(lesson,step,nativeLanguage);
-    if(!audio)return;
-    void Speech.stop();setSpeaking(true);
-    Speech.speak(audio.speech,{language:audio.language,rate,onDone:()=>setSpeaking(false),onStopped:()=>setSpeaking(false),onError:()=>setSpeaking(false)});
+    if(!lesson||!current)return;
+    const item=voiceCueById(`lesson/${lesson.id}/${current.id}`);
+    if(!item)return;
+    mic.stop();setSpeaking(true);
+    void playCuratedVoice(item,rate,()=>setSpeaking(false),message=>{setSpeaking(false);setFeedback(message);});
   };
   const forward=()=>{
     if(!lesson)return;
-    void Speech.stop();setSpeaking(false);setAnswer('');setFeedback('');
+    mic.stop();void stopCuratedVoice();setSpeaking(false);setAnswer('');setFeedback('');
     if(step<lesson.exercises.length-1){setStep(s=>s+1);return;}
     setStep(0);setActive(false);
   };
-  const verify=()=>{
-    if(!progress||!lesson||!current||!answer.trim()||locked)return;
-    const result=checkUtterance(current,answer,target,'high');
+  const verify=(spoken=answer,confidence:'high'|'unknown'='high')=>{
+    if(!progress||!lesson||!current||!spoken.trim()||locked)return;
+    if(confidence!=='high'){
+      setAnswer(spoken);
+      setFeedback('La transcripción no tiene certeza suficiente. Puedes revisarla y confirmarla manualmente, sin penalización.');
+      return;
+    }
+    const result=checkUtterance(current,spoken,target,'high');
     const next=recordCourseAttempt(progress,current,result,localDay());
     if(result.kind==='match'){
       const final=current.type==='checkpoint'?finishLesson(next,lesson):next;
@@ -77,6 +85,10 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
       save(next);
       setFeedback('Todavía no coincide con nuestras respuestas de ejemplo. Puedes escuchar otra vez y elegir tus palabras.');
     }else setFeedback('No pudimos interpretar la respuesta; no se contó como fallo.');
+  };
+  onDictation.current=(result,id)=>{
+    if(!current||id!==current.id||current.type==='listen'||current.type==='repeat')return;
+    verify(result.text,result.confidence);
   };
   if(!lesson)return null;
   const status=progress?courseLessonStatus(progress,lesson):'locked';
@@ -97,9 +109,15 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
         <Text style={s.muted}>Responde en {target}. Recuerda una frase apropiada para esta situación:</Text>
         <Text style={s.phrase}>{current?.meaning[nativeLanguage]}</Text>
         <TextInput accessibilityLabel="Respuesta de recuperación en el idioma objetivo" value={answer} onChangeText={setAnswer} style={s.input} placeholder="Tu respuesta aquí" placeholderTextColor="#9FB4C6" autoCorrect={false}/>
-        <View style={s.row}><Action label="Comprobar y guardar" onPress={verify}/><Action label="Escuchar pista" onPress={play}/></View>
+        <View style={s.row}><Action label="Comprobar y guardar" onPress={()=>verify()}/><Action label="Escuchar pista" onPress={play}/></View>
+        <View style={s.row}>
+          <Action label={mic.listening?'Detener micrófono':'Responder hablando (offline)'} onPress={()=>{if(mic.listening)mic.stop();else{void stopCuratedVoice();setSpeaking(false);void mic.start(current!.id);}}}/>
+          {mic.canDownload&&<Action label="Preparar modelo local (Android)" onPress={()=>void mic.downloadModel()}/>}
+        </View>
+        {!mic.available&&<Text style={s.warning}>Reconocimiento local no disponible. Puedes responder por escrito; nunca enviamos el audio a una API alternativa automáticamente.</Text>}
+        {!!mic.issue&&<Text style={s.warning}>{mic.issue}</Text>}
         {!!feedback&&<Text style={s.muted}>{feedback}</Text>}
-        <Text style={s.note}>Comprobación escrita de prueba. Aún no puntúa respuestas habladas de esta sección ni reconoce todas las variantes válidas.</Text>
+        <Text style={s.note}>Puedes responder hablando si tu teléfono dispone de reconocimiento local. Se evalúan transcripciones confiables, no la pronunciación ni todas las variantes válidas.</Text>
       </>}
     </>:<>
       <Text style={s.muted}>Objetivo: {lesson.context}. Escucha, repite, recuerda sin ver la respuesta y supera el control para guardar tu avance.</Text>
@@ -107,9 +125,9 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88}:{nativeLanguage:
     </>)}
     {progress&&!locked&&<View style={s.row}>{lessons.map(l=><Action key={l.id} label={`${l.band}: ${l.focusTag}${progress.completed.includes(l.id)?' ✓':''}`} onPress={()=>{
       if(courseLessonStatus(progress,l)==='locked'){setFeedback('Primero completa la lección anterior.');return;}
-      setChosenId(l.id);setStep(0);setActive(false);setAnswer('');setFeedback('');void Speech.stop();
+      setChosenId(l.id);setStep(0);setActive(false);setAnswer('');setFeedback('');mic.stop();void stopCuratedVoice();
     }}/>)}</View>}
-    <Text style={s.note}>Solo se guardan los IDs de ejercicios, intentos y días de repaso. No se almacena voz ni texto de respuestas. El almacenamiento es local y no está cifrado. Pendiente: ejercicios de voz de este módulo, funcionamiento con pantalla apagada y pruebas móviles reales.</Text>
+    <Text style={s.note}>Se guarda progreso local sin audio ni transcripciones. Reconocimiento limitado al primer plano, al idioma y modelos instalados; no hay audio de fondo garantizado. La síntesis de voz del sistema tampoco está verificada sin Internet. Falta probar en hardware y cifrar datos sensibles.</Text>
   </View>;
 }
 function Action({label,onPress}:{label:string;onPress:()=>void}){return <Pressable accessibilityRole="button" style={s.btn} onPress={onPress}><Text style={s.btnTxt}>{label}</Text></Pressable>}

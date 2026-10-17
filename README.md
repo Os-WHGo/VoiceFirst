@@ -79,3 +79,7 @@ Pruebas: `npm run check` para el núcleo, `npm run check:mobile` para TypeScript
 El bloque 10 introduce `voice-library.ts`, `audio-routing.ts` y `mobile/curated-voice-output.ts`.
 Para obtener el guion original de **194** fragmentos de voz (preguntas, respuestas modelo y microlecciones), ejecuta `npm run voices:plan`. Genera `build/voice-cue-plan.json`, no audios. La app lee preguntas y un ejemplo de respuesta con voces disponibles del sistema. No se han instalado motores, packs o grabaciones de terceros; no se garantiza operación offline o con pantalla bloqueada en dispositivos reales.
 Consulta [Voces, licencias y reutilización de Wivra](docs/VOICE_LIBRARY_AND_WIVRA_REUSE.md).
+
+### Bloque 11 · Audio pregrabado verificable
+
+Las preguntas del curso pueden reproducirse desde un WAV validado por SHA-256 y derechos de reproducción. Sin un WAV local compatible se recurre a la voz instalada en el dispositivo; el motor VoiceFirst no llama a ninguna API generativa. La producción y revisión de grabaciones está pendiente. Instrucciones: [docs/OFFLINE_VOICE_PACKS_BLOCK11.md](docs/OFFLINE_VOICE_PACKS_BLOCK11.md). Microlecciones aceptan ahora ASR **exclusivamente en el dispositivo** cuando el OS tiene el modelo adecuado; no soportan por ahora escucha continua con pantalla bloqueada.

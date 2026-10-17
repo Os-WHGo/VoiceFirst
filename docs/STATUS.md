@@ -93,3 +93,11 @@
 - [x] Ejecutado `npm run check`: **106/106 pruebas Node/TypeScript core aprobadas**.
 - [ ] Grabaciones preproducidas reales, hashes de audio verificados y reproducción de packs; todavía no están integrados.
 - [ ] Compilación móvil CI tras push y prueba de voces en dispositivos/auriculares con pantalla bloqueada. Revisión legal de las licencias de cada modelo y voz es obligatoria antes de distribuirlos.
+
+## Bloque 11 · Paquetes WAV autorizados y ASR de microlecciones (2026-10-16)
+- [x] `voice-packs.ts` valida manifiestos, locales, versiones de texto, rutas seguras, hashes, tamaños y permisos; packs parciales nunca se anuncian como completos.
+- [x] CLI `scripts/voice-pack.mjs` prepara guiones por idioma, compila WAV PCM16 solo con autorización explícita, y verifica archivos localmente por SHA-256.
+- [x] `mobile/installed-voice-pack.ts` revisa WAV en almacenamiento privado con hash real; `curated-voice-output` reproduce WAV autorizado primero, y si falta recurre a voz nativa sin prometer offline.
+- [x] `mobile/use-on-device-answer.ts` agrega el reconocimiento local de respuestas orales a la pantalla de microlecciones, donde antes solo había texto; incertidumbre no puntúa.
+- [ ] Audio real autorizado generado: 0/194; falta producción de narraciones y licencias individuales.
+- [ ] Instalador/distribuidor en dispositivos, certificación offline de TTS, audio con pantalla bloqueada, pruebas iPhone/Android y aprobación pedagógica.
