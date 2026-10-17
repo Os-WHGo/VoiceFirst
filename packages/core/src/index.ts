@@ -35,3 +35,5 @@ export * from './local-model-status.js';
 export * from './adaptive-tutor.js';
 
 export * from './tutor-feedback.js';
+
+export * from './tutor-session.js';
