@@ -136,3 +136,24 @@
 **Bloqueadores reales:** todavía no se ha creado ni instalado un APK/IPA; no hay acceso a teléfono/emulador para pruebas físicas, firma iOS para distribución en iPhone, clips narrados originales, ruta de micrófono verificada, escucha con pantalla bloqueada ni currículo general completo C2. Un EAS profile es preparación, no compilación realizada. Las APIs opcionales pagadas permanecen desactivadas para el curso. PR #1 continúa en borrador y `main` intacta.
 
 **Cierre validado del Bloque 14:** corrección JSX en `ad1d8dbf68ec6a7ffc406a8545a305c7c75f6ca6` tras detectar y resolver una regresión de compilación móvil. GitHub Actions https://github.com/Os-WHGo/VoiceFirst/actions/runs/39005579510 terminó **SUCCESS: 132/132 tests de Node y compilación TypeScript móvil aprobada**. No se han creado APK/IPA ni probado hardware, Bluetooth, pantalla bloqueada o modelos de voz reales. No se fusionó el PR #1.
+
+## Bloque 15 · Importación verificable y modelos offline por idioma (2026-10-16)
+
+**Rama** `codex/voicefirst-initial-source` · PR #1 draft, `main` no fusionada. El núcleo no requiere cuentas, descarga ni modelos generativos.
+
+### Trabajo de código verificado
+- `packages/core/src/pcm-wav.ts`: validador PCM16 original compartido por importador, lectura móvil y generador. Comprueba RIFF con longitud exacta, estructura y tamaños de chunks, frecuencia permitida, canales mono/estéreo, duración declarada, alineación de frames y una amplitud mínima detectable. No acepta archivos con solo una cabecera RIFF válida ni clips silenciosos como narración terminada.
+- `scripts/voice-pack.mjs`: utiliza el mismo validador al preparar, construir y volver a verificar paquetes. El audio se sigue **produciendo externamente con derechos**, no se sintetiza ni se graba por arte de magia.
+- `packages/core/src/voice-pack-import-policy.ts`: inspección pura antes de crear carpetas, identidad `voicefirst-<language>-v1`, lista hasta 200 grabaciones, 128 MiB y rutas `clips/NAME.wav` compatibles con el builder. La carpeta importada debe coincidir exactamente con los archivos declarados.
+- `mobile/install-voice-pack.ts` y `mobile/installed-voice-pack.ts`: comprobar WAV completo y SHA-256 antes/después de copiar; almacenamiento en etapas sin reemplazar; auditar cada clip instalado por tamaño, hash, duración y contenido PCM. Los metadatos de licencias son autodeclarados; no existe firma ni autenticación criptográfica del autor.
+- `mobile/VoicePackImporter.tsx`: panel explícito para importar, revisar los clips reales instalados por idioma y reproducir una muestra local verificada. No presenta una colección de grabaciones inexistente como instalada.
+- `mobile/curated-voice-output.ts` y `mobile/App.tsx`: configurar sesión de audio en primer plano, sin reproducción de fondo; detener reproducción al salir de la aplicación. **No** se han probado rutas Bluetooth, interrupciones reales o compatibilidad del reproductor en teléfonos físicos.
+- `packages/core/src/local-model-status.ts` y `mobile/use-on-device-answer.ts`: consultar, cuando Android lo permite, idiomas admitidos e instalados para reconocimiento local. Coincidencia por dialecto exacto; estado desconocido si el sistema no informa. Advertir y bloquear captura cuando la lista muestra explícitamente que falta el modelo; ofrecer solicitud de descarga y nueva revisión. En otros sistemas, `requiresOnDeviceRecognition:true` permanece como salvaguarda.
+- `scripts/check-expo-config.mjs` y `.github/workflows/core-check.yml`: la CI verifica también la configuración de Expo resuelta, nombres de paquete Android/iOS y soporte de tablet. Es una comprobación estática sin EAS, SDK físico, firma o tienda.
+
+### Evidencia
+Commits de código: `76f289a88b945d68a7450d5e73b03e21db50cccb`, `e1d15d42061d78c1cd4d3dcf91f56238954ff3e3`, `ce617f51e15059bd59fb9f8a8e5d12670e7f832c`, `72eff082bd3137301fa61b9b0e533191f1730d31`, `2b2a81f6862b24776f76a5e273b6123dd3c056b7`.
+**GitHub Actions** https://github.com/Os-WHGo/VoiceFirst/actions/runs/39012079574 : **SUCCESS, 142/142 pruebas Node**, `check:mobile` TypeScript PASSED y `check:expo-config` PASSED en el último commit de código `2b2a81f6862b24776f76a5e273b6123dd3c056b7`. Validación de lógica y compilación, no pruebas de instalación.
+
+### Bloqueadores abiertos
+No se ha generado ni instalado un IPA/APK; no hay audios originales producidos para el inventario de 194 líneas, revisión auditiva de regionalismos, ni firma criptográfica de editores; no hay pruebas físicas de lector de carpetas iOS/Android, permisos de almacenamiento, Bluetooth/AirPods/lentes, micrófono real, pantalla bloqueada o duración de batería. El sistema TTS puede depender de la plataforma y no está certificado offline. Currículo completo hasta C2 y perfiles de menores siguen pendientes de contenido/revisión y no pueden anunciarse como terminados.
