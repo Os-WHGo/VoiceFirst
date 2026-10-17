@@ -9,29 +9,16 @@
 import {mkdir,readFile,writeFile,lstat,copyFile,readdir,rm} from 'node:fs/promises';
 import {resolve,join,dirname,basename} from 'node:path';
 import {createHash} from 'node:crypto';
-import {authoredVoiceCues,voiceLocales,cueFingerprint,inspectVoicePack,targetLanguages} from '../packages/core/dist/index.js';
+import {authoredVoiceCues,voiceLocales,cueFingerprint,inspectVoicePack,targetLanguages,inspectPcmWav} from '../packages/core/dist/index.js';
 
 const hash=v=>createHash('sha256').update(v).digest('hex');
 const fileName=cue=>`${hash(cue.id).slice(0,24)}.wav`;
 const isLang=x=>targetLanguages.includes(x);
 function fail(message){throw new Error(message);}
 function parseWav(buffer){
-  if(buffer.length<44||buffer.toString('ascii',0,4)!=='RIFF'||buffer.toString('ascii',8,12)!=='WAVE')fail('Expected RIFF/WAVE audio');
-  let pos=12,fmt=null,data=null;
-  while(pos+8<=buffer.length){
-    const name=buffer.toString('ascii',pos,pos+4),size=buffer.readUInt32LE(pos+4);
-    if(size>buffer.length-pos-8)fail('WAV chunk exceeds file size');
-    if(name==='fmt '){if(size<16)fail('Invalid WAV fmt chunk');fmt={codec:buffer.readUInt16LE(pos+8),channels:buffer.readUInt16LE(pos+10),rate:buffer.readUInt32LE(pos+12),bytesPerSec:buffer.readUInt32LE(pos+16),bits:buffer.readUInt16LE(pos+22)};}
-    if(name==='data')data={offset:pos+8,size};
-    pos+=8+size+(size%2);
-  }
-  if(!fmt||!data||fmt.codec!==1||fmt.channels<1||fmt.channels>2||![16000,22050,24000,44100,48000].includes(fmt.rate)||fmt.bits!==16||fmt.bytesPerSec!==fmt.rate*fmt.channels*2)fail('Unsupported WAV: use PCM16 mono/stereo 16/22.05/24/44.1/48 kHz');
-  const durationMs=Math.round(data.size/fmt.bytesPerSec*1000);
-  if(durationMs<150||durationMs>60000)fail('Clip must last 0.15 to 60 seconds');
-  // Avoid accepting a muted or all-silence clip as a finished narration.
-  let maximum=0;for(let p=data.offset;p+1<data.offset+data.size;p+=2){maximum=Math.max(maximum,Math.abs(buffer.readInt16LE(p)));}
-  if(maximum<300)fail('Audio is silent or too quiet; review the original recording');
-  return durationMs;
+  const check=inspectPcmWav(buffer);
+  if(!check.valid)fail(check.reason);
+  return check.durationMs;
 }
 async function verify(dir){
   const pack=JSON.parse(await readFile(join(dir,'pack.json'),'utf8'));

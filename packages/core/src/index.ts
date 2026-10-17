@@ -25,3 +25,5 @@ export * from './regional-variants.js';
 export * from './experience.js';
 
 export * from './voice-turn-policy.js';
+
+export * from './pcm-wav.js';
