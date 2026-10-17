@@ -196,7 +196,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
       <Text style={s.sub}>Próximo repaso: {progress.dialogues[dialogue.id]?.reviewDueOn??'pendiente'}. No equivale a dominar el nivel MCER.</Text>
       {correctionTiming==='after-exercise'&&deferredCorrections.length>0&&<Text style={s.sub}>Correcciones del ejercicio: {deferredCorrections.join(' · ')}</Text>}
       {correctionTiming==='on-request'&&!!pendingSuggestion&&<Action label="Mostrar explicación" onPress={()=>{setFeedback(pendingSuggestion);setPendingSuggestion('');}}/>}
-      {!!feedback&&<Text style={s.sub}>{feedback}</Text>
+      {!!feedback&&<Text style={s.sub}>{feedback}</Text>}
       <Action label="Repetir esta situación" onPress={repeatCompleted}/>
     </>:<>
       <Text style={s.step}>Pregunta {run.turnIndex+1}/{dialogue.turns.length}</Text>
