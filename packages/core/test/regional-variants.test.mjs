@@ -15,8 +15,8 @@ test('each regional scenario has a distinct phrase for every required country an
 });
 test('comparison disabled by default and opt-in displays regional examples',()=>{
   const pref=defaultRegionalPreferences('en-CA');
-  assert.deepEqual(regionalExamplesFor('en-CA',pref).map(x=>x.examples.length),[1,1]);
-  assert.deepEqual(regionalExamplesFor('en-CA',pref,true).map(x=>x.examples.length),[3,3]);
+  assert.deepEqual(regionalExamplesFor('en-CA',pref).map(x=>x.examples.length),[1,1,1]);
+  assert.deepEqual(regionalExamplesFor('en-CA',pref,true).map(x=>x.examples.length),[3,3,3]);
 });
 test('settings only retain supported accents, never cross English and French',()=>{
   const p=validateRegionalPreferences('fr-CA',{primary:'en-GB',compare:['en-US','fr-FR','fr-FR','fr-CA'],display:'always'});
@@ -38,4 +38,16 @@ test('regional comparison cannot bypass curated examples or create claims of rec
   assert.equal(sets[0].examples[0].locale,'en-GB');
   assert.equal(sets[0].examples[1].locale,'en-US');
   assert.equal(sets[0].examples.every(x=>x.voice==='system-unverified'),true);
+});
+
+test('five regional situations remain optional, with original register labels and no exclusive-country rules',()=>{
+ assert.equal(regionalSituations.length,5);
+ assert.equal(regionalSituations.reduce((n,s)=>n+s.examples.length,0),13);
+ assert.ok(regionalSituations.every(s=>s.examples.every(e=>['neutral','informal','polite'].includes(e.register))));
+ const en=defaultRegionalPreferences('en-CA');
+ const partial=validateRegionalPreferences('en-CA',{...en,primary:'en-GB',compare:['en-CA'],display:'always'});
+ const sets=regionalExamplesFor('en-CA',partial);
+ assert.equal(sets.length,3);
+ assert.ok(sets.every(s=>s.examples.length===2&&s.examples[0].locale==='en-GB'&&s.examples[1].locale==='en-CA'));
+ assert.equal(regionalExamplesFor('fr-CA',defaultRegionalPreferences('fr-CA'),true).length,2);
 });

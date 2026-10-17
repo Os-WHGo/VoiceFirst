@@ -50,6 +50,8 @@ export function RegionalComparisons({target,rate=0.88}:{target:TargetLanguage;ra
     {pending?<Text style={styles.sub}>Cargando preferencias…</Text>:<>
       <Text style={styles.region}>Variedad para los ejemplos (todavía no cambia el reconocimiento del curso)</Text>
       <View style={styles.row}>{variantsFor(target).map(v=><Action key={v} text={label[v]} chosen={selected.primary===v} onPress={()=>save({...selected,primary:v,compare:variantsFor(target).filter(x=>x!==v)})}/>)}</View>
+      <Text style={styles.region}>Regiones que quieres comparar</Text>
+      <View style={styles.row}>{variantsFor(target).filter(v=>v!==selected.primary).map(v=><Action key={v} text={label[v]} chosen={selected.compare.includes(v)} onPress={()=>save({...selected,compare:selected.compare.includes(v)?selected.compare.filter(x=>x!==v):[...selected.compare,v]})}/>)}</View>
       <View style={styles.row}>
         <Action text={compareNow?'Ocultar comparaciones':'Comparar otras regiones'} onPress={()=>{void Speech.stop();setCompareNow(x=>!x);}}/>
         <Action text={selected.display==='always'?'Comparación automática: sí':'Comparación automática: no'} onPress={()=>save({...selected,display:selected.display==='always'?'on-demand':'always'})} chosen={selected.display==='always'}/>
@@ -57,7 +59,7 @@ export function RegionalComparisons({target,rate=0.88}:{target:TargetLanguage;ra
       {examples.map(s=><View key={s.id} style={styles.item}>
         <Text style={styles.sub}>{s.cefr} · {s.intentEs} · {s.topic==='work'?'Trabajo':'Vida cotidiana'}</Text>
         {s.examples.map(e=><View key={e.locale} style={{gap:5,marginTop:5}}>
-          <Text style={styles.region}>{label[e.locale]}</Text>
+          <Text style={styles.region}>{label[e.locale]} · {e.register==='polite'?'Cortés':e.register==='informal'?'Informal':'Neutro'}</Text>
           <Text selectable style={styles.cue}>{e.sentence}</Text>
           <Text style={styles.sub}>{e.usageNote}</Text>
           <View style={styles.row}><Action text={`Escuchar ${label[e.locale]}`} onPress={()=>{

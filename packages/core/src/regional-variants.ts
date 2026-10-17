@@ -34,6 +34,10 @@ const OXFORD_WASHROOM='https://www.oxfordlearnersdictionaries.com/us/definition/
 const BRITISH_COUNCIL='https://learnenglish.britishcouncil.org/free-resources/grammar/b1-b2/british-english-american-english';
 const OQLF_DEPANNEUR='https://vitrinelinguistique.oqlf.gouv.qc.ca/fiche-gdt/fiche/1299675/depanneur';
 const ACADEMY_DEPANNEUR='https://www.dictionnaire-academie.fr/article/A9D1428';
+const OXFORD_TAKEOUT='https://www.oxfordlearnersdictionaries.com/us/definition/english/takeout';
+const OXFORD_TAKEAWAY='https://www.oxfordlearnersdictionaries.com/definition/english/takeaway';
+const OQLF_STATIONNEMENT='https://vitrinelinguistique.oqlf.gouv.qc.ca/fiche-gdt/fiche/1298970/parc-de-stationnement';
+const LAROUSSE_PARKING='https://www.larousse.fr/dictionnaires/francais/parking/58227';
 export const regionalSituations:readonly RegionalSituation[]=[
   {id:'en-find-public-facilities',language:'en',topic:'everyday',cefr:'A1',intentEs:'Preguntar dónde están los baños en un lugar público',authoring:'original',examples:[
     {locale:'en-CA',sentence:'Excuse me, where is the washroom?',register:'polite',usageNote:'Washroom es especialmente habitual en Canadá, aunque otras formas también se entienden.',referenceUrl:OXFORD_WASHROOM,voice:'system-unverified'},
@@ -44,6 +48,15 @@ export const regionalSituations:readonly RegionalSituation[]=[
     {locale:'en-CA',sentence:'Excuse me, where is the elevator?',register:'polite',usageNote:'Elevator es habitual en Canadá y Estados Unidos.',referenceUrl:BRITISH_COUNCIL,voice:'system-unverified'},
     {locale:'en-US',sentence:'Excuse me, where is the elevator?',register:'polite',usageNote:'Elevator es la forma habitual estadounidense.',referenceUrl:BRITISH_COUNCIL,voice:'system-unverified'},
     {locale:'en-GB',sentence:'Excuse me, where is the lift?',register:'polite',usageNote:'Lift es habitual en el Reino Unido; elevator también se comprende.',referenceUrl:BRITISH_COUNCIL,voice:'system-unverified'},
+  ]},
+  {id:'en-takeaway-meal',language:'en',topic:'everyday',cefr:'A2',intentEs:'Pedir una comida para llevar',authoring:'original',examples:[
+    {locale:'en-CA',sentence:'Could I order this for takeout, please?',register:'polite',usageNote:'Takeout es una palabra norteamericana habitual también en Canadá; no excluye to go.',referenceUrl:OXFORD_TAKEOUT,voice:'system-unverified'},
+    {locale:'en-US',sentence:'Can I get this to go, please?',register:'polite',usageNote:'To go es corriente en los Estados Unidos y también se oye en Canadá.',referenceUrl:OXFORD_TAKEOUT,voice:'system-unverified'},
+    {locale:'en-GB',sentence:'Could I have this to take away, please?',register:'polite',usageNote:'To take away y takeaway son usos británicos comunes; hay variación entre hablantes.',referenceUrl:OXFORD_TAKEAWAY,voice:'system-unverified'},
+  ]},
+  {id:'fr-find-parking',language:'fr',topic:'everyday',cefr:'A2',intentEs:'Preguntar dónde hay un estacionamiento cercano',authoring:'original',examples:[
+    {locale:'fr-CA',sentence:'Où est le stationnement le plus proche, s’il vous plaît ?',register:'polite',usageNote:'Stationnement para el lugar es un uso frecuente en Quebec y Canadá francófono; la expresión también tiene otros significados.',referenceUrl:OQLF_STATIONNEMENT,voice:'system-unverified'},
+    {locale:'fr-FR',sentence:'Où est le parking le plus proche, s’il vous plaît ?',register:'polite',usageNote:'Parking es corriente en Francia, aunque parc de stationnement también es válido y suele recomendarse como alternativa.',referenceUrl:LAROUSSE_PARKING,voice:'system-unverified'},
   ]},
   {id:'fr-convenience-shop',language:'fr',topic:'everyday',cefr:'A2',intentEs:'Preguntar por una pequeña tienda de artículos cotidianos',authoring:'original',examples:[
     {locale:'fr-CA',sentence:'Excusez-moi, où est le dépanneur le plus proche ?',register:'polite',usageNote:'Dépanneur nombra en Quebec una pequeña tienda de artículos corrientes, con horario extendido.',referenceUrl:OQLF_DEPANNEUR,voice:'system-unverified'},
