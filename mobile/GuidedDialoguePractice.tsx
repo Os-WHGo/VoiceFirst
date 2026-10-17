@@ -6,32 +6,16 @@
  * - Transcript matching is NOT pronunciation, CEFR or complete semantic assessment.
  */
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {View,Text,Pressable,TextInput,StyleSheet,AppState,Platform} from 'react-native';
+import {View,Text,Pressable,TextInput,StyleSheet,AppState} from 'react-native';
 import * as Speech from 'expo-speech';
 import {selectGuidedDialogues,newDialogueRun,dialogueAudioCue,evaluateDialogueTurn,
   getSavedDialogueRun,newLearningProgress,chooseDialogue,saveDialogueAttempt,startDialogueReview,
   makeProgressWriter,type DialogueAttempt,type LocalLearningProgress,type TargetLanguage,type LearningFocus,
-  type GuidedDialogue,type ExperiencePreferences,defaultExperiencePreferences,audioCueForDialogue,answerAudioCuesForDialogue} from '@voicefirst/core';
+  type GuidedDialogue,type ExperiencePreferences,defaultExperiencePreferences,audioCueForDialogue,answerAudioCuesForDialogue,currentVoiceTurn,voiceTranscriptDisposition} from '@voicefirst/core';
 import {loadLocalProgress,storeSerializedLocalProgress} from './progress-storage';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
+import {useOnDeviceAnswer,type DictationResult} from './use-on-device-answer';
 
-type Subscription={remove:()=>void};
-type NativeASR={
-  isRecognitionAvailable:()=>boolean;supportsOnDeviceRecognition:()=>boolean;
-  requestMicrophonePermissionsAsync:()=>Promise<{granted:boolean}>;
-  addListener:(event:string,fn:(data:any)=>void)=>Subscription;
-  start:(opts:{lang:string;requiresOnDeviceRecognition:boolean;interimResults:boolean;continuous:boolean;maxAlternatives:number})=>void;
-  stop:()=>void;abort:()=>void;
-  androidTriggerOfflineModelDownload?:(opts:{locale:string})=>Promise<{status:string}>;
-};
-function getRecognizer():NativeASR|null {
-  try { // Loaded only when needed, gracefully disable when the native module is absent.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const api=require('expo-speech-recognition').ExpoSpeechRecognitionModule as NativeASR;
-    return api && api.isRecognitionAvailable()&&api.supportsOnDeviceRecognition() ? api:null;
-  }catch{return null;}
-}
-const speechLocale:Record<TargetLanguage,string>={'en-CA':'en-CA','fr-CA':'fr-CA',es:'es-ES','pt-BR':'pt-BR',de:'de-DE',it:'it-IT'};
 const localDay=()=>{const now=new Date(),year=now.getFullYear();return `${year}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;};
 
 export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,experience=defaultExperiencePreferences}:{
@@ -49,13 +33,11 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
   const [pendingSuggestion,setPendingSuggestion]=useState('');
   const [showSupport,setShowSupport]=useState(false);
   const [showExamples,setShowExamples]=useState(false);
-  const [recognizer,setRecognizer]=useState<NativeASR|null>(null);
-  const [listening,setListening]=useState(false);
   const [handsFree,setHandsFree]=useState(false);
   const [latestSpeech,setLatestSpeech]=useState('');
-  const [canInstallModel,setCanInstallModel]=useState(false);
-  const captureRef=useRef<{id:string;turn:string}|null>(null);
-  const busyRef=useRef(false);
+  const voiceEpoch=useRef(0);
+  const onFinal=useRef<(r:DictationResult,id:string)=>void>(()=>undefined);
+  const onPartial=useRef<(text:string,id:string)=>void>(()=>undefined);
   const mounted=useRef(true);
   const progressRef=useRef<LocalLearningProgress|null>(null);
   const autoNextRef=useRef(false);
@@ -63,6 +45,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
   const dialogue=dialogues.find(x=>x.id===dialogueId)??dialogues[0]??null;
   const run=progress&&dialogue?getSavedDialogueRun(progress,dialogue):null;
   const turn=run&&dialogue?dialogue.turns[run.turnIndex]:undefined;
+  const mic=useOnDeviceAnswer(target,(r,id)=>onFinal.current(r,id),(text,id)=>onPartial.current(text,id));
 
   useEffect(()=>{
     mounted.current=true;progressRef.current=null;autoNextRef.current=false;setProgress(null);setStorageError('');setFeedback('');setDraft('');setHandsFree(false);
@@ -79,13 +62,8 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
     });
     return()=>{valid=false;mounted.current=false;};
   },[target]); // interest changes only ordering, never erases per-language progress
-  useEffect(()=>{setRecognizer(getRecognizer());setCanInstallModel(Platform.OS==='android');},[]);
-  useEffect(()=>()=>{void stopCuratedVoice();try{recognizer?.abort();}catch{}},[recognizer]);
-
-  const stopListening=useCallback(()=>{
-    captureRef.current=null;busyRef.current=false;setListening(false);
-    try{recognizer?.abort();}catch{}
-  },[recognizer]);
+  useEffect(()=>()=>{void stopCuratedVoice();},[]);
+  const stopListening=useCallback(()=>{voiceEpoch.current++;mic.stop();},[mic.stop]);
   // Do not keep an unexpected microphone open after the app leaves foreground;
   // background audio and lock screen will need explicit OS-specific tests and consent.
   useEffect(()=>{
@@ -122,52 +100,45 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
     if(model)void playCuratedVoice(model,rate,undefined,message=>setFeedback(message));
   };
 
-  const beginRecognition=useCallback(async()=>{
-    if(!recognizer||!dialogue||!turn||!progress||storageError){setFeedback('Reconocimiento local no disponible. Puedes continuar con el campo de texto.');return;}
-    if(busyRef.current)return;
-    try{
-      const permission=await recognizer.requestMicrophonePermissionsAsync();
-      if(!permission.granted){setFeedback('Se necesita permiso de micrófono para practicar hablando.');return;}
-      captureRef.current={id:dialogue.id,turn:turn.id};
-      busyRef.current=true;setListening(true);setLatestSpeech('');setDraft('');
-      recognizer.start({lang:speechLocale[target],requiresOnDeviceRecognition:true,interimResults:true,continuous:false,maxAlternatives:1});
-    }catch{
-      captureRef.current=null;busyRef.current=false;setListening(false);
-      setFeedback('Este idioma necesita un modelo de reconocimiento local compatible. No se envió audio a Internet.');
+  const beginRecognition=useCallback(async():Promise<boolean>=>{
+    if(!dialogue||!turn||!progress||storageError){setFeedback('La práctica local no está disponible. Puedes escribir tu respuesta.');return false;}
+    const ok=await mic.start(`${dialogue.id}:${turn.id}`);
+    if(!ok)setFeedback('No se pudo abrir el micrófono local. Puedes responder por escrito.');
+    return ok;
+  },[dialogue,turn,progress,storageError,mic.start]);
+  const startVoiceLesson=()=>{
+    if(!mic.available){setHandsFree(false);setFeedback('Necesitas un modelo de reconocimiento local instalado antes de empezar.');return;}
+    const token=++voiceEpoch.current;
+    setHandsFree(true);
+    speak(false,()=>{if(voiceEpoch.current===token&&mounted.current)void beginRecognition();});
+  };
+  onPartial.current=(text,id)=>{
+    if(!currentVoiceTurn(dialogue&&turn?`${dialogue.id}:${turn.id}`:null,id,!storageError))return;
+    setDraft(text);setLatestSpeech(text);
+  };
+  onFinal.current=(result,id)=>{
+    if(!currentVoiceTurn(dialogue&&turn?`${dialogue.id}:${turn.id}`:null,id,!storageError))return;
+    const spoken=result.text;
+    setDraft(spoken);setLatestSpeech(spoken);
+    const disposition=voiceTranscriptDisposition({text:spoken,confidence:result.confidence,answerControl:experience.answerControl,final:true});
+    if(disposition==='ignore')return;
+    if(disposition==='confirm'){
+      setHandsFree(false);
+      setFeedback(result.confidence==='unknown'
+        ?'El reconocimiento no fue suficientemente fiable. Corrige o confirma la frase sin penalización.'
+        :'Texto reconocido. Revisa y pulsa «Confirmar respuesta» para evaluar el ejemplo.');
+      return;
     }
-  },[recognizer,dialogue,turn,progress,storageError,target]);
-  const startVoiceLesson=async()=>{if(!recognizer){setHandsFree(false);setFeedback('Se necesita un modelo de reconocimiento local antes de iniciar el modo continuo.');return;}setHandsFree(true);speak(false,()=>void beginRecognition());};
-  useEffect(()=>{
-    if(!recognizer)return;
-    const subscriptions:Subscription[]=[
-      recognizer.addListener('result',(event)=>{
-        const captured=captureRef.current;
-        if(!captured||captured.id!==dialogue?.id||captured.turn!==turn?.id)return;
-        const spoken=event.results?.[0]?.transcript?.trim();
-        if(typeof spoken!=='string'||!spoken)return;
-        setDraft(spoken);setLatestSpeech(spoken);
-        if(!event.isFinal)return;
-        captureRef.current=null;busyRef.current=false;setListening(false);
-        const confidence=event.results?.[0]?.confidence;
-        // Unknown/low ASR certainty is never recorded as failure or success.
-        if(typeof confidence!=='number'||confidence<0.75){
-          setFeedback('Escuché esta frase, pero no tengo suficiente certeza. Revisa el texto y confirma manualmente.');return;
-        }
-        const outcome=evaluateDialogueTurn(turn,spoken,target,'high');
-        applyAttempt(outcome,dialogue!);
-        const suggestion=outcome.verdict==='accepted'?'Respuesta reconocida.':'No coincide con los ejemplos revisados; podría ser una alternativa válida. Puedes revisar las respuestas modelo.';
-        if(correctionTiming==='on-request'){setPendingSuggestion(suggestion);setFeedback('Respuesta registrada. La sugerencia está disponible cuando la pidas.');}
-        else if(correctionTiming==='after-exercise'&&outcome.verdict==='accepted'){setFeedback('Respuesta registrada, continuemos.');setPendingSuggestion(suggestion);}
-        else setFeedback(suggestion);
-        if(outcome.verdict==='accepted'&&handsFree&&experience.answerControl==='auto-after-silence'){
-          autoNextRef.current=true;setLatestSpeech('');
-        }
-      }),
-      recognizer.addListener('error',()=>{captureRef.current=null;busyRef.current=false;setListening(false);setFeedback('No se pudo reconocer localmente. Prueba de nuevo o utiliza texto; no se enviará audio fuera del dispositivo.');}),
-      recognizer.addListener('end',()=>{busyRef.current=false;setListening(false);}),
-    ];
-    return()=>subscriptions.forEach(s=>s.remove());
-  },[recognizer,dialogue,turn,target,applyAttempt,handsFree,correctionTiming,experience.answerControl]);
+    const outcome=evaluateDialogueTurn(turn!,spoken,target,'high');
+    applyAttempt(outcome,dialogue!);
+    const suggestion=outcome.verdict==='accepted'?'Respuesta reconocida dentro del catálogo.':'La frase podría ser válida, pero no coincide con nuestras respuestas de ejemplo.';
+    if(correctionTiming==='on-request'){setPendingSuggestion(suggestion);setFeedback('Respuesta registrada; explicación disponible cuando la pidas.');}
+    else if(correctionTiming==='after-exercise'&&outcome.verdict==='accepted'){setFeedback('Respuesta aceptada.');setPendingSuggestion(suggestion);}
+    else setFeedback(suggestion);
+    if(outcome.verdict==='accepted'&&handsFree&&experience.answerControl==='auto-after-silence'){
+      autoNextRef.current=true;setLatestSpeech('');
+    }
+  };
 
   // Continue the next authored question after the previous accepted voice turn.
   // This is foreground-only; uncertain or unmatched ASR never auto-advances.
@@ -199,11 +170,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
     progressRef.current=next;setProgress(next);void writer(next).catch(()=>setStorageError('No se pudo guardar el repaso.'));
     setDraft('');setFeedback('');setShowExamples(false);
   };
-  const downloadOfflineModel=async()=>{
-    if(!recognizer?.androidTriggerOfflineModelDownload)return;
-    try{const r=await recognizer.androidTriggerOfflineModelDownload({locale:speechLocale[target]});setFeedback(`Estado de descarga local: ${r.status}. Comprueba el paquete antes de practicar.`);}
-    catch {setFeedback('Este dispositivo no pudo abrir la descarga del modelo local.');}
-  };
+  const downloadOfflineModel=async()=>{await mic.downloadModel();};
   if(!dialogue)return null;
   return <View style={s.wrap}>
     <Text style={s.kicker}>CURSO ESTRUCTURADO · DIÁLOGO · SIN API EXTERNA</Text>
@@ -226,11 +193,11 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
         <Action label="Escuchar respuesta modelo" onPress={speakModelAnswer}/>
       </View>
       <View style={s.row}>
-        <Action label={listening?'Detener micrófono':'Responder con mi voz (offline)'} onPress={()=>listening?stopListening():void beginRecognition()}/>
+        <Action label={mic.listening?'Detener micrófono':'Responder con mi voz (offline)'} onPress={()=>mic.listening?stopListening():void beginRecognition()}/>
         <Action label="Escuchar y responder" onPress={()=>void startVoiceLesson()}/>
       </View>
-      {!recognizer?<Text style={s.warning}>Reconocimiento offline no disponible aquí. Necesita compilación nativa y modelos del dispositivo; el texto sigue disponible.</Text>:null}
-      {!!recognizer&&canInstallModel?<Action label="Instalar modelo local (Android)" onPress={()=>void downloadOfflineModel()}/>:null}
+      {!mic.available?<Text style={s.warning}>Reconocimiento offline no disponible aquí. Necesita compilación nativa y modelos del dispositivo; el texto sigue disponible.</Text>:null}
+      {mic.canDownload?<Action label="Instalar modelo local (Android)" onPress={()=>void downloadOfflineModel()}/>:null}
       <TextInput style={s.input} multiline value={draft} onChangeText={setDraft} placeholder="Respuesta escrita o transcripción local, sin enviar a servidores" placeholderTextColor="#899FB0" autoCorrect={false}/>
       <View style={s.row}>
         <Action label="Confirmar respuesta" onPress={verifyTyped}/>
@@ -238,6 +205,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
       </View>
       {showExamples&&<Text style={s.hint}>{turn?.acceptedReplies.join(' · ')}</Text>}
       {experience.subtitles && !!latestSpeech && <Text style={s.sub}>Transcripción local: {latestSpeech}</Text>}
+      {!!mic.issue && <Text style={s.warning}>{mic.issue}</Text>}
       {!!feedback&&<Text style={s.sub}>{feedback}</Text>}
       {!!pendingSuggestion&&<Action label="Mostrar sugerencia" onPress={()=>{setFeedback(pendingSuggestion);setPendingSuggestion('');}}/>}
     </>):null}
