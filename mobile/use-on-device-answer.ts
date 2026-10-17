@@ -4,7 +4,7 @@
  */
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Platform} from 'react-native';
-import {localModelState,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
+import {classifyVoiceConfidence,localModelState,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
 type Subscription={remove:()=>void};
 type NativeRecognition={
  isRecognitionAvailable:()=>boolean; supportsOnDeviceRecognition:()=>boolean;
@@ -93,7 +93,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     if(!event.isFinal){callbacks.current.onPartial?.(spoken.trim(),captured.id);return;}
     active.current=null;owner.current=null;microphoneOwner=null;setListening(false);
     const confidence=event.results?.[0]?.confidence;
-    callbacks.current.onFinal({text:spoken.trim(),confidence:typeof confidence==='number'&&Number.isFinite(confidence)&&confidence>=0.75?'high':'unknown'},captured.id);
+    callbacks.current.onFinal({text:spoken.trim(),confidence:classifyVoiceConfidence(confidence)},captured.id);
    }),
    native.addListener('error',()=>{
     if(!active.current||microphoneOwner!==owner.current)return;
