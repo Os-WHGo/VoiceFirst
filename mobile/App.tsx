@@ -5,7 +5,9 @@ import { VoicePractice } from './VoicePractice';
 import { OfflineCourse } from './OfflineCourse';
 import { GuidedDialoguePractice } from './GuidedDialoguePractice';
 import { FreeResources } from './FreeResources';
-import { defaultPreferences, missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage, type LearningFocus } from '@voicefirst/core';
+import { RegionalComparisons } from './RegionalComparisons';
+import { LearningAdjustments } from './LearningAdjustments';
+import { defaultPreferences, missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage, type LearningFocus, defaultExperiencePreferences, type ExperiencePreferences } from '@voicefirst/core';
 
 const C = { bg:'#0B1421', surface:'#142339', border:'#2B435A', text:'#F2F7FC', secondary:'#A6BBD0', mint:'#89D4C5', gold:'#E1BD83' };
 const bands: CefrBand[] = ['A0','A1','A2','B1','B2','C1','C2'];
@@ -16,6 +18,7 @@ export default function App() {
   const [rate, setRate] = useState(defaultPreferences.speechRate);
   const [lowStim, setLowStim] = useState(true);
   const [focus,setFocus]=useState<LearningFocus>('balanced');
+  const [experience,setExperience]=useState<ExperiencePreferences>(defaultExperiencePreferences);
   const [speaking, setSpeaking] = useState(false);
   const mission = missionsFor(target, level)[0];
   const stop = useCallback(() => { void Speech.stop().finally(()=>setSpeaking(false)); },[]);
@@ -64,7 +67,9 @@ export default function App() {
         <View style={styles.row}>
           {([['balanced','Curso completo'],['work','Trabajo'],['daily-life','Vida cotidiana'],['travel','Viajes']] as const).map(([code,label])=><Chip key={code} active={focus===code} label={label} onPress={()=>setFocus(code)}/>)}
         </View>
-        <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate}/>
+        <LearningAdjustments settings={experience} onChange={next=>{setExperience(next);setLowStim(next.sensoryPresentation==='calm');}}/>
+        <RegionalComparisons key={'regional-'+target} target={target} rate={rate}/>
+        <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} correctionTiming={experience.correctionTiming} instructionFormat={experience.instructionFormat}/>
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} rate={rate} />
         <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} />

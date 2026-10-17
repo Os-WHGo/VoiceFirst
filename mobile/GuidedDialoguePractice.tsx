@@ -11,7 +11,7 @@ import * as Speech from 'expo-speech';
 import {selectGuidedDialogues,newDialogueRun,dialogueAudioCue,evaluateDialogueTurn,
   getSavedDialogueRun,newLearningProgress,chooseDialogue,saveDialogueAttempt,startDialogueReview,
   makeProgressWriter,type DialogueAttempt,type LocalLearningProgress,type TargetLanguage,type LearningFocus,
-  type GuidedDialogue,audioCueForDialogue,answerAudioCuesForDialogue} from '@voicefirst/core';
+  type GuidedDialogue,type CorrectionTiming,type InstructionFormat,audioCueForDialogue,answerAudioCuesForDialogue} from '@voicefirst/core';
 import {loadLocalProgress,storeSerializedLocalProgress} from './progress-storage';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 
@@ -34,8 +34,9 @@ function getRecognizer():NativeASR|null {
 const speechLocale:Record<TargetLanguage,string>={'en-CA':'en-CA','fr-CA':'fr-CA',es:'es-ES','pt-BR':'pt-BR',de:'de-DE',it:'it-IT'};
 const localDay=()=>{const now=new Date(),year=now.getFullYear();return `${year}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;};
 
-export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
+export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,correctionTiming='after-each-answer',instructionFormat='full-context'}:{
   nativeLanguage:TargetLanguage;target:TargetLanguage;focus:LearningFocus;rate?:number;
+  correctionTiming?:CorrectionTiming;instructionFormat?:InstructionFormat;
 }){
   const selection=useMemo(()=>selectGuidedDialogues(target,focus,'adult'),[target,focus]);
   const dialogues=selection.dialogues;
@@ -44,6 +45,8 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
   const [dialogueId,setDialogueId]=useState<string|null>(null);
   const [draft,setDraft]=useState('');
   const [feedback,setFeedback]=useState('');
+  const [pendingSuggestion,setPendingSuggestion]=useState('');
+  const [showSupport,setShowSupport]=useState(false);
   const [showExamples,setShowExamples]=useState(false);
   const [recognizer,setRecognizer]=useState<NativeASR|null>(null);
   const [listening,setListening]=useState(false);
@@ -151,7 +154,10 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
         }
         const outcome=evaluateDialogueTurn(turn,spoken,target,'high');
         applyAttempt(outcome,dialogue!);
-        setFeedback(outcome.verdict==='accepted'?'Respuesta reconocida.':'No coincide con nuestros ejemplos; prueba otra forma o confirma manualmente.');
+        const suggestion=outcome.verdict==='accepted'?'Respuesta reconocida.':'No coincide con los ejemplos revisados; podría ser una alternativa válida. Puedes revisar las respuestas modelo.';
+        if(correctionTiming==='on-request'){setPendingSuggestion(suggestion);setFeedback('Respuesta registrada. La sugerencia está disponible cuando la pidas.');}
+        else if(correctionTiming==='after-exercise'&&outcome.verdict==='accepted'){setFeedback('Respuesta registrada, continuemos.');setPendingSuggestion(suggestion);}
+        else setFeedback(suggestion);
         if(outcome.verdict==='accepted'&&handsFree){
           autoNextRef.current=true;setLatestSpeech('');
         }
@@ -160,7 +166,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
       recognizer.addListener('end',()=>{busyRef.current=false;setListening(false);}),
     ];
     return()=>subscriptions.forEach(s=>s.remove());
-  },[recognizer,dialogue,turn,target,applyAttempt,handsFree]);
+  },[recognizer,dialogue,turn,target,applyAttempt,handsFree,correctionTiming]);
 
   // Continue the next authored question after the previous accepted voice turn.
   // This is foreground-only; uncertain or unmatched ASR never auto-advances.
@@ -176,12 +182,15 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
     stopListening();
     const outcome=evaluateDialogueTurn(turn,draft,target,'high'); // explicitly user-confirmed transcript, not a phonetic score
     applyAttempt(outcome,dialogue);
-    setFeedback(outcome.verdict==='accepted'?'Respuesta admitida para este ejercicio.':'Puede ser una expresión válida que nuestro catálogo todavía no contempla. Puedes revisar los ejemplos.');
+    const suggestion=outcome.verdict==='accepted'?'Respuesta admitida para este ejercicio.':'Puede ser una expresión válida que nuestro catálogo todavía no contempla. Puedes revisar los ejemplos.';
+    if(correctionTiming==='on-request'){setPendingSuggestion(suggestion);setFeedback('Respuesta guardada. Puedes pedir una sugerencia cuando quieras.');}
+    else if(correctionTiming==='after-exercise'&&outcome.verdict==='accepted'){setPendingSuggestion(suggestion);setFeedback('Respuesta guardada.');}
+    else setFeedback(suggestion);
     if(outcome.verdict==='accepted'){setDraft('');setShowExamples(false);}
   };
   const changeDialogue=(id:string)=>{
     stopListening();void stopCuratedVoice();autoNextRef.current=false;setHandsFree(false);
-    setDialogueId(id);setDraft('');setFeedback('');setShowExamples(false);
+    setDialogueId(id);setDraft('');setFeedback('');setShowExamples(false);setPendingSuggestion('');setShowSupport(false);
   };
   const repeatCompleted=()=>{
     if(!progress||!dialogue)return;
@@ -208,7 +217,8 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
     </>:<>
       <Text style={s.step}>Pregunta {run.turnIndex+1}/{dialogue.turns.length}</Text>
       <Text style={s.question}>{turn?.teacherCue}</Text>
-      <Text style={s.sub}>{turn?.support[nativeLanguage]}</Text>
+      {(instructionFormat==='full-context'||showSupport)&&<Text style={s.sub}>{turn?.support[nativeLanguage]}</Text>}
+      {instructionFormat==='one-step'&&<Action label={showSupport?'Ocultar contexto':'Mostrar contexto en mi idioma'} onPress={()=>setShowSupport(v=>!v)}/>}
       <View style={s.row}>
         <Action label="Escuchar pregunta" onPress={()=>speak(false)}/>
         <Action label="Ayuda en mi idioma" onPress={()=>speak(true)}/>
@@ -228,6 +238,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88}:{
       {showExamples&&<Text style={s.hint}>{turn?.acceptedReplies.join(' · ')}</Text>}
       {!!latestSpeech && <Text style={s.sub}>Transcripción local: {latestSpeech}</Text>}
       {!!feedback&&<Text style={s.sub}>{feedback}</Text>}
+      {!!pendingSuggestion&&<Action label="Mostrar sugerencia" onPress={()=>{setFeedback(pendingSuggestion);setPendingSuggestion('');}}/>}
     </>):null}
     <Text style={s.step}>Otras situaciones y repasos</Text>
     <View style={s.row}>{dialogues.map(d=><Action key={d.id} label={`${d.domain==='foundation'?'Vida diaria':d.domain==='work'?'Trabajo':'Viajes'}${(progress?.dialogues[d.id]?.run.completed?' ✓':'')}`} onPress={()=>changeDialogue(d.id)}/>)}</View>

@@ -101,3 +101,9 @@
 - [x] `mobile/use-on-device-answer.ts` agrega el reconocimiento local de respuestas orales a la pantalla de microlecciones, donde antes solo había texto; incertidumbre no puntúa.
 - [ ] Audio real autorizado generado: 0/194; falta producción de narraciones y licencias individuales.
 - [ ] Instalador/distribuidor en dispositivos, certificación offline de TTS, audio con pantalla bloqueada, pruebas iPhone/Android y aprobación pedagógica.
+
+## Bloque 12: variedades regionales y preferencias adultas (2026-10-16)
+- Catálogo original de muestras `en-CA`/`en-US`/`en-GB`, `fr-CA`/`fr-FR` con 3 escenarios y 8 frases, licencias y etiquetas de voz *no verificadas*. Las variantes de otras lenguas siguen planificadas.
+- Preferencias para adultos neurodivergentes y neurotípicos sin diagnóstico: instrucciones paso a paso, cuándo mostrar correcciones y estimulación visual. Persistencia local para preferencias; ninguna edad impone techo MCER.
+- Perfiles adolescentes y niños **todavía no habilitados**; requieren auditoría específica. Los ajustes regionales solo cambian la comparación y la lectura solicitada en esa pantalla, no el ASR del currículo general.
+- `REGIONAL_VARIANTS_AND_ADULT_ACCESSIBILITY.md` reúne bibliografía y límites. Core TypeScript y tests pasaron localmente; revisión móvil CI pendiente al publicar.

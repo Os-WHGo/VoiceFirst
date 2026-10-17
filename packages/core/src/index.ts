@@ -21,3 +21,5 @@ export * from './voice-library.js';
 export * from './audio-routing.js';
 export * from './voice-packs.js';
 export * from './sha256-bytes.js';
+export * from './regional-variants.js';
+export * from './experience.js';

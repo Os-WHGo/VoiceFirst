@@ -83,3 +83,9 @@ Consulta [Voces, licencias y reutilización de Wivra](docs/VOICE_LIBRARY_AND_WIV
 ### Bloque 11 · Audio pregrabado verificable
 
 Las preguntas del curso pueden reproducirse desde un WAV validado por SHA-256 y derechos de reproducción. Sin un WAV local compatible se recurre a la voz instalada en el dispositivo; el motor VoiceFirst no llama a ninguna API generativa. La producción y revisión de grabaciones está pendiente. Instrucciones: [docs/OFFLINE_VOICE_PACKS_BLOCK11.md](docs/OFFLINE_VOICE_PACKS_BLOCK11.md). Microlecciones aceptan ahora ASR **exclusivamente en el dispositivo** cuando el OS tiene el modelo adecuado; no soportan por ahora escucha continua con pantalla bloqueada.
+
+### Bloque 12: diversidad regional y acceso adulto
+- Ejemplos originales comparables de inglés Canadá/EE. UU./Reino Unido y francés Quebec/Francia, con selector de preferencias local y referencias de uso.
+- Opciones sin diagnóstico para adultos neurodivergentes y neurotípicos: ritmo de corrección, instrucciones en pasos y baja estimulación. Diseño por edades independiente del nivel.
+- **Límites**: el comparador no cambia aún el acento real de los modelos ASR, no hay audios regionales certificados; las preferencias nuevas afectan primero la práctica de diálogos, y menores siguen deshabilitados pendiente de privacidad.
+- Documentación: `docs/REGIONAL_VARIANTS_AND_ADULT_ACCESSIBILITY.md`.
