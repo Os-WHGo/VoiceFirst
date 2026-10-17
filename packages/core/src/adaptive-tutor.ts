@@ -25,7 +25,7 @@ export function practiceHistoryFromProgress(progress:LocalLearningProgress):Tuto
    retries[id]=(retries[id]||0)+Math.max(0,n-(saved.run.acceptedTurnIds.includes(id)?1:0));
   }
  }
- return {successes,retries,lastTurnId:progress.lastDialogueId ? Object.values(progress.dialogues).find(x=>x.run.dialogueId===progress.lastDialogueId)?.run.acceptedTurnIds.at(-1):undefined};
+ return {successes,retries,lastTurnId:progress.lastDialogueId ? (()=>{const ids=Object.values(progress.dialogues).find(x=>x.run.dialogueId===progress.lastDialogueId)?.run.acceptedTurnIds;return ids?.[ids.length-1];})():undefined};
 }
 export type NextTutorPractice=
  |{status:'requires-child-safety-review'|'no-authored-content'}
