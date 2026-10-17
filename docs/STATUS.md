@@ -57,3 +57,13 @@
 - [x] `npm run check`: 62/62 tests Node y compilación del núcleo TypeScript aprobados, 12 tests añadidos.
 - [ ] Pendiente configurar vistas móviles, almacenamiento de perfiles, cumplimiento de privacidad infantil, revisión pedagógica por edades, contenido completo y simulaciones reales de exámenes.
 - [ ] TV5MONDE se evaluó como referencia educativa, pero no se incorporaron sus ejercicios, vídeos o grabaciones por derechos de autor.
+
+## Bloque 07 · Diálogos guiados y recursos gratuitos (2026-10-16)
+- [x] Revisados los documentos 13 y 14 de Drive antes de programar.
+- [x] Decisión: currículo espiral general + enfoque opcional laboral/cotidiano/viajes; no clases generativas ni aprendizaje exclusivamente laboral.
+- [x] Motor puro `guided-dialogues.ts`: 18 diálogos de muestra (3 por idioma, 2 preguntas-respuestas por diálogo), soporte de ayuda en los 30 pares, varias respuestas originales válidas; no evaluador semántico abierto ni fonética.
+- [x] Interfaz Expo de práctica de preguntas con TTS y respuestas **por texto de prueba**, no reconocimiento de voz. Es un laboratorio de currículo antes de instalar ASR local.
+- [x] Catálogo enlazado de recursos externos gratuitos de seis idiomas y buscador local, incluyendo TV5MONDE, Quebec, Cambridge, British Council, Cervantes, Goethe, Rai Scuola y UFC. La app no copia ni descarga videos y no llama API de YouTube.
+- [x] Niños: rutas cerradas por defecto hasta consentimiento, seguridad y validación pedagógica. Preferencias neuroinclusivas por necesidad, sin diagnóstico.
+- [x] `npm run check`: 75/75 pruebas automatizadas de lógica superadas y paquete TypeScript compilado. CI GitHub pendiente de ejecución sobre commit de este bloque.
+- [ ] Sin micrófono offline, manos libres real, bloqueo de pantalla, persistencia local ni lecciones avanzadas verificadas; simulador/dispositivo iOS/Android pendiente.

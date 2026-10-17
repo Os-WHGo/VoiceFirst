@@ -56,3 +56,11 @@ Para detalles de seguridad, API y preparación de pruebas, leer `docs/OPENAI_VOI
 
 ## Bloque 04: enrutador seguro de traductores
 Se incorpora un enrutador `translateWithFallback` (6 idiomas) con privacidad explícita, selección contextual y manejo de cuotas. Por ahora usa adaptadores inyectados/simulados: **DeepL, Google o LibreTranslate todavía no están conectados**. No convierte un servicio de traducción textual en tutor de voz; ver `docs/FREE_PROVIDER_FALLBACK.md`.
+
+### Guided contextual course, no generative dependency (block 07)
+
+- `packages/core/src/guided-dialogues.ts`: six-language authored questions, **multiple valid replies**, confidence-aware transcript validation and interests without sacrificing foundational skills.
+- `mobile/GuidedDialoguePractice.tsx`: teacher audio via device TTS and a **typed transcript demo**. This is *not yet offline speech recognition* and does not measure accent or proficiency.
+- `packages/core/src/free-resources.ts` and `mobile/FreeResources.tsx`: link-only curated free learning sites in six languages; no scraping/rehosting media. YouTube live search is not integrated.
+- `docs/COURSE_DIALOGUES_RESEARCH_2026_10_16.md`: evidence, licensing, pedagogy and remaining milestones.
+- Child profiles remain disabled pending legal/guardian/pedagogical review; see Drive documents 13 and 14.

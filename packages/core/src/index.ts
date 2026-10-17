@@ -10,3 +10,6 @@ export * from './translation-router.js';
 export * from './course.js';
 
 export * from './learning-paths.js';
+
+export * from './guided-dialogues.js';
+export * from './free-resources.js';

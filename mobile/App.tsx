@@ -3,7 +3,9 @@ import { ScrollView, SafeAreaView, StatusBar, StyleSheet, View, Text, Pressable 
 import * as Speech from 'expo-speech';
 import { VoicePractice } from './VoicePractice';
 import { OfflineCourse } from './OfflineCourse';
-import { defaultPreferences, missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage } from '@voicefirst/core';
+import { GuidedDialoguePractice } from './GuidedDialoguePractice';
+import { FreeResources } from './FreeResources';
+import { defaultPreferences, missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage, type LearningFocus } from '@voicefirst/core';
 
 const C = { bg:'#0B1421', surface:'#142339', border:'#2B435A', text:'#F2F7FC', secondary:'#A6BBD0', mint:'#89D4C5', gold:'#E1BD83' };
 const bands: CefrBand[] = ['A0','A1','A2','B1','B2','C1','C2'];
@@ -13,6 +15,7 @@ export default function App() {
   const [level, setLevel] = useState<CefrBand>('A1');
   const [rate, setRate] = useState(defaultPreferences.speechRate);
   const [lowStim, setLowStim] = useState(true);
+  const [focus,setFocus]=useState<LearningFocus>('balanced');
   const [speaking, setSpeaking] = useState(false);
   const mission = missionsFor(target, level)[0];
   const stop = useCallback(() => { void Speech.stop().finally(()=>setSpeaking(false)); },[]);
@@ -57,14 +60,20 @@ export default function App() {
           <Text style={styles.sub}>{mission?.situation}</Text>
           <Text style={styles.prompt}>“{mission?.prompt}”</Text>
         </View>
+        <Text style={styles.section}>En qué quieres enfocarte</Text>
+        <View style={styles.row}>
+          {([['balanced','Curso completo'],['work','Trabajo'],['daily-life','Vida cotidiana'],['travel','Viajes']] as const).map(([code,label])=><Chip key={code} active={focus===code} label={label} onPress={()=>setFocus(code)}/>)}
+        </View>
+        <GuidedDialoguePractice nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate}/>
         <OfflineCourse nativeLanguage={nativeLanguage} target={target} rate={rate} />
+        <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} />
         <Text style={styles.section}>Preferencias de atención</Text>
         <View style={styles.row}>
           <Chip label={lowStim ? 'Baja estimulación ✓' : 'Estimulación normal'} active={lowStim} onPress={()=>setLowStim(!lowStim)} />
           <Chip label={rate<0.95?'Voz pausada':'Voz normal'} active={rate<0.95} onPress={()=>setRate(rate<0.95?1.0:0.85)} />
         </View>
-        <Text style={styles.note}>Seis idiomas seleccionables, con una muestra por nivel. Ahora hay un laboratorio de práctica por turnos mediante micrófono, que requiere servidor local y cuenta API. Aún no funciona manos libres ni con pantalla bloqueada. Sin registro ni anuncios ni grabaciones en este prototipo. No se está realizando una evaluación de nivel. El micrófono solo se solicita al iniciar una grabación.</Text>
+        <Text style={styles.note}>Seis idiomas seleccionables, con una muestra por nivel. Ahora hay un laboratorio de práctica por turnos mediante micrófono, que requiere servidor local y cuenta API. Aún no funciona manos libres ni con pantalla bloqueada. La sección de diálogos usa texto de prueba y no puntúa pronunciación. Sin registro ni anuncios ni grabaciones en este prototipo. No se está realizando una evaluación de nivel. El micrófono solo se solicita al iniciar una grabación.</Text>
       </ScrollView>
     </SafeAreaView>
   );
