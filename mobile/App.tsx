@@ -7,6 +7,7 @@ import { GuidedDialoguePractice } from './GuidedDialoguePractice';
 import { FreeResources } from './FreeResources';
 import { RegionalComparisons } from './RegionalComparisons';
 import { LearningAdjustments } from './LearningAdjustments';
+import { VoicePackImporter } from './VoicePackImporter';
 import { useLearningPreferences } from './use-learning-preferences';
 import { missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage, type LearningFocus } from '@voicefirst/core';
 
@@ -75,6 +76,7 @@ export default function App() {
         <LearningAdjustments settings={experience} onChange={learning.change}/>
         {!!learning.error && <Text style={styles.note}>{learning.error}</Text>}
         <RegionalComparisons key={'regional-'+target} target={target} rate={rate}/>
+        <VoicePackImporter/>
         <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} rate={rate} experience={experience} />
         <FreeResources target={target}/>
