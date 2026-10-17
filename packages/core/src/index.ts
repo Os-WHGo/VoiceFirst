@@ -19,3 +19,5 @@ export * from './learning-progress.js';
 export * from './course-state.js';
 export * from './voice-library.js';
 export * from './audio-routing.js';
+export * from './voice-packs.js';
+export * from './sha256-bytes.js';
