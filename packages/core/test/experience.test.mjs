@@ -22,3 +22,15 @@ test('preference variants preserve learner control without diagnostic profiling'
  const p=validateExperiencePreferences({returnToLastStep:false,answerControl:'auto-after-silence',sensoryPresentation:'standard'});
  assert.equal(p.returnToLastStep,false);assert.equal(p.answerControl,'auto-after-silence');
 });
+
+test('stored speech pace is clamped to safe allowed preferences without loss of adult controls',()=>{
+ const baseline=validateExperiencePreferences({});
+ assert.equal(baseline.speechRate,0.88);
+ assert.equal(validateExperiencePreferences({...baseline,speechRate:0.75}).speechRate,0.75);
+ for(const broken of [NaN,Infinity,-3,10,'0.8',null]){
+  assert.equal(validateExperiencePreferences({...baseline,speechRate:broken}).speechRate,baseline.speechRate);
+ }
+ const old=validateExperiencePreferences({instructionFormat:'full-context',correctionTiming:'on-request'});
+ assert.equal(old.instructionFormat,'full-context');
+ assert.equal(old.speechRate,0.88);
+});

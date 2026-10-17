@@ -15,11 +15,12 @@ export interface ExperiencePreferences {
   returnToLastStep:boolean;
   subtitles:boolean;
   noStreakPressure:true;
+  speechRate:number;
 }
 export const defaultExperiencePreferences:ExperiencePreferences={
   ageStage:'adult',correctionTiming:'after-exercise',instructionFormat:'one-step',
   sensoryPresentation:'calm',answerControl:'wait-for-me',returnToLastStep:true,
-  subtitles:true,noStreakPressure:true,
+  subtitles:true,noStreakPressure:true,speechRate:0.88,
 };
 export function validateExperiencePreferences(value:unknown):ExperiencePreferences{
   const base=defaultExperiencePreferences;
@@ -36,6 +37,7 @@ export function validateExperiencePreferences(value:unknown):ExperiencePreferenc
     returnToLastStep:x.returnToLastStep!==false,
     subtitles:x.subtitles!==false,
     noStreakPressure:true,
+    speechRate:typeof x.speechRate==='number' && Number.isFinite(x.speechRate) && x.speechRate>=0.65 && x.speechRate<=1.2 ? x.speechRate : base.speechRate,
   };
 }
 export function launchEligibility(pref:ExperiencePreferences):'adult-preview'|'child-profile-needs-review'{
@@ -48,6 +50,7 @@ export function explainPersonalization(pref:ExperiencePreferences){
     sensory:pref.sensoryPresentation,
     resume:pref.returnToLastStep,
     captions:pref.subtitles,
+    speechRate:pref.speechRate,
     /** No health/diagnostic data required or stored. */
     asksDiagnosis:false as const,
     cefrCeiling:null,

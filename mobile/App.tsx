@@ -7,7 +7,8 @@ import { GuidedDialoguePractice } from './GuidedDialoguePractice';
 import { FreeResources } from './FreeResources';
 import { RegionalComparisons } from './RegionalComparisons';
 import { LearningAdjustments } from './LearningAdjustments';
-import { defaultPreferences, missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage, type LearningFocus, defaultExperiencePreferences, type ExperiencePreferences } from '@voicefirst/core';
+import { useLearningPreferences } from './use-learning-preferences';
+import { missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage, type LearningFocus } from '@voicefirst/core';
 
 const C = { bg:'#0B1421', surface:'#142339', border:'#2B435A', text:'#F2F7FC', secondary:'#A6BBD0', mint:'#89D4C5', gold:'#E1BD83' };
 const bands: CefrBand[] = ['A0','A1','A2','B1','B2','C1','C2'];
@@ -15,10 +16,11 @@ export default function App() {
   const [nativeLanguage, setNativeLanguage] = useState<TargetLanguage>('es');
   const [target, setTarget] = useState<TargetLanguage>('en-CA');
   const [level, setLevel] = useState<CefrBand>('A1');
-  const [rate, setRate] = useState(defaultPreferences.speechRate);
-  const [lowStim, setLowStim] = useState(true);
+  const learning=useLearningPreferences();
+  const experience=learning.settings;
+  const rate=experience.speechRate;
+  const lowStim=experience.sensoryPresentation==='calm';
   const [focus,setFocus]=useState<LearningFocus>('balanced');
-  const [experience,setExperience]=useState<ExperiencePreferences>(defaultExperiencePreferences);
   const [speaking, setSpeaking] = useState(false);
   const mission = missionsFor(target, level)[0];
   const stop = useCallback(() => { void Speech.stop().finally(()=>setSpeaking(false)); },[]);
@@ -67,16 +69,17 @@ export default function App() {
         <View style={styles.row}>
           {([['balanced','Curso completo'],['work','Trabajo'],['daily-life','Vida cotidiana'],['travel','Viajes']] as const).map(([code,label])=><Chip key={code} active={focus===code} label={label} onPress={()=>setFocus(code)}/>)}
         </View>
-        <LearningAdjustments settings={experience} onChange={next=>{setExperience(next);setLowStim(next.sensoryPresentation==='calm');}}/>
+        {learning.phase==='blocked' && <Text style={styles.note}>{learning.error}</Text>}
+        {learning.phase==='loading' && <Text style={styles.note}>Recuperando ajustes antes de iniciar las clases…</Text>}
+        {learning.phase==='ready' && <>
+        <LearningAdjustments settings={experience} onChange={learning.change}/>
+        {!!learning.error && <Text style={styles.note}>{learning.error}</Text>}
         <RegionalComparisons key={'regional-'+target} target={target} rate={rate}/>
-        <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} correctionTiming={experience.correctionTiming} instructionFormat={experience.instructionFormat}/>
-        <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} rate={rate} />
+        <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
+        <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} rate={rate} experience={experience} />
         <FreeResources target={target}/>
-        <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} />
-        <Text style={styles.section}>Preferencias de atención</Text>
-        <View style={styles.row}>
-          <Chip label={rate<0.95?'Voz pausada':'Voz normal'} active={rate<0.95} onPress={()=>setRate(rate<0.95?1.0:0.85)} />
-        </View>
+        <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
+        </>}
         <Text style={styles.note}>Seis idiomas combinables y lecciones preparadas de muestra, no un curso completo C2. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio generativo es opcional y separado. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
       </ScrollView>
     </SafeAreaView>
