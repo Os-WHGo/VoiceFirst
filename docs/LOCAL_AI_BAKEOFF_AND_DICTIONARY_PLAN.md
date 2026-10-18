@@ -33,3 +33,20 @@ Status: candidates only. NO conversational LLM, phonetic grading engine, or stan
 - New isolated modules: `number-listening.ts` (original English/French 0–99 listening seed), `speech-learning-preferences.ts` (accent/instruction policy).
 - These modules are not a complete dictionary, not yet wired to the app UI, and not evidence of real pronunciation grading.
 - Real model comparison requires installing candidates and measuring on Android/iOS hardware. No paid inference API as mandatory runtime.
+
+## Cross-project candidate audit (18 October 2026)
+Source: MU shared repository library, including Claude/Wivra, Edupekia and Wivra GitHub inventory. These are research candidates, NOT installed models or device benchmarks.
+
+| Candidate | VoiceFirst relevance | Gate / next action |
+|---|---|---|
+| Moonshine | Low-latency ASR comparator | Check available languages, weight licenses and six-language coverage; not a full replacement by assumption |
+| ONNX Runtime Mobile | Shared inference runtime for speech models | Compare native binary size, Expo bridge effort, Android/iOS support and license |
+| Google LiteRT | Alternative mobile inference runtime | Compare against ONNX; avoid shipping both without measured need |
+| RNNoise | Noise suppression before ASR | A/B test speech accuracy with/without denoising; avoid harming accented phonemes |
+| whisperX | Forced-alignment research and offline dataset labeling | Python/server-oriented; do not claim mobile phonetic grading or bundle directly |
+| faster-whisper | Benchmark reference for ASR accuracy and latency | Python/CTranslate2; not direct mobile runtime |
+| Kokoro / kokoro-js | TTS candidate for lesson speech | Verify voice-language coverage, model weights licenses, latency and mobile runtime |
+| axe-core | Accessibility QA reference | Validate actual React Native accessibility tooling, not assume web checks cover native UI |
+| Bergamot / Mozilla translations; Argos Translate | Optional offline dictionary/translation | Confirm maintained repos, per-language model licenses, size and pair coverage |
+
+Evaluation order: (1) instrument baseline OS ASR and curated transcripts; (2) compare whisper.cpp, sherpa-onnx and Moonshine only on supported languages; (3) benchmark ONNX vs LiteRT only where required by a selected model; (4) test RNNoise with noisy/accented audio; (5) assess TTS and optional translation. Do not select an ASR solely from a different project's English-only benchmark. Record device, OS, model revision, test corpus, WER, latency, peak RAM, binary/download size and license before integration. Preserve authored teaching flow and child privacy safeguards.
