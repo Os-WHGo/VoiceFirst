@@ -25,3 +25,10 @@ export function courseReviewSummary(progress:CourseProgress,today:string):{due:n
  const queue=courseReviewQueue(progress,today);
  return {due:queue.length,overdue:queue.filter(item=>item.dueOn<today).length,completedLessons:progress.completed.length};
 }
+
+/** Learner-requested review of a completed lesson, even when nothing is due. */
+export function voluntaryCourseReview(progress:CourseProgress,lessonId:string):ReviewQueueEntry[]{
+ const lesson=lessonsFor(progress.language).find(l=>l.id===lessonId);
+ if(!lesson||!progress.completed.includes(lesson.id))return [];
+ return lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint').map(exercise=>({lesson,exercise,dueOn:progress.due[exercise.id]??'',attempts:progress.attempts[exercise.id]??0,correct:progress.correct[exercise.id]??0}));
+}
