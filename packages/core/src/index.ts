@@ -41,3 +41,5 @@ export * from './tutor-session.js';
 export * from './offline-speech-selection.js';
 
 export * from './local-tutor-scope.js';
+
+export * from './lexical-seed.js';
