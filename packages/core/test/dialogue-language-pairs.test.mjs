@@ -39,3 +39,11 @@ test('uncertain recognition never advances a dialogue and minors remain gated',(
   assert.equal(selectGuidedDialogues(target,'balanced','adult').status,'available');
  }
 });
+
+test('every accepted authored reply is recognized across six targets',()=>{
+ for(const target of targetLanguages)for(const dialogue of dialoguesFor(target))for(const turn of dialogue.turns){
+  for(const reply of turn.acceptedReplies){
+   assert.equal(evaluateDialogueTurn(turn,reply,target,'high').verdict,'accepted',`${target}: ${reply}`);
+  }
+ }
+});
