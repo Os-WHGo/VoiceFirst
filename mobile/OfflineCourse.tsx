@@ -8,7 +8,7 @@ import {useOnDeviceAnswer,type DictationResult} from './use-on-device-answer';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 import Storage from 'expo-sqlite/kv-store';
 import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
-  chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,courseReviewQueue,courseReviewSummary,
+  chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,courseReviewQueue,courseReviewSummary,voluntaryCourseReview,
   type CourseProgress,type TargetLanguage,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences,
   currentVoiceTurn,voiceTranscriptDisposition} from '@voicefirst/core';
 
@@ -200,6 +200,11 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
         setActive(true);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];
       }}/>}
       {reviewQueue.length===0&&<Text style={s.muted}>No hay repasos vencidos. Puedes continuar el curso a tu ritmo.</Text>}
+      {progress.completed.length>0&&<View style={s.row}>{lessons.filter(l=>progress.completed.includes(l.id)).map(l=><Action key={'review-'+l.id} label={'Repasar '+l.focusTag} onPress={()=>{
+        const entries=voluntaryCourseReview(progress,l.id);const first=entries[0];if(!first)return;
+        playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);
+        setChosenId(l.id);setStep(l.exercises.findIndex(e=>e.id===first.exercise.id));setActive(true);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];
+      }}/>)}</View>}
     </View>}
     {progress&&!locked&&<View style={s.row}>{lessons.map(l=><Action key={l.id} label={`${l.band}: ${l.focusTag}${progress.completed.includes(l.id)?' ✓':''}`} onPress={()=>{
       if(courseLessonStatus(progress,l)==='locked'){setFeedback('Primero completa la lección anterior.');return;}
