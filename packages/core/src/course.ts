@@ -55,7 +55,7 @@ const originals: Record<TargetLanguage, {greet: readonly string[]; help: readonl
   de: {greet:['Hallo!', 'Guten Tag!'], help:['Kannst du mir helfen?', 'Können Sie mir helfen?']},
   it: {greet:['Ciao!', 'Buongiorno!'], help:['Mi puoi aiutare?', 'Puoi darmi una mano?']},
 };
-/** Two genuine authored micro-lessons per language. Language-pair support is through localized help text. */
+/** Two foundation micro-lessons per language; additional authored lessons are imported above. */
 export const offlineLessons: readonly OfflineLesson[] = targetLanguages.flatMap(language => {
   const phrases = originals[language];
   function exercise(stage: CourseStage, topic: 'greet' | 'help', index: number): CourseExercise {
