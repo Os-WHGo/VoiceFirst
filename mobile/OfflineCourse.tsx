@@ -8,7 +8,7 @@ import {useOnDeviceAnswer,type DictationResult} from './use-on-device-answer';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 import Storage from 'expo-sqlite/kv-store';
 import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
-  chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,
+  chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,courseReviewQueue,courseReviewSummary,
   type CourseProgress,type TargetLanguage,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences,
   currentVoiceTurn,voiceTranscriptDisposition} from '@voicefirst/core';
 
@@ -37,6 +37,9 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const mic=useOnDeviceAnswer(target,(result,id)=>onDictation.current(result,id));
   const lesson=lessons.find(x=>x.id===chosenId)??lessons[0];
   const current=lesson?.exercises[step];
+  const today=localDay();
+  const reviewSummary=progress?courseReviewSummary(progress,today):null;
+  const reviewQueue=progress?courseReviewQueue(progress,today):[];
   useEffect(()=>{
     mounted.current=true;let valid=true;
     playbackEpoch.current++;setProgress(null);setLocked('');setStep(0);setActive(false);setAnswer('');setPassed(false);setSessionSummary('');deferred.current=[];
@@ -187,6 +190,17 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
       {!!sessionSummary&&<Text style={s.muted}>{sessionSummary}</Text>}
       <View style={s.row}><Action label="Empezar / continuar clase" onPress={()=>{if(!experience.returnToLastStep)setStep(0);setActive(true);setPassed(false);setFeedback('');setSessionSummary('');deferred.current=[];}}/></View>
     </>)}
+    {progress&&!locked&&reviewSummary&&<View>
+      <Text style={s.heading}>Repasos disponibles</Text>
+      <Text style={s.muted}>{reviewSummary.due} ejercicios pendientes · {reviewSummary.overdue} anteriores a hoy · {reviewSummary.completedLessons} lecciones completadas</Text>
+      {reviewQueue.length>0&&<Action label="Practicar el primer repaso" onPress={()=>{
+        const entry=reviewQueue[0];if(!entry)return;
+        playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);
+        setChosenId(entry.lesson.id);setStep(entry.lesson.exercises.findIndex(e=>e.id===entry.exercise.id));
+        setActive(true);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];
+      }}/>}
+      {reviewQueue.length===0&&<Text style={s.muted}>No hay repasos vencidos. Puedes continuar el curso a tu ritmo.</Text>}
+    </View>}
     {progress&&!locked&&<View style={s.row}>{lessons.map(l=><Action key={l.id} label={`${l.band}: ${l.focusTag}${progress.completed.includes(l.id)?' ✓':''}`} onPress={()=>{
       if(courseLessonStatus(progress,l)==='locked'){setFeedback('Primero completa la lección anterior.');return;}
       playbackEpoch.current++;setChosenId(l.id);setStep(0);setActive(false);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];mic.stop();void stopCuratedVoice();
