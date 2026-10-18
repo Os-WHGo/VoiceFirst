@@ -37,3 +37,5 @@ export * from './adaptive-tutor.js';
 export * from './tutor-feedback.js';
 
 export * from './tutor-session.js';
+
+export * from './offline-speech-selection.js';
