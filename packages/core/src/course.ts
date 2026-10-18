@@ -2,6 +2,7 @@
  * No LLM/API calls are made here. Not an accredited CEFR curriculum.
  */
 import { targetLanguages, type TargetLanguage } from './types.js';
+import { extendedOfflineLessons } from './extended-course.js';
 
 export type CourseStage = 'listen' | 'repeat' | 'recall' | 'checkpoint';
 export type RecognitionConfidence = 'high' | 'low' | 'unknown';
@@ -68,7 +69,7 @@ export const offlineLessons: readonly OfflineLesson[] = targetLanguages.flatMap(
       exercises:[exercise('listen','help',1), exercise('repeat','help',2), exercise('recall','help',3), exercise('checkpoint','help',4)] }
   ];
 });
-export function lessonsFor(target: TargetLanguage) {return offlineLessons.filter(l=>l.language===target);}
+export function lessonsFor(target: TargetLanguage) {return [...offlineLessons,...extendedOfflineLessons].filter(l=>l.language===target);}
 export function newCourseProgress(language: TargetLanguage): CourseProgress {return {language,completed:[],attempts:{},correct:{},due:{}};}
 export function availableLessons(progress: CourseProgress): OfflineLesson[] {return lessonsFor(progress.language).filter(l=>!l.prerequisite || progress.completed.includes(l.prerequisite));}
 /** A transcript matcher, NOT a pronunciation or CEFR assessment. Real ASR uncertainty must not count as failure. */
