@@ -39,3 +39,5 @@ export * from './tutor-feedback.js';
 export * from './tutor-session.js';
 
 export * from './offline-speech-selection.js';
+
+export * from './local-tutor-scope.js';
