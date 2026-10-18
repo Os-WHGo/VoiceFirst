@@ -43,3 +43,5 @@ export * from './offline-speech-selection.js';
 export * from './local-tutor-scope.js';
 
 export * from './lexical-seed.js';
+
+export * from './phrase-rotation.js';
