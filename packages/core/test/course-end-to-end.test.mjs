@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {lessonsFor,newCourseProgress,recordCourseAttempt,finishLesson,availableLessons,courseReviewQueue,courseReviewSummary,courseStateToJSON,loadCourseState,voluntaryCourseReview} from '../dist/index.js';
+const locales=['en-CA','fr-CA','es','pt-BR','de','it'];
+test('all six offline learning paths can be completed and resumed without network',()=>{
+ for(const language of locales){
+  let state=newCourseProgress(language);
+  const lessons=lessonsFor(language);
+  for(let index=0;index<lessons.length;index++){
+   const lesson=lessons[index];
+   assert.equal(availableLessons(state).some(l=>l.id===lesson.id),true);
+   for(const exercise of lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint')){
+    state=recordCourseAttempt(state,exercise,{kind:'match',recognized:exercise.utterance},'2026-10-17');
+   }
+   state=finishLesson(state,lesson);
+   assert.equal(state.completed.length,index+1);
+   const restored=loadCourseState(courseStateToJSON(state),language);
+   assert.equal(restored.kind,'ok');
+   if(restored.kind==='ok')state=restored.progress;
+  }
+  assert.equal(state.completed.length,lessons.length);
+  assert.equal(courseReviewQueue(state,'2026-10-18').length,lessons.length*2);
+  assert.equal(courseReviewSummary(state,'2026-10-18').completedLessons,lessons.length);
+  assert.equal(voluntaryCourseReview(state,lessons[0].id).length,2);
+ }
+});
+test('an uncertain response never unlocks a course prerequisite',()=>{
+ for(const language of locales){
+  const lesson=lessonsFor(language)[0];
+  let state=newCourseProgress(language);
+  for(const exercise of lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint')){
+   state=recordCourseAttempt(state,exercise,{kind:'uncertain',hint:'Uncertain audio'},'2026-10-17');
+  }
+  state=finishLesson(state,lesson);
+  assert.equal(state.completed.length,0);
+  assert.equal(availableLessons(state).length,1);
+ }
+});
