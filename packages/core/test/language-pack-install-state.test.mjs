@@ -7,6 +7,7 @@ test('pack must verify matching hash before commit',()=>{
  const started=beginLanguagePackInstall(pack);
  assert.equal(started.status,'ok');
  const state=started.state;
+ assert.equal(state.expectedBytes,pack.bytes);
  assert.equal(advanceLanguagePackInstall(state,'commit').status,'rejected');
  assert.equal(advanceLanguagePackInstall(state,'verify','a'.repeat(64)).status,'rejected');
  const verified=advanceLanguagePackInstall(state,'verify',hash.toUpperCase());
