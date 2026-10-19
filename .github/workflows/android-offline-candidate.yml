@@ -4,14 +4,7 @@
 name: Android offline internal candidate
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'mobile/**'
-      - 'packages/core/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/android-offline-candidate.yml'
+
 permissions:
   contents: read
 jobs:
