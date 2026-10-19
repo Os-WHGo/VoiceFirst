@@ -6,6 +6,7 @@ import {Directory,File,Paths} from 'expo-file-system';
 import {transitionPackSession,sha256Bytes} from '@voicefirst/core';
 import {packJournalStore,verifySmallStagedPack,loadPackJournal} from './language-pack-journal-storage';
 import {hashSmallStagedPack} from './staged-small-pack-hash';
+import {inspectSmallPackRecovery} from './small-pack-recovery';
 const LIMIT=8*1024*1024;
 const valid=(id:string)=>/^[a-z0-9][a-z0-9._-]{0,99}$/.test(id);
 export type SmallPackInstallResult={status:'installed'}|{status:'blocked';reason:string};
@@ -50,4 +51,12 @@ export async function installSmallPackFromLocalFile(id:string,source:File):Promi
    // Preserve verified staging on failure for explicit recovery.
   }
  }
+}
+
+/** Recovery only finalizes an already promoted, fully rehashed file. */
+export async function finalizeInterruptedSmallPack(id:string):Promise<SmallPackInstallResult>{
+ const inspection=await inspectSmallPackRecovery(id);
+ if(inspection.status!=='promotion-interrupted')return {status:'blocked',reason:inspection.status};
+ const committed=await transitionPackSession(id,'commit',packJournalStore);
+ return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:'journal-write'};
 }
