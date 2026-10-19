@@ -12,4 +12,7 @@ test('canonical planner rejects missing dependencies, cycles and duplicate ident
  assert.equal(planLanguagePacks([pack('a',['absent'])],['a']).status,'invalid');
  assert.equal(planLanguagePacks([pack('a',['b']),pack('b',['a'])],['a']).status,'invalid');
  assert.equal(planLanguagePacks([pack('a'),pack('a')],['a']).status,'invalid');
+ assert.equal(planLanguagePacks(null,['a']).status,'invalid');
+ assert.equal(planLanguagePacks([pack('a')],null).status,'invalid');
+ assert.equal(planLanguagePacks([pack('a')],['a'],null).status,'invalid');
 });
