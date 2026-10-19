@@ -23,7 +23,7 @@ test('priority never permanently excludes other domains',()=>{
  assert.notEqual(next.domain,'work');
 });
 test('retries make a previously attempted skill eligible for reinforcement',()=>{
- const history={successes:{'en-CA-offer':1,'en-CA-request':1,'en-CA-water':1,'en-CA-thanks':1,'en-CA-bus':1,'en-CA-ticket':1},retries:{'en-CA-ticket':3}};
+ const history={successes:{'en-CA-offer':1,'en-CA-request':1,'en-CA-water':1,'en-CA-thanks':1,'en-CA-bus':1,'en-CA-ticket':1,'en-CA-price':1,'en-CA-card':1},retries:{'en-CA-ticket':3}};
  const next=selectNextTutorPractice('en-CA','balanced','adult',history);
  assert.equal(next.status,'ready');
  assert.equal(next.turn.id,'en-CA-ticket');
