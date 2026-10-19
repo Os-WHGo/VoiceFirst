@@ -96,7 +96,9 @@ export function recordCourseAttempt(progress:CourseProgress, exercise:CourseExer
 export function finishLesson(progress:CourseProgress,lesson:OfflineLesson):CourseProgress {
   if(lesson.language!==progress.language)throw new Error('Language mismatch');
   if(lesson.prerequisite&&!progress.completed.includes(lesson.prerequisite))return progress;
-  if(!lessonsFor(progress.language).some(item=>item.id===lesson.id))return progress;
+  const canonical=lessonsFor(progress.language).find(item=>item.id===lesson.id);
+  if(!canonical)return progress;
+  lesson=canonical;
   const recall=lesson.exercises.find(e=>e.type==='recall');
   const checkpoint=lesson.exercises.find(e=>e.type==='checkpoint');
   if(!recall||!checkpoint||(progress.correct[recall.id]??0)<1||(progress.correct[checkpoint.id]??0)<1) return progress;
