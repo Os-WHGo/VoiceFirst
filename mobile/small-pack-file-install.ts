@@ -3,14 +3,19 @@
  * Caller must have started a journal session with the trusted manifest.
  */
 import {Directory,File,Paths} from 'expo-file-system';
-import {transitionPackSession,sha256Bytes} from '@voicefirst/core';
+import {transitionPackSession,sha256Bytes,PackOperationGate} from '@voicefirst/core';
 import {packJournalStore,verifySmallStagedPack,loadPackJournal} from './language-pack-journal-storage';
 import {hashSmallStagedPack} from './staged-small-pack-hash';
 import {inspectSmallPackRecovery} from './small-pack-recovery';
 const LIMIT=8*1024*1024;
 const valid=(id:string)=>/^[a-z0-9][a-z0-9._-]{0,99}$/.test(id);
 export type SmallPackInstallResult={status:'installed'}|{status:'blocked';reason:string};
+const operationGate=new PackOperationGate();
 export async function installSmallPackFromLocalFile(id:string,source:File):Promise<SmallPackInstallResult>{
+ const guarded=await operationGate.run(id,()=>installSmallPackUnlocked(id,source));
+ return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
+}
+async function installSmallPackUnlocked(id:string,source:File):Promise<SmallPackInstallResult>{
  if(!valid(id))return {status:'blocked',reason:'invalid-id'};
  const journal=await loadPackJournal(id);
  if(journal.status!=='ok'||journal.result.state.phase!=='staging')return {status:'blocked',reason:'journal-not-staging'};
@@ -55,6 +60,10 @@ export async function installSmallPackFromLocalFile(id:string,source:File):Promi
 
 /** Recovery only finalizes an already promoted, fully rehashed file. */
 export async function finalizeInterruptedSmallPack(id:string):Promise<SmallPackInstallResult>{
+ const guarded=await operationGate.run(id,()=>finalizeInterruptedUnlocked(id));
+ return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
+}
+async function finalizeInterruptedUnlocked(id:string):Promise<SmallPackInstallResult>{
  const inspection=await inspectSmallPackRecovery(id);
  if(inspection.status!=='promotion-interrupted')return {status:'blocked',reason:inspection.status};
  const committed=await transitionPackSession(id,'commit',packJournalStore);
