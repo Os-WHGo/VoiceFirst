@@ -26,7 +26,7 @@ async function installSmallPackUnlocked(id:string,source:File):Promise<SmallPack
  if(dest.exists||stage.exists)return {status:'blocked',reason:'destination-or-staging-exists'};
  let created=false;
  try{
-  if(!source.exists||!Number.isSafeInteger(source.size)||source.size<=0||source.size>LIMIT)return {status:'blocked',reason:'source-size'};
+  if(!source.exists||!Number.isSafeInteger(source.size)||source.size<=0||source.size>LIMIT||source.size!==journal.result.state.expectedBytes)return {status:'blocked',reason:'source-size'};
   if(!root.exists)root.create({intermediates:true,idempotent:true});
   stage.create({intermediates:true});created=true;
   await source.copy(new File(stage,'payload.bin'),{overwrite:false});
