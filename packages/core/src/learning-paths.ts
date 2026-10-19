@@ -115,3 +115,82 @@ export function curriculumPlanFor(targetLanguage:TargetLanguage):CurriculumUnitP
   targetLanguage,level,unitId,status:'planned' as const
  })));
 }
+
+
+/** Editorial production audit. It measures documented content work, NOT language
+ * proficiency, accuracy of reviewer claims, device delivery or CEFR certification.
+ * An authored unit is never automatically published or attributed to a reviewer.
+ */
+export type CourseSkill='listening'|'speaking'|'reading'|'writing'|'interaction'|'mediation';
+export const courseSkills:readonly CourseSkill[]=['listening','speaking','reading','writing','interaction','mediation'];
+export interface ProductionActivity {id:string; skill:CourseSkill; prompt:string;}
+export interface ProductionUnit {
+ targetLanguage:TargetLanguage;
+ level:(typeof officialCefrBands)[number];
+ unitId:string;
+ revision:string;
+ status:'draft'|'reviewed';
+ outcomes:readonly string[];
+ activities:readonly ProductionActivity[];
+ review?:{linguisticReviewer:string;educationalReviewer:string;rightsReference:string};
+}
+export interface LevelProductionReport {
+ targetLanguage:TargetLanguage;
+ level:(typeof officialCefrBands)[number];
+ plannedUnits:number;
+ drafts:number;
+ documentedReviews:number;
+ missingUnits:number;
+ skillCoverage:readonly CourseSkill[];
+ /** Only a structural editorial gate. It is NOT permission to announce a full level. */
+ allUnitsDocumentedAsReviewed:boolean;
+}
+export function auditCurriculumProduction(input:unknown):{
+ valid:boolean;errors:readonly string[];levels:readonly LevelProductionReport[];
+}{
+ const errors:string[]=[];
+ if(!Array.isArray(input)||input.length>500)return{valid:false,errors:['Invalid authoring inventory'],levels:[]};
+ const expected=new Set(targetLanguages.flatMap(lang=>curriculumPlanFor(lang).map(unit=>[lang,unit.level,unit.unitId].join('/'))));
+ const rows=new Map<string,ProductionUnit>();
+ for(const [index,raw] of input.entries()){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)){errors.push('Invalid unit row '+index);continue;}
+  const r=raw as Partial<ProductionUnit>;
+  const id=[r.targetLanguage,r.level,r.unitId].join('/');
+  if(!expected.has(id)||rows.has(id)){errors.push('Unknown or duplicate unit '+id);continue;}
+  if(r.status!=='draft'&&r.status!=='reviewed'){errors.push('Invalid status '+id);continue;}
+  if(typeof r.revision!=='string'||!/^\d+\.\d+\.\d+$/.test(r.revision)){errors.push('Missing revision '+id);continue;}
+  if(!Array.isArray(r.outcomes)||r.outcomes.length>12||
+    r.outcomes.some(t=>typeof t!=='string'||!t.trim()||t.length>500)){
+   errors.push('Invalid outcomes '+id);continue;
+  }
+  if(!Array.isArray(r.activities)||r.activities.length>100){errors.push('Invalid activities '+id);continue;}
+  const ids=new Set<string>();let malformed=false;
+  for(const activity of r.activities){
+   if(!activity||typeof activity!=='object'||typeof activity.id!=='string'||
+     !/^[a-z0-9][a-z0-9-]{0,79}$/.test(activity.id)||ids.has(activity.id)||
+     !courseSkills.includes(activity.skill)||typeof activity.prompt!=='string'||
+     !activity.prompt.trim()||activity.prompt.length>2000){malformed=true;break;}
+   ids.add(activity.id);
+  }
+  if(malformed){errors.push('Invalid activities '+id);continue;}
+  if(r.status==='reviewed'){
+   const review=r.review;
+   if(r.outcomes.length===0||r.activities.length<2||!review||
+      ['linguisticReviewer','educationalReviewer','rightsReference'].some(key=>{
+       const text=review[key as keyof typeof review];return typeof text!=='string'||text.trim().length<3||text.length>200;
+      })){errors.push('Review evidence missing '+id);continue;}
+  }
+  rows.set(id,r as ProductionUnit);
+ }
+ const levels:LevelProductionReport[]=targetLanguages.flatMap(lang=>officialCefrBands.map(level=>{
+  const planned=curriculumPlanFor(lang).filter(row=>row.level===level);
+  const authored=planned.map(row=>rows.get([lang,level,row.unitId].join('/'))).filter((x):x is ProductionUnit=>!!x);
+  const reviewed=authored.filter(x=>x.status==='reviewed');
+  const skills=new Set<CourseSkill>(reviewed.flatMap(x=>x.activities.map(a=>a.skill)));
+  return{targetLanguage:lang,level,plannedUnits:planned.length,drafts:authored.length-reviewed.length,
+    documentedReviews:reviewed.length,missingUnits:planned.length-authored.length,
+    skillCoverage:courseSkills.filter(skill=>skills.has(skill)),
+    allUnitsDocumentedAsReviewed:reviewed.length===planned.length&&courseSkills.every(skill=>skills.has(skill))};
+ }));
+ return{valid:errors.length===0,errors,levels};
+}
