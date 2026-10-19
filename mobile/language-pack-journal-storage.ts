@@ -1,5 +1,6 @@
 import Storage from 'expo-sqlite/kv-store';
-import {readLanguagePackJournal, type PackInstallState} from '@voicefirst/core';
+import {readLanguagePackJournal,verifyStagedPackSession,type PackInstallState} from '@voicefirst/core';
+import {hashSmallStagedPack} from './staged-small-pack-hash';
 const key=(id:string)=>'voicefirst.pack-journal.v1.'+id;
 export async function loadPackJournal(id:string){
  if(!/^[a-z0-9][a-z0-9._-]{0,99}$/.test(id))return {status:'blocked'} as const;
@@ -28,3 +29,8 @@ export const packJournalStore={
  },
  save:savePackJournal,
 };
+
+/** Explicit small-pack verification. Caller must first stage payload.bin on disk. */
+export async function verifySmallStagedPack(id:string){
+ return verifyStagedPackSession(id,packJournalStore,hashSmallStagedPack);
+}
