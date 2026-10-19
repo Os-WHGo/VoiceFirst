@@ -61,3 +61,5 @@ export * from './local-inference-selection.js';
 export * from './local-tutor-adapter.js';
 
 export * from './local-inference-benchmark.js';
+
+export * from './local-model-package.js';
