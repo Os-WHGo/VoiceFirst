@@ -23,7 +23,7 @@ export function courseReviewQueue(progress:CourseProgress,today:string):ReviewQu
 }
 export function courseReviewSummary(progress:CourseProgress,today:string):{due:number;overdue:number;completedLessons:number}{
  const queue=courseReviewQueue(progress,today);
- return {due:queue.length,overdue:queue.filter(item=>item.dueOn<today).length,completedLessons:progress.completed.length};
+ return {due:queue.length,overdue:queue.filter(item=>item.dueOn<today).length,completedLessons:lessonsFor(progress.language).filter(lesson=>progress.completed.includes(lesson.id)).length};
 }
 
 /** Learner-requested review of a completed lesson, even when nothing is due. */
