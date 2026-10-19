@@ -63,3 +63,5 @@ export * from './local-tutor-adapter.js';
 export * from './local-inference-benchmark.js';
 
 export * from './local-model-package.js';
+
+export * from './local-model-installation.js';
