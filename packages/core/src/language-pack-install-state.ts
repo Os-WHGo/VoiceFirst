@@ -10,7 +10,7 @@ export function beginLanguagePackInstall(pack:LanguagePack):PackInstallOutcome {
 }
 export function advanceLanguagePackInstall(state:PackInstallState,event:'verify'|'commit'|'abort',sha256?:string):PackInstallOutcome {
  if(!state||!(/^[a-z0-9][a-z0-9._-]{0,99}$/).test(state.id)||!/^\d+\.\d+\.\d+$/.test(state.version)||!(/^[a-f0-9]{64}$/).test(state.expectedSha256)||!['staging','verified','installed','failed','absent'].includes(state.phase)||((state.phase==='staging'||state.phase==='absent'||state.phase==='failed')&&state.verifiedSha256!==undefined)||((state.phase==='verified'||state.phase==='installed')&&state.verifiedSha256!==state.expectedSha256))return {status:'rejected',reason:'transition'};
- if(event==='abort'&&state.phase!=='installed')return {status:'ok',state:{...state,phase:'failed',verifiedSha256:undefined}};
+ if(event==='abort'&&(state.phase==='staging'||state.phase==='verified'))return {status:'ok',state:{...state,phase:'failed',verifiedSha256:undefined}};
  if(event==='verify'&&state.phase==='staging'){
   if(typeof sha256!=='string'||!(/^[a-f0-9]{64}$/i).test(sha256)||sha256.toLowerCase()!==state.expectedSha256)return {status:'rejected',reason:'checksum'};
   return {status:'ok',state:{...state,phase:'verified',verifiedSha256:sha256.toLowerCase()}};
