@@ -3,7 +3,7 @@
  * Caller must have started a journal session with the trusted manifest.
  */
 import {Directory,File,Paths} from 'expo-file-system';
-import {transitionPackSession} from '@voicefirst/core';
+import {transitionPackSession,sha256Bytes} from '@voicefirst/core';
 import {packJournalStore,verifySmallStagedPack,loadPackJournal} from './language-pack-journal-storage';
 import {hashSmallStagedPack} from './staged-small-pack-hash';
 const LIMIT=8*1024*1024;
@@ -34,7 +34,6 @@ export async function installSmallPackFromLocalFile(id:string,source:File):Promi
   const promoted=new File(dest,'payload.bin');
   if(!promoted.exists||promoted.size!==source.size||promoted.size>LIMIT)return {status:'blocked',reason:'promoted-file-invalid'};
   const promotedBytes=await promoted.bytes();
-  const {sha256Bytes}=await import('@voicefirst/core');
   if(promotedBytes.byteLength!==promoted.size||sha256Bytes(promotedBytes).toLowerCase()!==verified.state.expectedSha256)return {status:'blocked',reason:'promoted-checksum'};
   // Mark installed only after successful promotion. Interrupted promotions
   // require an explicit recovery procedure, never an automatic overwrite.
