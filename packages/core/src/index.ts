@@ -94,3 +94,4 @@ export * from './small-pack-recovery-policy.js';
 export * from './pack-operation-gate.js';
 
 export * from './chunked-file-hash.js';
+export * from './playback-request-ownership.js';
