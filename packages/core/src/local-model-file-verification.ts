@@ -6,7 +6,7 @@ export interface NativeLocalFileVerifier {fileSizeBytes(localUri:string):Promise
 export type FileVerificationResult={status:'verified';state:LocalInstallState}|{status:'rejected';reason:'invalid-manifest'|'invalid-uri'|'size-mismatch'|'checksum-mismatch'|'native-verification-failed'};
 export async function verifyLocalModelFile(pkg:LocalModelPackage,localUri:string,native:NativeLocalFileVerifier):Promise<FileVerificationResult>{
  if(validateLocalModelPackage(pkg).status!=='valid')return {status:'rejected',reason:'invalid-manifest'};
- if(typeof localUri!=='string'||!localUri.startsWith('file:///')||localUri.includes('..')||localUri.includes('?')||localUri.includes('#'))return {status:'rejected',reason:'invalid-uri'};
+ if(typeof localUri!=='string'||!localUri.startsWith('file:///')||localUri.includes('..')||localUri.includes('%')||localUri.includes('?')||localUri.includes('#')||localUri.includes('\\'))return {status:'rejected',reason:'invalid-uri'};
  const begin=beginLocalModelInstall(pkg);
  if(begin.status!=='ok')return {status:'rejected',reason:'invalid-manifest'};
  try{
