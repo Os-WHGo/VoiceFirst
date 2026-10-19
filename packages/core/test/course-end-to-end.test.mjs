@@ -111,3 +111,15 @@ test('fabricated lesson IDs cannot be marked completed in any supported language
   assert.equal(finishLesson(state,fabricated).completed.length,0);
  }
 });
+
+test('altered lesson exercise definitions cannot forge completion evidence',()=>{
+ for(const language of locales){
+  const original=lessonsFor(language)[0];
+  const fakeRecall={...original.exercises[2],id:`${language}-forged-recall`};
+  const fakeCheckpoint={...original.exercises[3],id:`${language}-forged-checkpoint`};
+  const altered={...original,exercises:[...original.exercises.slice(0,2),fakeRecall,fakeCheckpoint]};
+  let state=newCourseProgress(language);
+  for(const exercise of [fakeRecall,fakeCheckpoint])state=recordCourseAttempt(state,exercise,{kind:'match',recognized:exercise.utterance},'2026-10-17');
+  assert.equal(finishLesson(state,altered).completed.length,0);
+ }
+});
