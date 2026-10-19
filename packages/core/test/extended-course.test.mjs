@@ -49,3 +49,30 @@ test('urgent help, allergy, payment and transport extend each language path',()=
   }
  }
 });
+
+test('all 84 lessons have reachable acyclic prerequisites and 336 distinct exercises',()=>{
+ let total=0;
+ const globalIds=new Set();
+ for(const locale of ['en-CA','fr-CA','es','pt-BR','de','it']){
+  const lessons=lessonsFor(locale);
+  const byId=new Map(lessons.map(l=>[l.id,l]));
+  for(const lesson of lessons){
+   const seen=new Set();
+   let cursor=lesson;
+   while(cursor){
+    assert.ok(!seen.has(cursor.id),`Cycle in ${locale}: ${cursor.id}`);
+    seen.add(cursor.id);
+    cursor=cursor.prerequisite?byId.get(cursor.prerequisite):undefined;
+    if(cursor===undefined)assert.ok(!lesson.prerequisite||seen.size>1||lesson===lessons[0]);
+   }
+   for(const exercise of lesson.exercises){
+    assert.ok(!globalIds.has(exercise.id),`Duplicate exercise ${exercise.id}`);
+    globalIds.add(exercise.id);
+    assert.ok(exercise.alternatives.every(x=>typeof x==='string'&&x.trim().length>0));
+    total++;
+   }
+  }
+ }
+ assert.equal(total,336);
+ assert.equal(globalIds.size,336);
+});
