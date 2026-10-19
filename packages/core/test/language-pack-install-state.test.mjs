@@ -23,4 +23,6 @@ test('abort prevents promotion and invalid manifest fails closed',()=>{
  assert.equal(advanceLanguagePackInstall(aborted.state,'commit').status,'rejected');
  assert.equal(beginLanguagePackInstall({...pack,licenseReviewed:false}).status,'rejected');
  assert.equal(beginLanguagePackInstall({...pack,dependencies:['other']}).status,'rejected');
+ assert.equal(advanceLanguagePackInstall({...started.state,phase:'verified',verifiedSha256:'c'.repeat(64)},'commit').status,'rejected');
+ assert.equal(advanceLanguagePackInstall({...started.state,phase:'staging',verifiedSha256:hash},'verify',hash).status,'rejected');
 });
