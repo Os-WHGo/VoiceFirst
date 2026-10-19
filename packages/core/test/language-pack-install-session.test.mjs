@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {startPackSession,transitionPackSession} from '../dist/index.js';
+import {startPackSession,transitionPackSession,verifyStagedPackSession} from '../dist/index.js';
 const digest='a'.repeat(64);
 const pack={id:'en-ca-core',kind:'course',version:'1.0.0',bytes:100,dependencies:[],locales:['en-CA'],sha256:digest,licenseId:'test',licenseReviewed:true,sourceUrl:'https://example.org'};
 const store=()=>{
@@ -35,4 +35,13 @@ test('dependent pack requires an installed verified dependency journal',async()=
  await transitionPackSession(pack.id,'verify',s,digest);
  await transitionPackSession(pack.id,'commit',s);
  assert.equal((await startPackSession(dependent,s)).status,'ok');
+});
+
+test('byte-backed verification refuses missing or mismatched staged data',async()=>{
+ const s=store();await startPackSession(pack,s);
+ assert.equal((await verifyStagedPackSession(pack.id,s,async()=>null)).reason,'staged-file-read');
+ assert.equal((await verifyStagedPackSession(pack.id,s,async()=>{throw Error('missing');})).reason,'staged-file-read');
+ assert.equal((await verifyStagedPackSession(pack.id,s,async()=> 'f'.repeat(64))).reason,'checksum');
+ assert.equal((await verifyStagedPackSession(pack.id,s,async()=>digest)).state.phase,'verified');
+ assert.equal((await verifyStagedPackSession(pack.id,s,async()=>digest)).reason,'missing-or-invalid-staging');
 });
