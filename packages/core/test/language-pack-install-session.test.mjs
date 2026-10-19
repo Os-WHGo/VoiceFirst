@@ -24,3 +24,14 @@ test('session does not report success when journal write fails',async()=>{
  s.setFail(true);
  assert.equal((await transitionPackSession(pack.id,'verify',s,digest)).reason,'write');
 });
+
+test('dependent pack requires an installed verified dependency journal',async()=>{
+ const s=store();
+ const dependent={...pack,id:'en-ca-dialogue',dependencies:[pack.id]};
+ assert.equal((await startPackSession(dependent,s)).reason,'dependencies');
+ await startPackSession(pack,s);
+ assert.equal((await startPackSession(dependent,s)).reason,'dependencies');
+ await transitionPackSession(pack.id,'verify',s,digest);
+ await transitionPackSession(pack.id,'commit',s);
+ assert.equal((await startPackSession(dependent,s)).status,'ok');
+});
