@@ -45,3 +45,9 @@ test('serializes inference and rejects malformed output',async()=>{
 test('rejects malformed native initialization',async()=>{
  await assert.rejects(openLlamaRnSession({modelId:'test',verifiedFileUri:uri,contextTokens:1024,initLlama:async()=>({})}),/Invalid native context/);
 });
+
+test('releases partially initialized native context when completion API is missing',async()=>{
+ let released=0;
+ await assert.rejects(openLlamaRnSession({modelId:'test',verifiedFileUri:uri,contextTokens:1024,initLlama:async()=>({release:async()=>{released++}})}),/Invalid native context/);
+ assert.equal(released,1);
+});
