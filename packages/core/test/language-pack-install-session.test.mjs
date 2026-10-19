@@ -81,3 +81,23 @@ test('concurrent transitions on same pack reject second operation',async()=>{
  unblock();
  assert.equal((await first).status,'ok');
 });
+
+test('byte verification keeps journal locked across slow hash callback',async()=>{
+ const s=store();await startPackSession(pack,s);
+ let beginHash;let finishHash;
+ const hashing=new Promise(resolve=>{finishHash=resolve;});
+ const started=new Promise(resolve=>{beginHash=resolve;});
+ const verify=verifyStagedPackSession(pack.id,s,async()=>{beginHash();await hashing;return digest;});
+ await started;
+ assert.equal((await transitionPackSession(pack.id,'abort',s)).reason,'operation-busy');
+ assert.equal((await transitionPackSession(pack.id,'commit',s)).reason,'operation-busy');
+ assert.equal((await verifyStagedPackSession(pack.id,s,async()=>digest)).reason,'operation-busy');
+ finishHash();
+ assert.equal((await verify).state.phase,'verified');
+ assert.equal((await transitionPackSession(pack.id,'commit',s)).state.phase,'installed');
+});
+test('failed byte hashing releases journal gate without advancing phase',async()=>{
+ const s=store();await startPackSession(pack,s);
+ assert.equal((await verifyStagedPackSession(pack.id,s,async()=>{throw Error('IO');})).reason,'staged-file-read');
+ assert.equal((await transitionPackSession(pack.id,'abort',s)).state.phase,'failed');
+});
