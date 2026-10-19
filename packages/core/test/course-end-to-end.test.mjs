@@ -81,3 +81,20 @@ test('all 84 completed lessons survive offline persistence and expose scheduled 
  }
  assert.equal(reviews,168);
 });
+
+test('prerequisite bypass cannot complete any advanced lesson across six languages',()=>{
+ let blocked=0;
+ for(const language of locales){
+  const lessons=lessonsFor(language);
+  for(const lesson of lessons.filter(l=>l.prerequisite)){
+   let state=newCourseProgress(language);
+   for(const exercise of lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint')){
+    state=recordCourseAttempt(state,exercise,{kind:'match',recognized:exercise.utterance},'2026-10-17');
+   }
+   const finished=finishLesson(state,lesson);
+   assert.equal(finished.completed.includes(lesson.id),false,lesson.id);
+   blocked++;
+  }
+ }
+ assert.equal(blocked,78);
+});
