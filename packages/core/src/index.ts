@@ -67,3 +67,5 @@ export * from './local-model-package.js';
 export * from './local-model-installation.js';
 
 export * from './local-model-file-verification.js';
+
+export * from './chilean-spanish.js';
