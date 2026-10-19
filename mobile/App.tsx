@@ -7,6 +7,7 @@ import { GuidedDialoguePractice } from './GuidedDialoguePractice';
 import { FreeResources } from './FreeResources';
 import { RegionalComparisons } from './RegionalComparisons';
 import { LearningAdjustments } from './LearningAdjustments';
+import { PragmaticsPractice } from './PragmaticsPractice';
 import { VoicePackImporter } from './VoicePackImporter';
 import {stopCuratedVoice} from './curated-voice-output';
 import { useLearningPreferences } from './use-learning-preferences';
@@ -80,6 +81,7 @@ export default function App() {
         {learning.phase==='loading' && <Text style={styles.note}>Recuperando ajustes antes de iniciar las clases…</Text>}
         {learning.phase==='ready' && <>
         <LearningAdjustments settings={experience} onChange={learning.change}/>
+        <PragmaticsPractice/>
         {!!learning.error && <Text style={styles.note}>{learning.error}</Text>}
         <RegionalComparisons key={'regional-'+target} target={target} rate={rate}/>
         <VoicePackImporter target={target}/>
