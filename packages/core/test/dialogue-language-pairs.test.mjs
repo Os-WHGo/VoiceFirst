@@ -91,3 +91,30 @@ test('forged accepted verdict cannot skip a curated turn',()=>{
   assert.deepEqual(recordDialogueResponse(advanced,dialogue,real),advanced);
  }
 });
+
+test('all 30 directed language pairs finish all four authored dialogues without skipping turns',()=>{
+ let completed=0;
+ for(const known of targetLanguages)for(const target of targetLanguages){
+  if(known===target)continue;
+  for(const dialogue of dialoguesFor(target)){
+   let run=newDialogueRun(dialogue);
+   for(let i=0;i<dialogue.turns.length;i++){
+    const cue=dialogueAudioCue(dialogue,i,known,true);
+    assert.equal(cue.language,known);
+    assert.ok(cue.text.trim());
+    const turn=dialogue.turns[i];
+    const uncertain=evaluateDialogueTurn(turn,turn.acceptedReplies[0],target,'low');
+    assert.equal(recordDialogueResponse(run,dialogue,uncertain),run);
+    const wrong=evaluateDialogueTurn(turn,'incorrect unmatched phrase',target,'high');
+    run=recordDialogueResponse(run,dialogue,wrong);
+    assert.equal(run.turnIndex,i);
+    const correct=evaluateDialogueTurn(turn,turn.acceptedReplies.at(-1),target,'high');
+    run=recordDialogueResponse(run,dialogue,correct);
+    assert.equal(run.turnIndex,i+1);
+   }
+   assert.equal(run.completed,true);
+   completed++;
+  }
+ }
+ assert.equal(completed,120);
+});
