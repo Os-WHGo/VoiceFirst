@@ -58,3 +58,26 @@ test('all 84 lessons reject uncertain checkpoint and accept a subsequent confirm
  }
  assert.equal(retried,168);
 });
+
+test('all 84 completed lessons survive offline persistence and expose scheduled review',()=>{
+ let reviews=0;
+ for(const language of locales){
+  let progress=newCourseProgress(language);
+  for(const lesson of lessonsFor(language)){
+   for(const exercise of lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint')){
+    progress=recordCourseAttempt(progress,exercise,{kind:'match',recognized:exercise.utterance},'2026-10-17');
+   }
+   progress=finishLesson(progress,lesson);
+   const loaded=loadCourseState(courseStateToJSON(progress),language);
+   assert.equal(loaded.kind,'ok');
+   if(loaded.kind!=='ok')continue;
+   progress=loaded.progress;
+   const voluntary=voluntaryCourseReview(progress,lesson.id);
+   assert.equal(voluntary.length,2);
+   assert.ok(voluntary.every(entry=>entry.lesson.id===lesson.id));
+   reviews+=voluntary.length;
+  }
+  assert.equal(courseReviewQueue(progress,'2026-10-18').length,28);
+ }
+ assert.equal(reviews,168);
+});
