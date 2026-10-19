@@ -69,7 +69,7 @@ export function consistentPronunciationReading(r:PronunciationReading):boolean{
   r.targetLocale.trim().length>0 && Array.isArray(r.approximateSyllables) &&
   r.approximateSyllables.length>0 && r.approximateSyllables.length<=24 &&
   r.approximateSyllables.every(part=>typeof part==='string'&&
-   part.length>0&&part===part.trim()&&!/[-·\\n\\r]/u.test(part)) &&
+   part.length>0&&part===part.trim()&& !part.includes('-')&&!part.includes('·')&& !Array.from(part).some(ch=>ch.codePointAt(0)!<32)) &&
   r.approximateSyllables.join('-').normalize('NFC')===r.reading.normalize('NFC') &&
   (r.prominentSyllableIndex===null ||
    (Number.isSafeInteger(r.prominentSyllableIndex)&&r.prominentSyllableIndex>=0&&

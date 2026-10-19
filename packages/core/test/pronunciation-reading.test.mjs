@@ -102,3 +102,11 @@ test('exact current reading guide exposes learner-localized approximate groups, 
  }
  assert.doesNotMatch(ui,/phoneticScore|pronunciationGrade/);
 });
+
+test('consistency accepts r/n sounds and rejects control characters in authored groups',()=>{
+ const base=prototypePronunciationReadings[0];
+ const valid={...base,reading:'nur',approximateSyllables:['nur'],prominentSyllableIndex:0};
+ assert.equal(consistentPronunciationReading(valid),true);
+ assert.equal(consistentPronunciationReading({...valid,reading:'nur\n',approximateSyllables:['nur\n']}),false);
+ assert.equal(consistentPronunciationReading({...valid,reading:'nu·r',approximateSyllables:['nu·r']}),false);
+});
