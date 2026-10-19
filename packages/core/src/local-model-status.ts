@@ -14,3 +14,21 @@ export function localModelState(locale:string,inventory:unknown):LocalModelState
  if(x.locales.some(v=>(v as string).toLowerCase()===lang))return 'missing';
  return 'unknown';
 }
+
+/** Resolve one native model inventory query, discarding obsolete results.
+ * The caller owns lifecycle/generation checks; a stale result must not
+ * overwrite a newer locale or turn a failed lookup into a missing model.
+ * Null means "discard without updating UI", not "model absent".
+ */
+export async function queryLocalModelState(
+ locale:string,
+ getInventory:()=>Promise<unknown>,
+ isCurrent:()=>boolean
+):Promise<LocalModelState|null>{
+ try{
+  const inventory=await getInventory();
+  return isCurrent()?localModelState(locale,inventory):null;
+ }catch{
+  return isCurrent()?'unknown':null;
+ }
+}

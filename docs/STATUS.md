@@ -191,3 +191,8 @@ No se ha generado ni instalado un IPA/APK; no hay audios originales producidos p
 - Byte hash verification now requires the same journal snapshot after hashing. A concurrent revision, version, size or digest change blocks verification rather than authorizing a different manifest.
 - File promotion (initial install, explicit recovery from verified staging, and finalization after a move) commits only against the exact verified journal that the file was checked against. SQLite compare-and-save still guards between final journal read and write.
 - Node regression tests simulate journal mutation mid-hash/mid-recovery. There is no claim of atomicity across SQLite plus filesystem or of a physical crash test.
+
+## 2026-10-19 · Offline ASR locale-inventory request ownership
+- The on-device recognition hook now discards native locale-inventory responses that arrive after changing language, issuing a newer query, or unmounting. React state identifies the exact locale so an old 'installed' result is never presented as evidence for the newly selected dialect.
+- A failed current query becomes 'unknown', never 'missing'. A stale failed query is ignored. Model download statuses also check current language and mounted state before displaying feedback. No network fallback, new dependency, automatic download or microphone permission change.
+- Added three deterministic async tests exercising out-of-order locale responses, rejected stale queries and exact regional matches. Native physical Android/iOS validation remains pending.

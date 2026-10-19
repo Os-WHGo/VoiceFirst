@@ -4,7 +4,7 @@
  */
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Platform} from 'react-native';
-import {classifyVoiceConfidence,localModelState,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
+import {classifyVoiceConfidence,queryLocalModelState,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
 type Subscription={remove:()=>void};
 // Derive the Android locale query contract from the installed package.
 type NativeLocaleOptions=Parameters<typeof import('expo-speech-recognition')['ExpoSpeechRecognitionModule']['getSupportedLocales']>[0];
@@ -38,7 +38,10 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  const [native,setNative]=useState<NativeRecognition|null>(null);
  const [listening,setListening]=useState(false);
  const [issue,setIssue]=useState('');
- const [model,setModel]=useState<LocalModelState>('unknown');
+ const [modelReport,setModelReport]=useState<{locale:string;value:LocalModelState}>({locale:'',value:'unknown'});
+ const model=modelReport.locale===locale[language]?modelReport.value:'unknown';
+ const probeEpoch=useRef(0);
+ const languageRef=useRef(language);languageRef.current=language;
  const [checkingModel,setCheckingModel]=useState(false);
  const active=useRef<{id:string;token:number}|null>(null);
  const epoch=useRef(0);
@@ -49,23 +52,25 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  callbacks.current={onFinal,onPartial};
  useEffect(()=>{setNative(getRecognizer());},[]);
  const checkModel=useCallback(async()=>{
-  if(Platform.OS!=='android'||!native?.getSupportedLocales){setModel('unknown');return;}
+  const token=++probeEpoch.current;
+  const requestedLocale=locale[language];
+  if(Platform.OS!=='android'||!native?.getSupportedLocales){
+   if(mounted.current){setModelReport({locale:requestedLocale,value:'unknown'});setCheckingModel(false);}
+   return;
+  }
   setCheckingModel(true);
-  try{
-   const info=await native.getSupportedLocales({});
-   setModel(localModelState(locale[language],info));
-  }catch{setModel('unknown');}
-  finally{setCheckingModel(false);}
+  const status=await queryLocalModelState(requestedLocale,
+   ()=>native.getSupportedLocales!({}),
+   ()=>mounted.current&&probeEpoch.current===token&&languageRef.current===language);
+  if(status!==null){
+   setModelReport({locale:requestedLocale,value:status});
+   setCheckingModel(false);
+  }
  },[native,language]);
  useEffect(()=>{
-  let live=true;
-  if(Platform.OS!=='android'||!native?.getSupportedLocales){setModel('unknown');return;}
-  setCheckingModel(true);
-  void native.getSupportedLocales({}).then(info=>{
-   if(live)setModel(localModelState(locale[language],info));
-  }).catch(()=>{if(live)setModel('unknown');}).finally(()=>{if(live)setCheckingModel(false);});
-  return()=>{live=false;};
- },[native,language]);
+  void checkModel();
+  return()=>{probeEpoch.current++;};
+ },[checkModel]);
  const stop=useCallback(()=>{
   epoch.current++;
   active.current=null;
@@ -142,9 +147,10 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   if(Platform.OS!=='android'||!native?.androidTriggerOfflineModelDownload)return;
   try{
    const response=await native.androidTriggerOfflineModelDownload({locale:locale[language]});
+   if(!mounted.current||languageRef.current!==language)return;
    setIssue('Modelo local: '+response.status+'. Comprueba disponibilidad antes de iniciar.');
    if(response.status==='download_success')await checkModel();
-  }catch{setIssue('No se pudo solicitar el modelo local para este idioma.');}
+  }catch{if(mounted.current&&languageRef.current===language)setIssue('No se pudo solicitar el modelo local para este idioma.');}
  },[native,language,checkModel]);
  return {available:!!native,listening,issue,model,checkingModel,checkModel,start,stop,downloadModel,
   canDownload:!!native&&Platform.OS==='android'&&!!native.androidTriggerOfflineModelDownload};
