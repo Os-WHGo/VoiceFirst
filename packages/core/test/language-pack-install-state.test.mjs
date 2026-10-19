@@ -29,3 +29,19 @@ test('abort prevents promotion and invalid manifest fails closed',()=>{
  assert.equal(advanceLanguagePackInstall({...started.state,phase:'absent'},'abort').status,'rejected');
  assert.equal(advanceLanguagePackInstall(aborted.state,'abort').status,'rejected');
 });
+
+test('journal revisions increase at every phase and reject unsafe counters',()=>{
+ const started=beginLanguagePackInstall(pack).state;
+ assert.equal(started.revision,0);
+ const verified=advanceLanguagePackInstall(started,'verify',hash).state;
+ assert.equal(verified.revision,1);
+ const installed=advanceLanguagePackInstall(verified,'commit').state;
+ assert.equal(installed.revision,2);
+ const failed=advanceLanguagePackInstall(started,'abort').state;
+ assert.equal(failed.revision,1);
+ for(const revision of [-1,1.2,NaN,Infinity,'1',Number.MAX_SAFE_INTEGER]){
+  assert.equal(advanceLanguagePackInstall({...started,revision},'abort').status,'rejected');
+ }
+ // Legacy records without revision are interpreted as revision zero.
+ assert.equal(advanceLanguagePackInstall({...started,revision:undefined},'abort').state.revision,1);
+});

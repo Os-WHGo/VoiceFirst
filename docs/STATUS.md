@@ -168,3 +168,8 @@ No se ha generado ni instalado un IPA/APK; no hay audios originales producidos p
 - The mobile store uses `expo-sqlite/kv-store` functional `setItem(key, updater)`, which Expo SDK57 executes in an exclusive SQLite transaction; it aborts writes if the current validated snapshot differs from the expected one, including a competing install, failed retry or commit. No new database or dependencies, no deletion or schema migration.
 - Deterministic native-adapter mocks and coordinator tests cover stale abort, competing starts, explicit restart and corrupt journals. A JavaScript gate still guards I/O in the running process; atomicity here applies to the journal key, not the filesystem move, and identical ABA snapshots or different physical app processes remain to be evaluated on hardware.
 - Native Android/iOS execution remains mandatory before classifying this as validated recovery.
+
+## 2026-10-19 · Generation-safe journal updates (ABA mitigation)
+- Persisted optional pack journals now have a monotonic `revision` counter. New sessions start at 0; each verify/abort/commit/retry increments it and the same-key transactional save requires the next revision. Legacy journals without a counter remain readable and receive revision 1 on their first permitted transition, with no migration or deletion.
+- Stale staging snapshots can no longer match a subsequent staging state after an abort and retry with the same manifest. Overflow, invalid revisions and counter rollback fail closed. Deterministic core and mobile CAS tests cover this sequence.
+- SQLite KV transaction atomicity does not include filesystem copy/move, so crash/restart, UI integration and physical-device acceptance remain pending. No new dependencies, background entitlement or network endpoint.

@@ -1,5 +1,5 @@
 /** Persisted state transitions. Callers must verify actual bytes before providing a digest. */
-import {beginLanguagePackInstall,advanceLanguagePackInstall,type PackInstallState} from './language-pack-install-state.js';
+import {beginLanguagePackInstall,advanceLanguagePackInstall,nextPackRevision,type PackInstallState} from './language-pack-install-state.js';
 import {planLanguagePacks,type LanguagePack} from './language-packs.js';
 import {PackOperationGate} from './pack-operation-gate.js';
 import {hashFileByChunks,type ChunkedFileSource,type IncrementalSha256} from './chunked-file-hash.js';
@@ -27,8 +27,12 @@ async function startPackSessionUnlocked(pack:LanguagePack,store:PackJournalStore
  if(restartFailed){
   if(current.status!=='ok'||current.state.phase!=='failed')return {status:'blocked',reason:'journal-not-failed'};
  }else if(current.status!=='empty')return {status:'blocked',reason:current.status==='ok'?'existing-journal':'unreadable-journal'};
- if(!await store.save(begin.state,restartFailed&&current.status==='ok'?current.state:null))return {status:'blocked',reason:'write'};
- return {status:'ok',state:begin.state};
+ const prior=restartFailed&&current.status==='ok'?current.state:null;
+ const revision=prior?nextPackRevision(prior):0;
+ if(revision===null)return {status:'blocked',reason:'revision-overflow'};
+ const state={...begin.state,revision};
+ if(!await store.save(state,prior))return {status:'blocked',reason:'write'};
+ return {status:'ok',state};
 }
 export async function transitionPackSession(id:string,event:'verify'|'commit'|'abort',store:PackJournalStore,digest?:string):Promise<SessionResult>{
  const guarded=await sessionGate.run(id,()=>transitionPackSessionUnlocked(id,event,store,digest));

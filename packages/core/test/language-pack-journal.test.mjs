@@ -26,3 +26,13 @@ test('journal persists trusted payload size and rejects malformed sizes',()=>{
  // Legacy journals are readable for diagnosis, but mobile activation requires size.
  assert.equal(readLanguagePackJournal(JSON.stringify(base)).status,'ok');
 });
+
+test('legacy journal remains readable while revision metadata is strictly bounded',()=>{
+ assert.equal(readLanguagePackJournal(JSON.stringify(base)).status,'ok');
+ for(const revision of [-1,0.5,'1',null,Number.MAX_SAFE_INTEGER+1]){
+  assert.equal(readLanguagePackJournal(JSON.stringify({...base,revision})).status,'rejected');
+ }
+ const versioned=readLanguagePackJournal(JSON.stringify({...base,revision:17}));
+ assert.equal(versioned.status,'ok');
+ assert.equal(versioned.state.revision,17);
+});

@@ -8,7 +8,7 @@ export function readLanguagePackJournal(raw:string):JournalRead{
  try{value=JSON.parse(raw);}catch{return {status:'rejected',reason:'invalid-json'};}
  if(!value||typeof value!=='object'||Array.isArray(value))return {status:'rejected',reason:'invalid-state'};
  const item=value as Record<string,unknown>;
- if(Object.keys(item).some(key=>!['id','version','phase','expectedSha256','expectedBytes','verifiedSha256'].includes(key)))return {status:'rejected',reason:'invalid-state'};
+ if(Object.keys(item).some(key=>!['id','version','phase','expectedSha256','expectedBytes','verifiedSha256','revision'].includes(key)))return {status:'rejected',reason:'invalid-state'};
  const state=item as unknown as PackInstallState;
  const recovery=planLanguagePackRecovery(state);
  if(recovery.action==='reject')return {status:'rejected',reason:'invalid-state'};

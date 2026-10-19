@@ -132,3 +132,24 @@ test('failed retry passes the failed snapshot, never a blind overwrite',async()=
  assert.deepEqual(expectedSeen,prior);
  assert.equal(state.phase,'staging');
 });
+
+test('restart advances generation beyond aborted staging even when manifest matches',async()=>{
+ const s=store();
+ const original=(await startPackSession(pack,s)).state;
+ assert.equal(original.revision,0);
+ const failed=(await transitionPackSession(pack.id,'abort',s)).state;
+ assert.equal(failed.revision,1);
+ const retried=(await retryPackSession(pack,s)).state;
+ assert.equal(retried.revision,2);
+ assert.equal(retried.phase,'staging');
+ assert.equal(retried.expectedSha256,original.expectedSha256);
+ assert.equal((await transitionPackSession(pack.id,'verify',s,digest)).state.revision,3);
+ assert.equal((await transitionPackSession(pack.id,'commit',s)).state.revision,4);
+});
+test('retry refuses a revision that cannot be advanced safely',async()=>{
+ const stuck={id:pack.id,version:pack.version,phase:'failed',expectedSha256:digest,expectedBytes:pack.bytes,revision:Number.MAX_SAFE_INTEGER};
+ let saves=0;
+ const s={load:async()=>({status:'ok',state:stuck}),save:async()=>{saves++;return true;}};
+ assert.equal((await retryPackSession(pack,s)).reason,'revision-overflow');
+ assert.equal(saves,0);
+});
