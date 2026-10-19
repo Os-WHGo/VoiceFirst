@@ -31,5 +31,5 @@ export function scorePlacement(language:TargetLanguage,answers:readonly Placemen
   const valid=item.accepted.some(a=>normalizedUtterance(a,language)===normalizedUtterance(answer.response,language));
   if(valid){correct++;skills[item.skill].correct++;}else if(firstGap===items.length)firstGap=i;
  }
- return {language,answered,correct,uncertain,skipped,recommendedLessonId:items[Math.min(firstGap,items.length-1)]!.lessonId,skillScores:skills,provisional:true,certification:false};
+ return {language,answered,correct,uncertain,skipped,recommendedLessonId:firstGap===items.length?(lessonsFor(language)[Math.min(limit,lessonsFor(language).length-1)]?.id??items[items.length-1]!.lessonId):items[firstGap]!.lessonId,skillScores:skills,provisional:true,certification:false};
 }
