@@ -33,5 +33,9 @@ export const packJournalStore={
 
 /** Explicit small-pack verification. Caller must first stage payload.bin on disk. */
 export async function verifySmallStagedPack(id:string){
- return verifyStagedPackSession(id,packJournalStore,hashSmallStagedPack);
+ return verifyStagedPackSession(id,packJournalStore,async(packId,expectedBytes)=>{
+  const file=new File(Paths.document,'voicefirst-pack-staging',packId,'payload.bin');
+  if(!Number.isSafeInteger(expectedBytes)||!expectedBytes||!file.exists||file.size!==expectedBytes)return null;
+  return hashSmallStagedPack(packId);
+ });
 }
