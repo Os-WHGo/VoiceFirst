@@ -88,3 +88,5 @@ export * from './language-pack-recovery.js';
 export * from './language-pack-journal.js';
 
 export * from './language-pack-install-session.js';
+
+export * from './small-pack-recovery-policy.js';
