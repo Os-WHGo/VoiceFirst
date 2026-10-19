@@ -43,11 +43,15 @@ async function transitionPackSessionUnlocked(id:string,event:'verify'|'commit'|'
  * The native adapter must hash the complete staged file and report missing files as null.
  */
 export async function verifyStagedPackSession(id:string,store:PackJournalStore,hashStagedBytes:(id:string)=>Promise<string|null>):Promise<SessionResult>{
- const current=await store.load(id);
- if(current.status!=='ok'||current.state.id!==id||current.state.phase!=='staging')return {status:'blocked',reason:'missing-or-invalid-staging'};
- let digest:string|null;
- try{digest=await hashStagedBytes(id);}catch{return {status:'blocked',reason:'staged-file-read'};}
- if(typeof digest!=='string'||!/^[a-f0-9]{64}$/i.test(digest))return {status:'blocked',reason:'staged-file-read'};
- const guarded=await sessionGate.run(id,()=>transitionPackSessionUnlocked(id,'verify',store,digest));
+ // Hold the same per-pack gate across journal read, hashing and write.
+ // Previously a concurrent abort/commit could race with the file hash.
+ const guarded=await sessionGate.run(id,async():Promise<SessionResult>=>{
+  const current=await store.load(id);
+  if(current.status!=='ok'||current.state.id!==id||current.state.phase!=='staging')return {status:'blocked',reason:'missing-or-invalid-staging'};
+  let digest:string|null;
+  try{digest=await hashStagedBytes(id);}catch{return {status:'blocked',reason:'staged-file-read'};}
+  if(typeof digest!=='string'||!/^[a-f0-9]{64}$/i.test(digest))return {status:'blocked',reason:'staged-file-read'};
+  return transitionPackSessionUnlocked(id,'verify',store,digest);
+ });
  return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
 }
