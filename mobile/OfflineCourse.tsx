@@ -10,7 +10,7 @@ import Storage from 'expo-sqlite/kv-store';
 import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
   chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,courseReviewQueue,courseReviewSummary,voluntaryCourseReview,
   type CourseProgress,type TargetLanguage,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences,
-  currentVoiceTurn,voiceTranscriptDisposition,lessonDisplayPolicy,pronunciationReadingFor} from '@voicefirst/core';
+  currentVoiceTurn,voiceTranscriptDisposition,lessonDisplayPolicy,pronunciationReadingFor,readingAidCopy} from '@voicefirst/core';
 
 const localDay=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const storeKey=(language:TargetLanguage)=>`voicefirst.curriculum.v1.${language}`;
@@ -43,6 +43,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   // Reading guides are opt-in and never supplied during unaided recall/checkpoints.
   const reading=current&&(current.type==='listen'||current.type==='repeat')
     ?pronunciationReadingFor(current.utterance,target,nativeLanguage):null;
+  const readingCopy=readingAidCopy[nativeLanguage];
   const today=localDay();
   const reviewSummary=progress?courseReviewSummary(progress,today):null;
   const reviewQueue=progress?courseReviewQueue(progress,today):[];
@@ -168,16 +169,16 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
     <Text style={s.muted}>{lesson.band} · {lesson.goal[nativeLanguage]} · {status==='completed'?'Repaso':'Lección'} · {progress?.completed.length??0}/{lessons.length} completadas</Text>
     {progress&&!locked&&(active? <>
       <Text style={s.stage}>{reviewExerciseId?'Repaso individual':`Paso ${step+1}/${lesson.exercises.length}`}: {current?.type}</Text>
-      <Action label="Pausar clase" onPress={()=>{playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);setActive(false);}}/>
+      <Action label="Pausar clase" onPress={()=>{setShowReading(false);playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);setActive(false);}}/>
       {current?.type==='listen'||current?.type==='repeat'?<>
         <Text style={s.phrase}>{current?.utterance}</Text>
-        <Action label={showReading?'Ocultar guía de pronunciación':'Cómo leer esta frase'} onPress={()=>setShowReading(x=>!x)}/>
+        <Action label={showReading?readingCopy.hide:readingCopy.show} onPress={()=>setShowReading(x=>!x)}/>
         {showReading&&(reading?<View style={s.readingBox}>
-          <Text style={s.readingLabel}>Lectura aproximada en tu idioma · pendiente de revisión lingüística</Text>
+          <Text style={s.readingLabel}>{readingCopy.heading}</Text>
           <Text selectable style={s.readingText}>{reading.reading}</Text>
           <Text style={s.muted}>{reading.stressAndArticulation}</Text>
-          <Text style={s.note}>Borrador experimental. No determina si tu pronunciación es correcta; escucha un modelo si hay una voz compatible.</Text>
-        </View>:<Text style={s.note}>Aún no hay guía de lectura para esta frase y este idioma de apoyo. No generamos pronunciaciones sin revisar.</Text>)}
+          <Text style={s.note}>{readingCopy.disclaimer}</Text>
+        </View>:<Text style={s.note}>{readingCopy.unavailable}</Text>)}
         {(experience.instructionFormat==='full-context'||showContext)&&<Text style={s.muted}>{current?.meaning[nativeLanguage]}</Text>}
         {experience.instructionFormat==='one-step'&&<Action label={showContext?'Ocultar ayuda':'Mostrar significado'} onPress={()=>setShowContext(x=>!x)}/>}
         <View style={s.row}><Action label={speaking?'Reproduciendo…':'Escuchar modelo'} onPress={()=>play()}/><Action label="Continuar" onPress={forward}/></View>

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {pronunciationReadingFor,prototypePronunciationReadings,lessonsFor,targetLanguages,learningPairs} from '../dist/index.js';
+import {pronunciationReadingFor,prototypePronunciationReadings,readingAidCopy,lessonsFor,targetLanguages,learningPairs} from '../dist/index.js';
 
 test('pilot readings are per exact target and learner language, not fake 30-pair coverage',()=>{
  assert.equal(prototypePronunciationReadings.length,4);
@@ -12,6 +12,7 @@ test('pilot readings are per exact target and learner language, not fake 30-pair
   assert.notEqual(item.target,item.known);
   assert.equal(item.status,'prototype-unreviewed');
   assert.equal(item.attribution,'voicefirst-original');
+  assert.equal(item.noteLanguage,item.known);
   assert.ok(item.reading.length>2);
   assert.ok(item.stressAndArticulation.length>15);
   assert.ok(lessonsFor(item.target).some(l=>l.exercises.some(e=>e.utterance===item.phrase)));
@@ -43,5 +44,29 @@ test('UI limits phonetic drafts to voluntary listening/repeating; recall has no 
  assert.match(source,/pronunciationReadingFor\(current\.utterance,target,nativeLanguage\)/);
  assert.match(source,/current\.type==='listen'\|\|current\.type==='repeat'/);
  assert.match(source,/setShowReading\(false\)/);
- assert.match(source,/pendiente de revisión/i);
+ assert.match(source,/readingCopy\.heading/);
+ assert.match(source,/readingCopy\.disclaimer/);
+ assert.match(source,/readingCopy\.unavailable/);
+});
+
+test('pronunciation help controls and messages are localized for all six known languages',()=>{
+ assert.deepEqual(Object.keys(readingAidCopy).sort(),[...targetLanguages].sort());
+ for(const known of targetLanguages){
+  const v=readingAidCopy[known];
+  for(const field of ['show','hide','heading','unavailable','disclaimer']){
+   assert.equal(typeof v[field],'string');
+   assert.ok(v[field].length>10,`${known}: ${field} must be substantive`);
+  }
+ }
+ assert.match(readingAidCopy['en-CA'].heading,/reading/i);
+ assert.match(readingAidCopy.es.heading,/lectura/i);
+ assert.equal(prototypePronunciationReadings.find(r=>r.target==='es')?.noteLanguage,'en-CA');
+ assert.match(prototypePronunciationReadings.find(r=>r.target==='es')?.stressAndArticulation,/Spanish h is silent/);
+});
+test('helper text cannot leak to scoring stages or stay opened after pause',()=>{
+ const source=readFileSync(new URL('../../../mobile/OfflineCourse.tsx',import.meta.url),'utf8');
+ assert.match(source,/setShowReading\(false\);playbackEpoch\.current\+\+;mic\.stop\(\)/);
+ assert.match(source,/reading=current&&\(current\.type==='listen'\|\|current\.type==='repeat'\)/);
+ assert.match(source,/readingAidCopy\[nativeLanguage\]/);
+ assert.doesNotMatch(source,/phoneticScore|pronunciationGrade/);
 });
