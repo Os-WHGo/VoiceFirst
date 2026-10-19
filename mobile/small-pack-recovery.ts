@@ -11,7 +11,7 @@ export type SmallPackRecovery=
  |{status:'missing-files'}
  |{status:'blocked';reason:string};
 async function matches(file:File,hash:string){
- if(!file.exists||file.size<=0||file.size>LIMIT)return false;
+ if(!file.exists||!Number.isSafeInteger(file.size)||file.size<=0||file.size>LIMIT)return false;
  const bytes=await file.bytes();
  return bytes.byteLength===file.size&&sha256Bytes(bytes).toLowerCase()===hash;
 }
