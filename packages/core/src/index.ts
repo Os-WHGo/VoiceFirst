@@ -80,3 +80,5 @@ export * from './language-packs.js';
 
 
 export * from './language-pack-install-state.js';
+
+export * from './language-pack-update.js';
