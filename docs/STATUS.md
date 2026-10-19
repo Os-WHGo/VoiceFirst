@@ -157,3 +157,8 @@ Commits de código: `76f289a88b945d68a7450d5e73b03e21db50cccb`, `e1d15d42061d78c
 
 ### Bloqueadores abiertos
 No se ha generado ni instalado un IPA/APK; no hay audios originales producidos para el inventario de 194 líneas, revisión auditiva de regionalismos, ni firma criptográfica de editores; no hay pruebas físicas de lector de carpetas iOS/Android, permisos de almacenamiento, Bluetooth/AirPods/lentes, micrófono real, pantalla bloqueada o duración de batería. El sistema TTS puede depender de la plataforma y no está certificado offline. Currículo completo hasta C2 y perfiles de menores siguen pendientes de contenido/revisión y no pueden anunciarse como terminados.
+
+## 2026-10-19 · Presentación de baja estimulación (rama de desarrollo)
+- La preferencia `sensoryPresentation=calm` afecta ahora dos pantallas de clases: paleta y espaciado más sobrios; biblioteca de lecciones/repasos y selector de situaciones tras acciones explícitas reversibles. En la vista estándar siguen visibles.
+- No se ocultan controles principales del ejercicio, progreso, avisos de micrófono ni acciones para acceder a contenidos. No se infiere diagnóstico.
+- Prueba unitaria de la política de visibilidad; pendiente inspección visual y lectores de pantalla en teléfonos Android/iOS reales. No equivale a certificación de accesibilidad.

@@ -10,7 +10,7 @@ import Storage from 'expo-sqlite/kv-store';
 import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
   chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,courseReviewQueue,courseReviewSummary,voluntaryCourseReview,
   type CourseProgress,type TargetLanguage,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences,
-  currentVoiceTurn,voiceTranscriptDisposition} from '@voicefirst/core';
+  currentVoiceTurn,voiceTranscriptDisposition,lessonDisplayPolicy} from '@voicefirst/core';
 
 const localDay=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const storeKey=(language:TargetLanguage)=>`voicefirst.curriculum.v1.${language}`;
@@ -30,6 +30,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const [requestedDetail,setRequestedDetail]=useState('');
   const [sessionSummary,setSessionSummary]=useState('');
   const [showContext,setShowContext]=useState(false);
+  const [showOptional,setShowOptional]=useState(false);
   const deferred=useRef<string[]>([]);
   const mounted=useRef(true);
   const playbackEpoch=useRef(0);
@@ -42,7 +43,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const reviewSummary=progress?courseReviewSummary(progress,today):null;
   const reviewQueue=progress?courseReviewQueue(progress,today):[];
   useEffect(()=>{
-    mounted.current=true;let valid=true;
+    mounted.current=true;let valid=true;setShowOptional(false);
     playbackEpoch.current++;setProgress(null);setLocked('');setStep(0);setReviewExerciseId(null);setActive(false);setAnswer('');setPassed(false);setSessionSummary('');deferred.current=[];
     void Promise.all([Storage.getItem(storeKey(target)),Storage.getItem(cursorKey(target))]).then(([raw,cursor])=>{
       if(!valid)return;
@@ -152,9 +153,11 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   };
   if(!lesson)return null;
   const status=progress?courseLessonStatus(progress,lesson):'locked';
-  return <View style={s.wrap}>
+  const display=lessonDisplayPolicy(experience.sensoryPresentation,showOptional);
+  return <View style={[s.wrap,display.calm&&s.calmWrap]}>
     <Text style={s.kicker}>CURSO PROGRAMADO · SIN IA · PROGRESO LOCAL</Text>
     <Text style={s.heading}>Clase de hoy</Text>
+    {display.calm&&<Text style={s.calmNotice}>Vista de baja estimulación: clases y repasos adicionales disponibles cuando los solicites.</Text>}
     {!!locked && <Text style={s.warning}>{locked}</Text>}
     {!progress&&!locked&&<Text style={s.muted}>Recuperando tu progreso…</Text>}
     <Text style={s.muted}>{lesson.band} · {lesson.goal[nativeLanguage]} · {status==='completed'?'Repaso':'Lección'} · {progress?.completed.length??0}/{lessons.length} completadas</Text>
@@ -195,6 +198,8 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
       {!!sessionSummary&&<Text style={s.muted}>{sessionSummary}</Text>}
       <View style={s.row}><Action label="Empezar / continuar clase" onPress={()=>{if(!experience.returnToLastStep)setStep(0);setActive(true);setPassed(false);setFeedback('');setSessionSummary('');deferred.current=[];}}/></View>
     </>)}
+    {progress&&!locked&&!display.showOptionalSections&&<Action label="Mostrar biblioteca de clases y repasos" onPress={()=>setShowOptional(true)}/>}
+    {progress&&!locked&&display.showOptionalSections&&<>
     {progress&&!locked&&reviewSummary&&<View>
       <Text style={s.heading}>Repasos disponibles</Text>
       <Text style={s.muted}>{reviewSummary.due} ejercicios pendientes · {reviewSummary.overdue} anteriores a hoy · {reviewSummary.completedLessons} lecciones completadas</Text>
@@ -215,8 +220,10 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
       if(courseLessonStatus(progress,l)==='locked'){setFeedback('Primero completa la lección anterior.');return;}
       playbackEpoch.current++;setChosenId(l.id);setReviewExerciseId(null);setStep(0);setActive(false);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];mic.stop();void stopCuratedVoice();
     }}/>)}</View>}
+    {display.calm&&<Action label="Ocultar biblioteca y repasos" onPress={()=>setShowOptional(false)}/>}
+    </>}
     <Text style={s.note}>Se guarda progreso local sin audio ni transcripciones. Reconocimiento limitado al primer plano, al idioma y modelos instalados; no hay audio de fondo garantizado. La síntesis de voz del sistema tampoco está verificada sin Internet. Falta probar en hardware y cifrar datos sensibles.</Text>
   </View>;
 }
 function Action({label,onPress}:{label:string;onPress:()=>void}){return <Pressable accessibilityRole="button" style={s.btn} onPress={onPress}><Text style={s.btnTxt}>{label}</Text></Pressable>}
-const s=StyleSheet.create({wrap:{backgroundColor:'#142339',borderColor:'#2B435A',borderWidth:1,borderRadius:18,padding:20,gap:11,marginTop:12},kicker:{fontSize:11,color:'#89D4C5',fontWeight:'700',letterSpacing:1.2},heading:{fontSize:20,color:'#F2F7FC',fontWeight:'700'},muted:{fontSize:13,color:'#A6BBD0',lineHeight:20},stage:{color:'#89D4C5',fontSize:13,fontWeight:'700'},phrase:{color:'#F3DFC1',fontSize:18,fontWeight:'700'},row:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:6},btn:{backgroundColor:'#22414A',borderColor:'#89D4C5',borderWidth:1,borderRadius:12,paddingVertical:12,paddingHorizontal:15,minHeight:44},btnTxt:{color:'#F2F7FC',fontWeight:'700',fontSize:12},input:{borderColor:'#567284',borderWidth:1,borderRadius:12,padding:12,minHeight:55,color:'#F2F7FC',fontSize:15},warning:{color:'#FFE19C',fontSize:12,lineHeight:18},note:{color:'#A6BBD0',fontSize:11,lineHeight:17}});
+const s=StyleSheet.create({calmWrap:{backgroundColor:'#101B28',borderColor:'#344759',gap:14},calmNotice:{color:'#E3ECF3',fontSize:13,lineHeight:20},wrap:{backgroundColor:'#142339',borderColor:'#2B435A',borderWidth:1,borderRadius:18,padding:20,gap:11,marginTop:12},kicker:{fontSize:11,color:'#89D4C5',fontWeight:'700',letterSpacing:1.2},heading:{fontSize:20,color:'#F2F7FC',fontWeight:'700'},muted:{fontSize:13,color:'#A6BBD0',lineHeight:20},stage:{color:'#89D4C5',fontSize:13,fontWeight:'700'},phrase:{color:'#F3DFC1',fontSize:18,fontWeight:'700'},row:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:6},btn:{backgroundColor:'#22414A',borderColor:'#89D4C5',borderWidth:1,borderRadius:12,paddingVertical:12,paddingHorizontal:15,minHeight:44},btnTxt:{color:'#F2F7FC',fontWeight:'700',fontSize:12},input:{borderColor:'#567284',borderWidth:1,borderRadius:12,padding:12,minHeight:55,color:'#F2F7FC',fontSize:15},warning:{color:'#FFE19C',fontSize:12,lineHeight:18},note:{color:'#A6BBD0',fontSize:11,lineHeight:17}});

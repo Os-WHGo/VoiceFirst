@@ -11,7 +11,7 @@ import * as Speech from 'expo-speech';
 import {selectGuidedDialogues,newDialogueRun,dialogueAudioCue,evaluateDialogueTurn,
   getSavedDialogueRun,newLearningProgress,chooseDialogue,saveDialogueAttempt,startDialogueReview,
   decideTutorFeedback,tutorFeedbackForLanguage,makeProgressWriter,type DialogueAttempt,type LocalLearningProgress,type TargetLanguage,type LearningFocus,
-  type GuidedDialogue,type ExperiencePreferences,defaultExperiencePreferences,audioCueForDialogue,answerAudioCuesForDialogue,currentVoiceTurn,voiceTranscriptDisposition} from '@voicefirst/core';
+  type GuidedDialogue,type ExperiencePreferences,defaultExperiencePreferences,audioCueForDialogue,answerAudioCuesForDialogue,currentVoiceTurn,voiceTranscriptDisposition,lessonDisplayPolicy} from '@voicefirst/core';
 import {loadLocalProgress,storeSerializedLocalProgress} from './progress-storage';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 import {useOnDeviceAnswer,type DictationResult} from './use-on-device-answer';
@@ -42,6 +42,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
   const [deferredCorrections,setDeferredCorrections]=useState<string[]>([]);
   const [showSupport,setShowSupport]=useState(false);
   const [showExamples,setShowExamples]=useState(false);
+  const [showOtherSituations,setShowOtherSituations]=useState(false);
   const [handsFree,setHandsFree]=useState(false);
   const [latestSpeech,setLatestSpeech]=useState('');
   const voiceEpoch=useRef(0);
@@ -176,7 +177,7 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
   };
   const changeDialogue=(id:string)=>{
     stopListening();void stopCuratedVoice();autoNextRef.current=false;setHandsFree(false);
-    setDialogueId(id);setDraft('');setFeedback('');setShowExamples(false);setPendingSuggestion('');setDeferredCorrections([]);setShowSupport(false);
+    setDialogueId(id);setShowOtherSituations(false);setDraft('');setFeedback('');setShowExamples(false);setPendingSuggestion('');setDeferredCorrections([]);setShowSupport(false);
   };
   const repeatCompleted=()=>{
     if(!progress||!dialogue)return;
@@ -186,9 +187,11 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
   };
   const downloadOfflineModel=async()=>{await mic.downloadModel();};
   if(!dialogue)return null;
-  return <View style={s.wrap}>
+  const display=lessonDisplayPolicy(experience.sensoryPresentation,showOtherSituations);
+  return <View style={[s.wrap,display.calm&&s.calmWrap]}>
     <Text style={s.kicker}>CURSO ESTRUCTURADO · DIÁLOGO · SIN API EXTERNA</Text>
     <Text style={s.title}>Practica contestando, no traduciendo</Text>
+    {display.calm&&<Text style={s.calmNotice}>Vista de baja estimulación: puedes abrir otras situaciones cuando las necesites.</Text>}
     {storageError?<Text style={s.warning}>{storageError}</Text>:null}
     {!progress && !storageError?<Text style={s.sub}>Abriendo progreso guardado…</Text>:null}
     <Text style={s.sub}>{dialogue.label[nativeLanguage]} · {dialogue.level} · {progress?.dialogues[dialogue.id]?.completions??0} prácticas completadas</Text>
@@ -229,13 +232,16 @@ export function GuidedDialoguePractice({nativeLanguage,target,focus,rate=0.88,ex
       {!!feedback&&<Text style={s.sub}>{feedback}</Text>}
       {!!pendingSuggestion&&<Action label="Mostrar sugerencia" onPress={()=>{setFeedback(pendingSuggestion);setPendingSuggestion('');}}/>}
     </>):null}
+    {!display.showOptionalSections?<Action label="Mostrar otras situaciones y repasos" onPress={()=>setShowOtherSituations(true)}/>:<>
     <Text style={s.step}>Otras situaciones y repasos</Text>
     <View style={s.row}>{dialogues.map(d=><Action key={d.id} label={`${d.domain==='foundation'?'Vida diaria':d.domain==='work'?'Trabajo':'Viajes'}${(progress?.dialogues[d.id]?.run.completed?' ✓':'')}`} onPress={()=>changeDialogue(d.id)}/>)}</View>
+    {display.calm&&<Action label="Ocultar otras situaciones" onPress={()=>setShowOtherSituations(false)}/>}
+    </>}
     <Text style={s.note}>Avance guardado en SQLite local, sin guardar audio ni transcripciones. El ASR del sistema solo se activa si está disponible sin red; los mensajes con baja confianza no puntúan. La selección de TTS aquí no garantiza voces instaladas offline, y el sistema puede usar sus propios servicios. Bluetooth y pantalla bloqueada aún necesitan pruebas físicas. Este prototipo está dirigido a adultos; acceso infantil pendiente de aprobación.</Text>
   </View>;
 }
 function Action({label,onPress}:{label:string;onPress:()=>void;key?:string}){return <Pressable accessibilityRole="button" style={s.button} onPress={onPress}><Text style={s.buttonText}>{label}</Text></Pressable>}
-const s=StyleSheet.create({wrap:{borderColor:'#2B435A',borderWidth:1,borderRadius:18,backgroundColor:'#142339',padding:18,gap:11,marginTop:12},
+const s=StyleSheet.create({calmWrap:{backgroundColor:'#101B28',borderColor:'#344759',gap:14},calmNotice:{color:'#E3ECF3',fontSize:13,lineHeight:20},wrap:{borderColor:'#2B435A',borderWidth:1,borderRadius:18,backgroundColor:'#142339',padding:18,gap:11,marginTop:12},
   kicker:{fontSize:11,color:'#89D4C5',fontWeight:'700'},title:{fontSize:19,fontWeight:'700',color:'#F2F7FC'},sub:{fontSize:13,color:'#A6BBD0',lineHeight:19},step:{color:'#89D4C5',fontWeight:'700'},question:{color:'#F3DFC1',fontSize:18,lineHeight:25,fontWeight:'700'},
   row:{flexDirection:'row',flexWrap:'wrap',gap:9},button:{backgroundColor:'#22414A',borderColor:'#89D4C5',borderWidth:1,borderRadius:12,padding:11,minHeight:44},buttonText:{color:'#F2F7FC',fontWeight:'700',fontSize:12},
   input:{borderColor:'#567284',borderWidth:1,borderRadius:12,padding:12,minHeight:63,color:'#F2F7FC',fontSize:15},hint:{color:'#F3DFC1',fontSize:12,lineHeight:21},success:{color:'#89D4C5',fontSize:16},warning:{color:'#FFE19C',fontSize:12,lineHeight:18},note:{fontSize:11,color:'#A6BBD0',lineHeight:17}});

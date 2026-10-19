@@ -56,3 +56,8 @@ export function explainPersonalization(pref:ExperiencePreferences){
     cefrCeiling:null,
   };
 }
+
+/** Keeps essential lesson controls visible; optional catalogs stay reachable by an explicit action. */
+export function lessonDisplayPolicy(presentation:SensoryPresentation,optionalExpanded=false){
+ return {calm:presentation==='calm',showOptionalSections:presentation==='standard'||optionalExpanded};
+}
