@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {decideSmallPackRecovery} from '../dist/index.js';
 const hash='a'.repeat(64);
-const base={id:'en-ca',version:'1.0.0',expectedSha256:hash,verifiedSha256:hash,phase:'verified'};
+const base={id:'en-ca',version:'1.0.0',expectedSha256:hash,expectedBytes:100,verifiedSha256:hash,phase:'verified'};
 test('recovery distinguishes safe promotion from ambiguous or corrupt folders',()=>{
  assert.equal(decideSmallPackRecovery(base,'destination-valid'),'promotion-interrupted');
  assert.equal(decideSmallPackRecovery({...base,phase:'installed'},'destination-valid'),'installed-verified');
@@ -24,6 +24,13 @@ test('malformed journal metadata cannot authorize recovery',()=>{
   {...base,phase:'unexpected'},
   null
  ]){
+  assert.equal(decideSmallPackRecovery(state,'destination-valid'),'blocked');
+ }
+});
+
+test('legacy and malformed-size journals never authorize physical promotion',()=>{
+ for(const value of [undefined,0,-1,3.5,Number.MAX_SAFE_INTEGER+1,'100']){
+  const state={...base,expectedBytes:value};
   assert.equal(decideSmallPackRecovery(state,'destination-valid'),'blocked');
  }
 });
