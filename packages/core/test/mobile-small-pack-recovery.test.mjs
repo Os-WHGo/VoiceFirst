@@ -63,6 +63,10 @@ function harness(phase='staging',withStage=true,faults={}){
    if(dirs.has('voicefirst-installed-packs/en-ca')&&journal.phase==='verified'){
     if(faults.changeJournalAtDestinationInspection)
       journal={...journal,revision:(journal.revision??0)+1,version:'2.0.0'};
+    if(faults.mutateInPlaceOnInspect){
+      journal.revision=(journal.revision??0)+1;
+      journal.version='2.0.0';
+    }
     return {status:'promotion-interrupted'};
    }
    return {status:'blocked',reason:'missing'};
@@ -154,5 +158,21 @@ test('resumed staging cannot commit a journal mutated during final promotion ins
  assert.deepEqual(await h.api.resumeVerifiedSmallPack('en-ca'),{status:'blocked',reason:'promotion-needs-recovery'});
  assert.equal(h.state().phase,'verified');
  assert.equal(h.state().version,'2.0.0');
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
+});
+
+test('finalization denies an in-place journal mutation during inspection',async()=>{
+ const h=harness('verified',false,{bothFolders:true,mutateInPlaceOnInspect:true});
+ h.dirs.delete('voicefirst-pack-staging/en-ca');
+ assert.deepEqual(await h.api.finalizeInterruptedSmallPack('en-ca'),{status:'blocked',reason:'journal-changed'});
+ assert.equal(h.state().version,'2.0.0');
+ assert.equal(h.state().phase,'verified');
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
+});
+test('verified recovery preserves promoted bytes after in-place journal mutation',async()=>{
+ const h=harness('verified',true,{mutateInPlaceOnInspect:true});
+ assert.deepEqual(await h.api.resumeVerifiedSmallPack('en-ca'),{status:'blocked',reason:'promotion-needs-recovery'});
+ assert.equal(h.state().version,'2.0.0');
+ assert.equal(h.state().phase,'verified');
  assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
 });

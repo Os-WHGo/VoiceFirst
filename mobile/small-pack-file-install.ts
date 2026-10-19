@@ -34,18 +34,19 @@ async function installSmallPackUnlocked(id:string,source:File):Promise<SmallPack
   if(new File(stage,'payload.bin').size!==journal.result.state.expectedBytes)return {status:'blocked',reason:'staging-size'};
   const verified=await verifySmallStagedPack(id);
   if(verified.status!=='ok')return {status:'blocked',reason:'checksum-or-journal'};
+  const pinnedVerified={...verified.state};
   // Check the staged bytes again immediately before promotion.
-  if(await hashSmallStagedPack(id)!==verified.state.expectedSha256)return {status:'blocked',reason:'staging-changed'};
+  if(await hashSmallStagedPack(id)!==pinnedVerified.expectedSha256)return {status:'blocked',reason:'staging-changed'};
   if(!destRoot.exists)destRoot.create({intermediates:true,idempotent:true});
   if(dest.exists)return {status:'blocked',reason:'destination-exists'};
   await stage.move(dest,{overwrite:false});created=false;
   const promoted=new File(dest,'payload.bin');
   if(!promoted.exists||!Number.isSafeInteger(promoted.size)||promoted.size<=0||promoted.size>LIMIT||promoted.size!==journal.result.state.expectedBytes)return {status:'blocked',reason:'promoted-file-invalid'};
   const promotedBytes=await promoted.bytes();
-  if(promotedBytes.byteLength!==promoted.size||sha256Bytes(promotedBytes).toLowerCase()!==verified.state.expectedSha256)return {status:'blocked',reason:'promoted-checksum'};
+  if(promotedBytes.byteLength!==promoted.size||sha256Bytes(promotedBytes).toLowerCase()!==pinnedVerified.expectedSha256)return {status:'blocked',reason:'promoted-checksum'};
   // Mark installed only after successful promotion. Interrupted promotions
   // require an explicit recovery procedure, never an automatic overwrite.
-  const committed=await commitPackSessionIfUnchanged(id,packJournalStore,verified.state);
+  const committed=await commitPackSessionIfUnchanged(id,packJournalStore,pinnedVerified);
   if(committed.status!=='ok')return {status:'blocked',reason:'promotion-needs-recovery'};
   return {status:'installed'};
  }catch{return {status:'blocked',reason:'file-operation'};}
@@ -68,9 +69,10 @@ export async function finalizeInterruptedSmallPack(id:string):Promise<SmallPackI
 async function finalizeInterruptedUnlocked(id:string):Promise<SmallPackInstallResult>{
  const before=await loadPackJournal(id);
  if(before.status!=='ok'||before.result.state.phase!=='verified')return {status:'blocked',reason:'journal-not-verified'};
+ const pinned={...before.result.state};
  const inspection=await inspectSmallPackRecovery(id);
  if(inspection.status!=='promotion-interrupted')return {status:'blocked',reason:inspection.status};
- const committed=await commitPackSessionIfUnchanged(id,packJournalStore,before.result.state);
+ const committed=await commitPackSessionIfUnchanged(id,packJournalStore,pinned);
  return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:committed.reason};
 }
 
@@ -85,13 +87,14 @@ async function resumeVerifiedUnlocked(id:string):Promise<SmallPackInstallResult>
  try{
   const journal=await loadPackJournal(id);
   if(journal.status!=='ok'||journal.result.state.phase!=='verified')return {status:'blocked',reason:'journal-not-verified'};
+  const pinned={...journal.result.state};
   const inspected=await inspectSmallPackRecovery(id);
   if(inspected.status!=='staging-interrupted')return {status:'blocked',reason:inspected.status};
   const stage=new Directory(Paths.document,'voicefirst-pack-staging',id);
   const destRoot=new Directory(Paths.document,'voicefirst-installed-packs');
   const dest=new Directory(destRoot,id);
   // Hash again immediately before moving; preserve both folders on failure.
-  if(!stage.exists||dest.exists||await hashSmallStagedPack(id)!==journal.result.state.expectedSha256)
+  if(!stage.exists||dest.exists||await hashSmallStagedPack(id)!==pinned.expectedSha256)
    return {status:'blocked',reason:'staging-changed-or-destination-exists'};
   if(!destRoot.exists)destRoot.create({intermediates:true,idempotent:true});
   if(dest.exists)return {status:'blocked',reason:'destination-exists'};
@@ -99,7 +102,7 @@ async function resumeVerifiedUnlocked(id:string):Promise<SmallPackInstallResult>
   // A second full hash of the promoted bytes is required before journal commit.
   const promoted=await inspectSmallPackRecovery(id);
   if(promoted.status!=='promotion-interrupted')return {status:'blocked',reason:'promoted-file-invalid'};
-  const committed=await commitPackSessionIfUnchanged(id,packJournalStore,journal.result.state);
+  const committed=await commitPackSessionIfUnchanged(id,packJournalStore,pinned);
   return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:'promotion-needs-recovery'};
  }catch{return {status:'blocked',reason:'file-operation'};}
 }
