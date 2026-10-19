@@ -21,7 +21,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
   const history=useRef<HistoryTurn[]>([]);
   const abort=useRef<AbortController|null>(null);
   useEffect(()=>()=>{abort.current?.abort();void Speech.stop();},[]);
-  useEffect(()=>{history.current=[];setTranscript('');setAnswer('');},[nativeLanguage,target]);
+  useEffect(()=>{history.current=[];setTranscript('');setAnswer('');setOnlineConsent(false);abort.current?.abort();},[nativeLanguage,target]);
   const stopSpeaking=useCallback(async()=>{await Speech.stop();setPhase('ready');},[]);
   const startRecording=async()=>{
     if(phase!=='ready')return;
