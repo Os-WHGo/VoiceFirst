@@ -59,3 +59,25 @@ test('malformed manifest never accesses dependency storage',async()=>{
  }
  assert.equal(reads,0);
 });
+
+test('concurrent session starts cannot both create a journal',async()=>{
+ let resolveLoad;
+ const waiting=new Promise(resolve=>{resolveLoad=resolve;});
+ let saves=0;
+ const s={load:async()=>{await waiting;return {status:'empty'};},save:async()=>{saves++;return true;}};
+ const first=startPackSession(pack,s);
+ assert.equal((await startPackSession(pack,s)).reason,'operation-busy');
+ resolveLoad();
+ assert.equal((await first).status,'ok');
+ assert.equal(saves,1);
+});
+test('concurrent transitions on same pack reject second operation',async()=>{
+ let unblock;
+ const waiting=new Promise(resolve=>{unblock=resolve;});
+ const state={id:pack.id,version:pack.version,phase:'staging',expectedSha256:digest};
+ const s={load:async()=>{await waiting;return {status:'ok',state};},save:async()=>true};
+ const first=transitionPackSession(pack.id,'verify',s,digest);
+ assert.equal((await transitionPackSession(pack.id,'abort',s)).reason,'operation-busy');
+ unblock();
+ assert.equal((await first).status,'ok');
+});
