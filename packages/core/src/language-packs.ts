@@ -3,12 +3,12 @@ import {targetLanguages,type TargetLanguage} from './types.js';
 export type PackKind='course'|'variant'|'asr'|'tts'|'tutor'|'exam';
 export interface LanguagePack {id:string;kind:PackKind;version:string;bytes:number;dependencies:readonly string[];locales:readonly TargetLanguage[];sha256:string;licenseId:string;licenseReviewed:boolean;sourceUrl:string}
 export type PackPlan={status:'ready';install:readonly string[];bytes:number}|{status:'invalid';reason:string};
-const validId=(id:string)=>/^[a-z0-9][a-z0-9._-]{0,99}$/.test(id);
+const validId=(id:unknown):id is string=>typeof id==='string'&&/^[a-z0-9][a-z0-9._-]{0,99}$/.test(id);
 export function planLanguagePacks(catalog:readonly LanguagePack[],requested:readonly string[],installed:readonly string[]=[]):PackPlan{
  const map=new Map<string,LanguagePack>();
  if(!Array.isArray(catalog)||!Array.isArray(requested)||!Array.isArray(installed)||catalog.length>500||requested.length>100||installed.length>500)return {status:'invalid',reason:'Catalog limit'};
  for(const p of catalog){
-  if(!p||!validId(p.id)||map.has(p.id)||!['course','variant','asr','tts','tutor','exam'].includes(p.kind)||!/^\d+\.\d+\.\d+$/.test(p.version)||!Number.isSafeInteger(p.bytes)||p.bytes<=0||!Array.isArray(p.dependencies)||p.dependencies.length>50||p.dependencies.some((d:string)=>typeof d!=='string'||!validId(d))||!Array.isArray(p.locales)||p.locales.length===0||p.locales.some((l:TargetLanguage)=>!targetLanguages.includes(l))||!(/^[a-f0-9]{64}$/i).test(p.sha256)||!p.licenseReviewed||!p.licenseId?.trim()||!p.sourceUrl?.startsWith('https://'))return {status:'invalid',reason:'Invalid manifest'};
+  if(!p||typeof p!=='object'||!validId(p.id)||map.has(p.id)||!['course','variant','asr','tts','tutor','exam'].includes(p.kind)||typeof p.version!=='string'||!/^\d+\.\d+\.\d+$/.test(p.version)||!Number.isSafeInteger(p.bytes)||p.bytes<=0||!Array.isArray(p.dependencies)||p.dependencies.length>50||p.dependencies.some((d:unknown)=>!validId(d))||!Array.isArray(p.locales)||p.locales.length===0||p.locales.some((l:TargetLanguage)=>!targetLanguages.includes(l))||typeof p.sha256!=='string'||!(/^[a-f0-9]{64}$/i).test(p.sha256)||p.licenseReviewed!==true||typeof p.licenseId!=='string'||!p.licenseId.trim()||typeof p.sourceUrl!=='string'||!p.sourceUrl.startsWith('https://'))return {status:'invalid',reason:'Invalid manifest'};
   map.set(p.id,p);
  }
  const installedSet=new Set(installed);
