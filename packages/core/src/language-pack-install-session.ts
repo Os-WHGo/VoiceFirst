@@ -43,14 +43,14 @@ async function transitionPackSessionUnlocked(id:string,event:'verify'|'commit'|'
 /** Verification must be backed by an actual byte reader, never by a manifest digest alone.
  * The native adapter must hash the complete staged file and report missing files as null.
  */
-export async function verifyStagedPackSession(id:string,store:PackJournalStore,hashStagedBytes:(id:string)=>Promise<string|null>):Promise<SessionResult>{
+export async function verifyStagedPackSession(id:string,store:PackJournalStore,hashStagedBytes:(id:string,expectedBytes?:number)=>Promise<string|null>):Promise<SessionResult>{
  // Hold the same per-pack gate across journal read, hashing and write.
  // Previously a concurrent abort/commit could race with the file hash.
  const guarded=await sessionGate.run(id,async():Promise<SessionResult>=>{
   const current=await store.load(id);
   if(current.status!=='ok'||current.state.id!==id||current.state.phase!=='staging')return {status:'blocked',reason:'missing-or-invalid-staging'};
   let digest:string|null;
-  try{digest=await hashStagedBytes(id);}catch{return {status:'blocked',reason:'staged-file-read'};}
+  try{digest=await hashStagedBytes(id,current.state.expectedBytes);}catch{return {status:'blocked',reason:'staged-file-read'};}
   if(typeof digest!=='string'||!/^[a-f0-9]{64}$/i.test(digest))return {status:'blocked',reason:'staged-file-read'};
   return transitionPackSessionUnlocked(id,'verify',store,digest);
  });
@@ -68,8 +68,8 @@ export async function verifyChunkedPackSession(
  createHasher:()=>IncrementalSha256,
  options:{chunkBytes?:number;maxBytes?:number;isCancelled?:()=>boolean}={}
 ):Promise<SessionResult>{
- return verifyStagedPackSession(id,store,async()=>{
+ return verifyStagedPackSession(id,store,async(_id,expectedBytes)=>{
   const result=await hashFileByChunks(openFile,createHasher,options);
-  return result.status==='ok'?result.sha256:null;
+  return result.status==='ok'&&result.bytes===expectedBytes?result.sha256:null;
  });
 }
