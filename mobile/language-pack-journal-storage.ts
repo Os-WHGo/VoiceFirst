@@ -1,4 +1,5 @@
 import Storage from 'expo-sqlite/kv-store';
+import {File,Paths} from 'expo-file-system';
 import {readLanguagePackJournal,verifyStagedPackSession,type PackInstallState} from '@voicefirst/core';
 import {hashSmallStagedPack} from './staged-small-pack-hash';
 const key=(id:string)=>'voicefirst.pack-journal.v1.'+id;
