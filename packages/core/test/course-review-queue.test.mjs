@@ -21,3 +21,11 @@ test('voluntary reviews require prior completion and include recall/checkpoint',
  assert.deepEqual(voluntaryCourseReview(done,lesson.id).map(x=>x.exercise.type),['recall','checkpoint']);
  assert.deepEqual(voluntaryCourseReview(done,'missing'),[]);
 });
+
+test('review summary ignores stale and foreign-language completed IDs',()=>{
+ const base=newCourseProgress('es');
+ const valid=lessonsFor('es')[0].id;
+ const foreign=lessonsFor('de')[0].id;
+ const progress={...base,completed:[valid,foreign,'removed-lesson',valid]};
+ assert.equal(courseReviewSummary(progress,'2026-10-18').completedLessons,1);
+});
