@@ -51,3 +51,7 @@ test('releases partially initialized native context when completion API is missi
  await assert.rejects(openLlamaRnSession({modelId:'test',verifiedFileUri:uri,contextTokens:1024,initLlama:async()=>({release:async()=>{released++}})}),/Invalid native context/);
  assert.equal(released,1);
 });
+
+test('preserves initialization failure if native cleanup also fails',async()=>{
+ await assert.rejects(openLlamaRnSession({modelId:'test',verifiedFileUri:uri,contextTokens:1024,initLlama:async()=>({release:async()=>{throw Error('cleanup failed')}})}),/Invalid native context/);
+});
