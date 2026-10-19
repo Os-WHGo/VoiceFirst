@@ -51,3 +51,5 @@ export * from './course-review-queue.js';
 export * from './placement.js';
 
 export * from './situation-practice.js';
+
+export * from './learning-experience.js';
