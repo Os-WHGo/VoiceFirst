@@ -1,13 +1,13 @@
 /** Persisted state transitions. Callers must verify actual bytes before providing a digest. */
 import {beginLanguagePackInstall,advanceLanguagePackInstall,type PackInstallState} from './language-pack-install-state.js';
-import type {LanguagePack} from './language-packs.js';
+import {planLanguagePacks,type LanguagePack} from './language-packs.js';
 export interface PackJournalStore {
  load(id:string):Promise<{status:'empty'}|{status:'ok';state:PackInstallState}|{status:'blocked'}>;
  save(state:PackInstallState):Promise<boolean>;
 }
 export type SessionResult={status:'ok';state:PackInstallState}|{status:'blocked';reason:string};
 export async function startPackSession(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
- if(!pack||!Array.isArray(pack.dependencies))return {status:'blocked',reason:'manifest'};
+ if(planLanguagePacks([pack],[]).status!=='ready')return {status:'blocked',reason:'manifest'};
  for(const dependency of pack.dependencies){
   const existing=await store.load(dependency);
   if(existing.status!=='ok'||existing.state.id!==dependency||existing.state.phase!=='installed'||existing.state.verifiedSha256!==existing.state.expectedSha256)return {status:'blocked',reason:'dependencies'};
