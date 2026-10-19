@@ -48,6 +48,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
       uri=recorder.uri;
       await setAudioModeAsync({playsInSilentMode:true,allowsRecording:false});
       if(!uri) throw new Error('NO_AUDIO');
+      if(!onlineConsent)throw new Error('NO_CONSENT');
       const form=new FormData();
       form.append('audio', {uri,name:'utterance.m4a',type:'audio/mp4'} as unknown as Blob);
       form.append('preferences',JSON.stringify(validatePreferences({...defaultPreferences,nativeLanguage,target,speechRate:rate,lowStimulation:lowStim,answerWaitMode:'automatic'})));
