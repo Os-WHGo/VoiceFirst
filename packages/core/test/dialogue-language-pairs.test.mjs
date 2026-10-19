@@ -47,3 +47,15 @@ test('every accepted authored reply is recognized across six targets',()=>{
   }
  }
 });
+
+test('all six targets include the two-turn shopping conversation',()=>{
+ for(const target of targetLanguages){
+  const dialogues=dialoguesFor(target);
+  assert.equal(dialogues.length,4);
+  const shopping=dialogues.find(d=>d.domain==='shopping');
+  assert.ok(shopping);
+  assert.equal(shopping.turns.length,2);
+  assert.deepEqual(shopping.turns.map(t=>t.intent),['ask-price','ask-card-payment']);
+  assert.ok(shopping.turns.every(t=>t.acceptedReplies.length>=2));
+ }
+});
