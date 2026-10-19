@@ -98,3 +98,16 @@ test('prerequisite bypass cannot complete any advanced lesson across six languag
  }
  assert.equal(blocked,78);
 });
+
+test('fabricated lesson IDs cannot be marked completed in any supported language',()=>{
+ for(const language of locales){
+  const base=newCourseProgress(language);
+  const original=lessonsFor(language)[0];
+  const fabricated={...original,id:`${language}-a1-forged`,prerequisite:undefined};
+  let state=base;
+  for(const exercise of fabricated.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint')){
+   state=recordCourseAttempt(state,exercise,{kind:'match',recognized:exercise.utterance},'2026-10-17');
+  }
+  assert.equal(finishLesson(state,fabricated).completed.length,0);
+ }
+});
