@@ -123,3 +123,16 @@ test('altered lesson exercise definitions cannot forge completion evidence',()=>
   assert.equal(finishLesson(state,altered).completed.length,0);
  }
 });
+
+test('attempt boundary rejects unknown exercises and invalid calendar dates in all locales',()=>{
+ for(const language of locales){
+  const progress=newCourseProgress(language);
+  const exercise=lessonsFor(language)[0].exercises[2];
+  const fake={...exercise,id:`${language}-unknown-exercise`};
+  assert.deepEqual(recordCourseAttempt(progress,fake,{kind:'match',recognized:fake.utterance},'2026-10-17'),progress);
+  for(const invalid of ['2026-02-30','not-a-date','2026-13-01']){
+   assert.throws(()=>recordCourseAttempt(progress,exercise,{kind:'match',recognized:exercise.utterance},invalid),/Invalid course attempt date/);
+  }
+  assert.deepEqual(recordCourseAttempt(progress,exercise,{kind:'uncertain',hint:'uncertain'},'2026-02-30'),progress);
+ }
+});
