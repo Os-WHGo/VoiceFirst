@@ -7,7 +7,12 @@ export interface PackJournalStore {
 }
 export type SessionResult={status:'ok';state:PackInstallState}|{status:'blocked';reason:string};
 export async function startPackSession(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
- const begin=beginLanguagePackInstall(pack);
+ if(!pack||!Array.isArray(pack.dependencies))return {status:'blocked',reason:'manifest'};
+ for(const dependency of pack.dependencies){
+  const existing=await store.load(dependency);
+  if(existing.status!=='ok'||existing.state.id!==dependency||existing.state.phase!=='installed'||existing.state.verifiedSha256!==existing.state.expectedSha256)return {status:'blocked',reason:'dependencies'};
+ }
+ const begin=beginLanguagePackInstall(pack,pack.dependencies);
  if(begin.status!=='ok')return {status:'blocked',reason:'manifest'};
  const current=await store.load(begin.state.id);
  if(current.status!=='empty')return {status:'blocked',reason:current.status==='ok'?'existing-journal':'unreadable-journal'};
