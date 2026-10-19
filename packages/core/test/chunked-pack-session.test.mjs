@@ -21,3 +21,5 @@ test('modified bytes reject verification and commit',async()=>{
  assert.equal((await verifyChunkedPackSession(pack.id,s,open(modified),hasher)).reason,'checksum');
  assert.equal((await transitionPackSession(pack.id,'commit',s)).status,'blocked');
 });
+
+test('byte count must match manifest even when checksum matches',async()=>{ const s=store(); const altered={...pack,bytes:payload.length+10};await startPackSession(altered,s);assert.equal((await verifyChunkedPackSession(altered.id,s,open(payload),hasher)).status,'blocked'); });
