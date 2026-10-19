@@ -38,7 +38,7 @@ async function installSmallPackUnlocked(id:string,source:File):Promise<SmallPack
   if(dest.exists)return {status:'blocked',reason:'destination-exists'};
   await stage.move(dest,{overwrite:false});created=false;
   const promoted=new File(dest,'payload.bin');
-  if(!promoted.exists||promoted.size!==source.size||promoted.size>LIMIT)return {status:'blocked',reason:'promoted-file-invalid'};
+  if(!promoted.exists||!Number.isSafeInteger(promoted.size)||promoted.size<=0||promoted.size>LIMIT)return {status:'blocked',reason:'promoted-file-invalid'};
   const promotedBytes=await promoted.bytes();
   if(promotedBytes.byteLength!==promoted.size||sha256Bytes(promotedBytes).toLowerCase()!==verified.state.expectedSha256)return {status:'blocked',reason:'promoted-checksum'};
   // Mark installed only after successful promotion. Interrupted promotions
@@ -68,4 +68,34 @@ async function finalizeInterruptedUnlocked(id:string):Promise<SmallPackInstallRe
  if(inspection.status!=='promotion-interrupted')return {status:'blocked',reason:inspection.status};
  const committed=await transitionPackSession(id,'commit',packJournalStore);
  return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:'journal-write'};
+}
+
+/** Explicit, opt-in recovery of a verified staging directory after an interruption.
+ * Never repairs an unverified journal, overwrites a destination or deletes data.
+ */
+export async function resumeVerifiedSmallPack(id:string):Promise<SmallPackInstallResult>{
+ const guarded=await operationGate.run(id,()=>resumeVerifiedUnlocked(id));
+ return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
+}
+async function resumeVerifiedUnlocked(id:string):Promise<SmallPackInstallResult>{
+ try{
+  const journal=await loadPackJournal(id);
+  if(journal.status!=='ok'||journal.result.state.phase!=='verified')return {status:'blocked',reason:'journal-not-verified'};
+  const inspected=await inspectSmallPackRecovery(id);
+  if(inspected.status!=='staging-interrupted')return {status:'blocked',reason:inspected.status};
+  const stage=new Directory(Paths.document,'voicefirst-pack-staging',id);
+  const destRoot=new Directory(Paths.document,'voicefirst-installed-packs');
+  const dest=new Directory(destRoot,id);
+  // Hash again immediately before moving; preserve both folders on failure.
+  if(!stage.exists||dest.exists||await hashSmallStagedPack(id)!==journal.result.state.expectedSha256)
+   return {status:'blocked',reason:'staging-changed-or-destination-exists'};
+  if(!destRoot.exists)destRoot.create({intermediates:true,idempotent:true});
+  if(dest.exists)return {status:'blocked',reason:'destination-exists'};
+  await stage.move(dest,{overwrite:false});
+  // A second full hash of the promoted bytes is required before journal commit.
+  const promoted=await inspectSmallPackRecovery(id);
+  if(promoted.status!=='promotion-interrupted')return {status:'blocked',reason:'promoted-file-invalid'};
+  const committed=await transitionPackSession(id,'commit',packJournalStore);
+  return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:'promotion-needs-recovery'};
+ }catch{return {status:'blocked',reason:'file-operation'};}
 }
