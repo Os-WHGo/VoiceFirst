@@ -1,9 +1,9 @@
 /** Expo-backed verification of a user-provided local model file.
- * Bounded to 64 MiB until a streaming native SHA-256 implementation is integrated.
+ * Bounded to 8 MiB until a streaming native SHA-256 implementation is integrated.
  * This module neither downloads nor installs model files. */
 import {File} from 'expo-file-system';
 import {sha256Bytes,type NativeLocalFileVerifier} from '@voicefirst/core';
-const MAX_IN_MEMORY_BYTES=64*1024*1024;
+const MAX_IN_MEMORY_BYTES=8*1024*1024;
 export const expoLocalModelFileVerifier:NativeLocalFileVerifier={
  async fileSizeBytes(uri:string):Promise<number>{
   if(!uri.startsWith('file:///')||uri.includes('..')||uri.includes('%')||uri.includes('?')||uri.includes('#')||uri.includes('\\'))throw new Error('Only local file URIs are accepted');
