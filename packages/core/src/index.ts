@@ -73,3 +73,5 @@ export * from './chilean-spanish.js';
 export * from './pragmatics.js';
 
 export * from './skill-evidence.js';
+
+export * from './written-followup.js';
