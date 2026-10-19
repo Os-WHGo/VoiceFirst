@@ -33,6 +33,7 @@ export function loadCourseState(raw:string,target:TargetLanguage):CourseStateRes
   }
   for(const lessonId of val.completed){
     const lesson=lessons.find(x=>x.id===lessonId)!;
+    if(lesson.prerequisite&&!val.completed.includes(lesson.prerequisite))return {kind:'invalid',reason:'Completed lesson missing prerequisite'};
     const recall=lesson.exercises.find(x=>x.type==='recall');
     const checkpoint=lesson.exercises.find(x=>x.type==='checkpoint');
     if(!recall||!checkpoint||!((correct[recall.id]??0)>0)||!((correct[checkpoint.id]??0)>0))return {kind:'invalid',reason:'Completed lesson lacks evidence'};
