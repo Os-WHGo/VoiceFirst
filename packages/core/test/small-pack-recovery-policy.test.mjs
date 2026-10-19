@@ -15,3 +15,15 @@ test('recovery never finalizes unverified or staging-only journal',()=>{
  assert.equal(decideSmallPackRecovery({...base,verifiedSha256:'b'.repeat(64)},'destination-valid'),'blocked');
  assert.equal(decideSmallPackRecovery({...base,phase:'failed'},'destination-valid'),'blocked');
 });
+
+test('malformed journal metadata cannot authorize recovery',()=>{
+ for(const state of [
+  {...base,id:'../outside'},
+  {...base,version:'not-semver'},
+  {...base,expectedSha256:'broken'},
+  {...base,phase:'unexpected'},
+  null
+ ]){
+  assert.equal(decideSmallPackRecovery(state,'destination-valid'),'blocked');
+ }
+});
