@@ -18,3 +18,13 @@ export async function savePackJournal(state:PackInstallState){
  try{await Storage.setItem(key(state.id),JSON.stringify(state));return true;}
  catch{return false;}
 }
+
+/** Adapter for the shared session coordinator. */
+export const packJournalStore={
+ async load(id:string){
+  const entry=await loadPackJournal(id);
+  if(entry.status==='ok')return {status:'ok' as const,state:entry.result.state};
+  return {status:entry.status};
+ },
+ save:savePackJournal,
+};
