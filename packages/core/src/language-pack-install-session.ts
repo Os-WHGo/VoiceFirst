@@ -75,3 +75,8 @@ export async function verifyChunkedPackSession(
   return result.status==='ok'&&result.bytes===expectedBytes?result.sha256:null;
  });
 }
+
+export async function retryPackSession(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
+ const gated=await sessionGate.run(pack.id,()=>startPackSessionUnlocked(pack,store,true));
+ return gated.status==='busy'?{status:'blocked',reason:'operation-busy'}:gated.value;
+}
