@@ -36,3 +36,25 @@ test('an uncertain response never unlocks a course prerequisite',()=>{
   assert.equal(availableLessons(state).length,1);
  }
 });
+
+test('all 84 lessons reject uncertain checkpoint and accept a subsequent confirmed retry',()=>{
+ let retried=0;
+ for(const language of locales){
+  let state=newCourseProgress(language);
+  for(const lesson of lessonsFor(language)){
+   const critical=lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint');
+   for(const exercise of critical){
+    state=recordCourseAttempt(state,exercise,{kind:'uncertain',hint:'Audio unclear'},'2026-10-17');
+   }
+   state=finishLesson(state,lesson);
+   assert.equal(state.completed.includes(lesson.id),false,`${lesson.id} must remain locked`);
+   for(const exercise of critical){
+    state=recordCourseAttempt(state,exercise,{kind:'match',recognized:exercise.utterance},'2026-10-17');
+    retried++;
+   }
+   state=finishLesson(state,lesson);
+   assert.equal(state.completed.includes(lesson.id),true,`${lesson.id} should unlock after verified practice`);
+  }
+ }
+ assert.equal(retried,168);
+});
