@@ -6,13 +6,16 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Platform} from 'react-native';
 import {classifyVoiceConfidence,localModelState,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
 type Subscription={remove:()=>void};
+// Derive the Android locale query contract from the installed package.
+type NativeLocaleOptions=Parameters<typeof import('expo-speech-recognition')['ExpoSpeechRecognitionModule']['getSupportedLocales']>[0];
+type NativeLocales=Awaited<ReturnType<typeof import('expo-speech-recognition')['ExpoSpeechRecognitionModule']['getSupportedLocales']>>;
 type NativeRecognition={
  isRecognitionAvailable:()=>boolean; supportsOnDeviceRecognition:()=>boolean;
  requestMicrophonePermissionsAsync:()=>Promise<{granted:boolean}>;
  addListener:(event:string,callback:(event:any)=>void)=>Subscription;
  start:(opts:{lang:string;requiresOnDeviceRecognition:true;interimResults:boolean;continuous:false;maxAlternatives:1;recordingOptions:{persist:false};iosCategory:{category:'playAndRecord';categoryOptions:string[];mode:'measurement'}})=>void;
  abort:()=>void;
- getSupportedLocales?:()=>Promise<{locales:string[];installedLocales:string[]}>;
+ getSupportedLocales?:(options:NativeLocaleOptions)=>Promise<NativeLocales>;
  androidTriggerOfflineModelDownload?:(opts:{locale:string})=>Promise<{status:string}>;
 };
 const locale:Readonly<Record<TargetLanguage,string>>={
@@ -49,7 +52,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   if(Platform.OS!=='android'||!native?.getSupportedLocales){setModel('unknown');return;}
   setCheckingModel(true);
   try{
-   const info=await native.getSupportedLocales();
+   const info=await native.getSupportedLocales({});
    setModel(localModelState(locale[language],info));
   }catch{setModel('unknown');}
   finally{setCheckingModel(false);}
@@ -58,7 +61,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   let live=true;
   if(Platform.OS!=='android'||!native?.getSupportedLocales){setModel('unknown');return;}
   setCheckingModel(true);
-  void native.getSupportedLocales().then(info=>{
+  void native.getSupportedLocales({}).then(info=>{
    if(live)setModel(localModelState(locale[language],info));
   }).catch(()=>{if(live)setModel('unknown');}).finally(()=>{if(live)setCheckingModel(false);});
   return()=>{live=false;};
