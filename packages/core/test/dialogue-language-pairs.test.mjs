@@ -59,3 +59,11 @@ test('all six targets include the two-turn shopping conversation',()=>{
   assert.ok(shopping.turns.every(t=>t.acceptedReplies.length>=2));
  }
 });
+
+test('minor profiles never receive guided dialogues',()=>{
+ for(const target of targetLanguages)for(const age of ['preschool','primary','preteen','teen']){
+  const result=selectGuidedDialogues(target,'balanced',age);
+  assert.equal(result.status,'requires-child-safety-review');
+  assert.equal(result.dialogues.length,0);
+ }
+});
