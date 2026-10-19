@@ -1,0 +1,24 @@
+/** Persisted state transitions. Callers must verify actual bytes before providing a digest. */
+import {beginLanguagePackInstall,advanceLanguagePackInstall,type PackInstallState} from './language-pack-install-state.js';
+import type {LanguagePack} from './language-packs.js';
+export interface PackJournalStore {
+ load(id:string):Promise<{status:'empty'}|{status:'ok';state:PackInstallState}|{status:'blocked'}>;
+ save(state:PackInstallState):Promise<boolean>;
+}
+export type SessionResult={status:'ok';state:PackInstallState}|{status:'blocked';reason:string};
+export async function startPackSession(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
+ const begin=beginLanguagePackInstall(pack);
+ if(begin.status!=='ok')return {status:'blocked',reason:'manifest'};
+ const current=await store.load(begin.state.id);
+ if(current.status!=='empty')return {status:'blocked',reason:current.status==='ok'?'existing-journal':'unreadable-journal'};
+ if(!await store.save(begin.state))return {status:'blocked',reason:'write'};
+ return {status:'ok',state:begin.state};
+}
+export async function transitionPackSession(id:string,event:'verify'|'commit'|'abort',store:PackJournalStore,digest?:string):Promise<SessionResult>{
+ const current=await store.load(id);
+ if(current.status!=='ok')return {status:'blocked',reason:'missing-or-unreadable-journal'};
+ const outcome=advanceLanguagePackInstall(current.state,event,digest);
+ if(outcome.status!=='ok')return {status:'blocked',reason:outcome.reason};
+ if(!await store.save(outcome.state))return {status:'blocked',reason:'write'};
+ return {status:'ok',state:outcome.state};
+}
