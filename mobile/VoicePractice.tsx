@@ -87,7 +87,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
     {experience.instructionFormat==='full-context'&&<Text style={styles.note}>Función experimental por turnos, sin funcionamiento manos libres certificado.</Text>}
     {!DEV_URL && <Text style={styles.warning}>Sin servidor de desarrollo configurado. El micrófono de esta función permanece inactivo.</Text>}
     {!!DEV_URL && <TextInput accessibilityLabel="Token de desarrollo local" secureTextEntry placeholder="Token de desarrollo local" placeholderTextColor={colors.muted} style={styles.input} autoCapitalize="none" value={devToken} onChangeText={setDevToken}/>}
-    <Pressable accessibilityRole="button" disabled={phase==='sending'||(!DEV_URL)} onPress={phase==='recording'?finishRecording:phase==='speaking'?stopSpeaking:startRecording} style={[styles.cta,phase==='sending'&&{opacity:0.5}]}>
+    <Pressable accessibilityRole="button" disabled={phase==='sending'||(!DEV_URL)||(phase==='ready'&&!onlineConsent)} onPress={phase==='recording'?finishRecording:phase==='speaking'?stopSpeaking:startRecording} style={[styles.cta,phase==='sending'&&{opacity:0.5}]}>
       <Text style={styles.ctaText}>{phase==='recording'?'Terminar de hablar':phase==='sending'?'Procesando voz…':phase==='speaking'?'Detener respuesta':'Hablar con el profesor'}</Text>
     </Pressable>
     {phase==='recording' && <Text accessibilityLiveRegion="polite" style={styles.note}>Grabando. Pulsa para enviar tu respuesta.</Text>}
