@@ -9,6 +9,8 @@ test('file verification requires bytes and independently computed native digest'
  assert.equal(advanceLocalModelInstall(ok.state,'commit').state.phase,'installed');
  assert.equal((await verifyLocalModelFile(pkg,'https://example.org/model',native)).reason,'invalid-uri');
  assert.equal((await verifyLocalModelFile(pkg,'file:///models/../unsafe',native)).reason,'invalid-uri');
+ assert.equal((await verifyLocalModelFile(pkg,'file:///models/%2e%2e/unsafe',native)).reason,'invalid-uri');
+ assert.equal((await verifyLocalModelFile(pkg,'file:///models/..\\\\unsafe',native)).reason,'invalid-uri');
  assert.equal((await verifyLocalModelFile(pkg,'file:///models/sample.gguf',{...native,fileSizeBytes:async()=>1})).reason,'size-mismatch');
  assert.equal((await verifyLocalModelFile(pkg,'file:///models/sample.gguf',{...native,sha256File:async()=>('b'.repeat(64))})).reason,'checksum-mismatch');
  assert.equal((await verifyLocalModelFile(pkg,'file:///models/sample.gguf',{...native,sha256File:async()=>{throw Error('unavailable')}})).reason,'native-verification-failed');
