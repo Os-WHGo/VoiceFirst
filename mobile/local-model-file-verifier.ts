@@ -6,7 +6,7 @@ import {sha256Bytes,type NativeLocalFileVerifier} from '@voicefirst/core';
 const MAX_IN_MEMORY_BYTES=64*1024*1024;
 export const expoLocalModelFileVerifier:NativeLocalFileVerifier={
  async fileSizeBytes(uri:string):Promise<number>{
-  if(!uri.startsWith('file:///'))throw new Error('Only sandbox file URIs are accepted');
+  if(!uri.startsWith('file:///'))throw new Error('Only local file URIs are accepted');
   const file=new File(uri);
   if(!file.exists)throw new Error('Model file not found');
   const size=file.size;
