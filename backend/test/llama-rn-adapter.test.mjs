@@ -41,3 +41,7 @@ test('serializes inference and rejects malformed output',async()=>{
  await assert.rejects(pending,/output/);
  await session.close();
 });
+
+test('rejects malformed native initialization',async()=>{
+ await assert.rejects(openLlamaRnSession({modelId:'test',verifiedFileUri:uri,contextTokens:1024,initLlama:async()=>({})}),/Invalid native context/);
+});
