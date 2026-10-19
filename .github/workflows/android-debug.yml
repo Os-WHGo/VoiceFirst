@@ -35,7 +35,7 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
       - uses: gradle/actions/setup-gradle@v4
       - name: Install pinned npm dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Generate audited Android project
         run: npm run check:android-prebuild
       - name: Validate resolved Expo native modules

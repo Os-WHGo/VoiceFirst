@@ -1,13 +1,12 @@
-# Generates a reviewable npm lockfile on a networked CI runner.
-# Deliberately does NOT commit to the PR branch or mutate main.
-# The other build workflows must not switch to npm ci until the reviewed
-# lockfile is committed, checks pass and compatibility is confirmed.
+# Reproducible npm dependency proof on Node 22.
+# This validates the reviewed, committed lockfile; no auto-commits or push token.
 name: Dependency lockfile review
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - 'package.json'
+      - 'package-lock.json'
       - 'mobile/package.json'
       - 'packages/core/package.json'
       - '.github/workflows/dependency-lockfile-review.yml'
@@ -22,11 +21,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Ensure no lockfile is being overwritten in the preparatory workflow
-        run: test ! -e package-lock.json
-      - name: Resolve npm workspaces into a real lockfile (no lifecycle scripts)
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Check root and both workspace entries
+      - name: Require tracked npm workspaces lockfile
+        run: |
+          test -s package-lock.json
+          git ls-files --error-unmatch package-lock.json
+      - name: Check lockfile v3 and workspace entries
         run: |
           node --input-type=module -e '
             import fs from "node:fs";
@@ -36,21 +35,14 @@ jobs:
               if(!lock.packages?.[key])throw Error("Missing npm workspace entry: "+key);
             }
           '
-      - name: Install exactly the resolved packages
+      - name: Install locked dependencies only
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Validate mobile and shared runtime contracts
+      - name: Validate shared and mobile contracts
         run: |
           npm run check
           npm run check:mobile
           npm run check:expo-config
-      - name: Save checksum and reviewable lockfile
-        run: sha256sum package-lock.json > package-lock.sha256
-      - name: Upload reviewed npm resolution (NOT committed automatically)
-        uses: actions/upload-artifact@v4
-        with:
-          name: voicefirst-reviewed-npm-lock-${{ github.sha }}
-          path: |
-            package-lock.json
-            package-lock.sha256
-          retention-days: 7
-          if-no-files-found: error
+      - name: Assert locked metadata was not modified
+        run: git diff --exit-code -- package-lock.json package.json mobile/package.json packages/core/package.json
+      - name: Publish exact reviewed lockfile checksum
+        run: sha256sum package-lock.json

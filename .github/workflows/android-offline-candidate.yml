@@ -33,7 +33,7 @@ jobs:
           test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
       - name: Install dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate source and Expo configuration
         run: |
           npm run check
