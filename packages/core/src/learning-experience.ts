@@ -1,6 +1,6 @@
 /** Offline, non-diagnostic learning experiences. No speech recognition, cloud calls or CEFR certification. */
 import {lessonsFor, normalizedUtterance, type CourseExercise, type OfflineLesson} from './course.js';
-import {guidedDialoguesFor} from './guided-dialogues.js';
+import {guidedDialogues} from './guided-dialogues.js';
 import {type TargetLanguage} from './types.js';
 import {type AgeStage} from './learning-paths.js';
 
@@ -62,5 +62,5 @@ export function contextualReview(target:TargetLanguage,completed:readonly string
 export interface BranchingScenario {id:string;target:TargetLanguage;turns:readonly {cue:string;acceptedReplies:readonly string[]}[];kind:'curated-branching-preview'}
 export function branchingScenarios(target:TargetLanguage,stage:AgeStage):readonly BranchingScenario[]{
  if(stage!=='adult')return [];
- return guidedDialoguesFor(target).map(d=>({id:d.id,target,turns:d.turns.map(t=>({cue:t.teacherCue,acceptedReplies:t.acceptedReplies})),kind:'curated-branching-preview' as const}));
+ return guidedDialogues.filter(d=>d.target===target).map(d=>({id:d.id,target,turns:d.turns.map(t=>({cue:t.teacherCue,acceptedReplies:t.acceptedReplies})),kind:'curated-branching-preview' as const}));
 }
