@@ -154,6 +154,7 @@ export function newDialogueRun(dialogue:GuidedDialogue):DialogueRun{return{dialo
 export function recordDialogueResponse(run:DialogueRun,dialogue:GuidedDialogue,attempt:DialogueAttempt):DialogueRun {
   if(run.dialogueId!==dialogue.id)throw new Error('Dialogue mismatch');
   if(run.completed || attempt.verdict==='uncertain')return run;
+  if(attempt.verdict==='accepted' && (!attempt.matchedReply || !dialogue.turns[run.turnIndex]?.acceptedReplies.includes(attempt.matchedReply)))return run;
   const turn=dialogue.turns[run.turnIndex];if(!turn)return run;
   const attempts={...run.attempts,[turn.id]:(run.attempts[turn.id]||0)+1};
   if(attempt.verdict==='retry')return{...run,attempts};
