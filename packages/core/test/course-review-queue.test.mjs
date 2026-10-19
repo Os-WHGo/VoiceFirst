@@ -29,3 +29,12 @@ test('review summary ignores stale and foreign-language completed IDs',()=>{
  const progress={...base,completed:[valid,foreign,'removed-lesson',valid]};
  assert.equal(courseReviewSummary(progress,'2026-10-18').completedLessons,1);
 });
+
+test('voluntary review hides malformed stored due dates without blocking practice',()=>{
+ const lesson=lessonsFor('es')[0];
+ const recall=lesson.exercises.find(e=>e.type==='recall');
+ const progress={...newCourseProgress('es'),completed:[lesson.id],due:{[recall.id]:'2026-02-30'}};
+ const entries=voluntaryCourseReview(progress,lesson.id);
+ assert.equal(entries.length,2);
+ assert.equal(entries.find(e=>e.exercise.id===recall.id).dueOn,'');
+});
