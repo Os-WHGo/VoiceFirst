@@ -23,3 +23,10 @@ test('bad counters and dates rejected at storage boundary',()=>{
  assert.equal(loadCourseState(JSON.stringify({...p,due:{[l.exercises[2].id]:'2026-02-30'}}),'pt-BR').kind,'invalid');
 });
 test('child-facing labels and stored course never imply CEFR assessment',()=>{const s=initialCourseState('es');assert.equal(courseLessonStatus(s,lessonsFor('es')[1]),'locked');});
+
+test('malformed due dates cannot force completed lesson back into review',()=>{
+ const lessons=lessonsFor('en-CA');
+ const first=lessons[0];
+ const state={...initialCourseState('en-CA'),completed:[first.id],due:{[first.exercises[2].id]:'0000-00-00'}};
+ assert.equal(chooseCourseLesson(state,'2026-10-18')?.id,lessons[1].id);
+});
