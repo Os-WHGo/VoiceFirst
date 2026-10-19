@@ -38,6 +38,12 @@ export async function installSmallPackFromLocalFile(id:string,source:File):Promi
   return {status:'installed'};
  }catch{return {status:'blocked',reason:'file-operation'};}
  finally{
-  if(created&&stage.exists){try{stage.delete();}catch{/* leave for inspection */}}
+  if(created&&stage.exists){
+   const latest=await loadPackJournal(id);
+   if(latest.status==='ok'&&latest.result.state.phase==='staging'){
+    try{stage.delete();}catch{/* leave for inspection */}
+   }
+   // Preserve verified staging on failure for explicit recovery.
+  }
  }
 }
