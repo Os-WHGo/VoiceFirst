@@ -19,6 +19,7 @@ async function installSmallPackUnlocked(id:string,source:File):Promise<SmallPack
  if(!valid(id))return {status:'blocked',reason:'invalid-id'};
  const journal=await loadPackJournal(id);
  if(journal.status!=='ok'||journal.result.state.phase!=='staging')return {status:'blocked',reason:'journal-not-staging'};
+ if(!Number.isSafeInteger(journal.result.state.expectedBytes)||!journal.result.state.expectedBytes||journal.result.state.expectedBytes>LIMIT)return {status:'blocked',reason:'invalid-expected-size'};
  const root=new Directory(Paths.document,'voicefirst-pack-staging');
  const stage=new Directory(root,id);
  const destRoot=new Directory(Paths.document,'voicefirst-installed-packs');
