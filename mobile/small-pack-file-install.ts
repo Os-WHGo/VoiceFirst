@@ -101,3 +101,20 @@ async function resumeVerifiedUnlocked(id:string):Promise<SmallPackInstallResult>
   return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:'promotion-needs-recovery'};
  }catch{return {status:'blocked',reason:'file-operation'};}
 }
+
+/** Requires no staging or installed folder. Never deletes ambiguous files. */
+export async function restartFailedSmallPack(pack:LanguagePack):Promise<{status:'staging'}|{status:'blocked';reason:string}>{
+ if(!pack||!valid(pack.id))return {status:'blocked',reason:'invalid-id'};
+ const gated=await operationGate.run(pack.id,async()=>{
+  try{
+   const journal=await loadPackJournal(pack.id);
+   if(journal.status!=='ok'||journal.result.state.phase!=='failed')return {status:'blocked' as const,reason:'journal-not-failed'};
+   const stage=new Directory(Paths.document,'voicefirst-pack-staging',pack.id);
+   const dest=new Directory(Paths.document,'voicefirst-installed-packs',pack.id);
+   if(stage.exists||dest.exists)return {status:'blocked' as const,reason:'existing-pack-files'};
+   const restarted=await retryPackSession(pack,packJournalStore);
+   return restarted.status==='ok'?{status:'staging' as const}:{status:'blocked' as const,reason:restarted.reason};
+  }catch{return {status:'blocked' as const,reason:'file-operation'};}
+ });
+ return gated.status==='busy'?{status:'blocked',reason:'operation-busy'}:gated.value;
+}
