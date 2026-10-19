@@ -47,7 +47,7 @@ export function courseStateToJSON(state:CourseProgress):string{
 export function chooseCourseLesson(state:CourseProgress,day:string):OfflineLesson|null{
   if(!isDay(day))throw new Error('Invalid local date');
   const items=lessonsFor(state.language);
-  const due=items.find(l=>state.completed.includes(l.id)&&l.exercises.some(e=>!!state.due[e.id]&&(state.due[e.id]??'9999-12-31')<=day));
+  const due=items.find(l=>state.completed.includes(l.id)&&l.exercises.some(e=>isDay(state.due[e.id])&&state.due[e.id]<=day));
   return due??items.find(l=>!state.completed.includes(l.id)&&(!l.prerequisite||state.completed.includes(l.prerequisite)))??null;
 }
 /** Explicit review: do not erase evidence of earlier learning. Review-only sessions can increment evidence. */
