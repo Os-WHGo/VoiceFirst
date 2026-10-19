@@ -60,7 +60,9 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
             if(old && (old.prerequisite===undefined||result.progress.completed.includes(old.prerequisite)) &&
                 Number.isSafeInteger(c.step) && typeof c.step==='number' && c.step>=0 && c.step<old.exercises.length && typeof c.active==='boolean'){
               const reviewId=typeof c.reviewExerciseId==='string' && old.exercises[c.step]?.id===c.reviewExerciseId && result.progress.completed.includes(old.id) && (old.exercises[c.step]?.type==='recall'||old.exercises[c.step]?.type==='checkpoint')?c.reviewExerciseId:null;
-              resume={lessonId:old.id,step:c.step,active:c.active,reviewExerciseId:reviewId};
+              if(c.reviewExerciseId===undefined||c.reviewExerciseId===null||reviewId!==null){
+                resume={lessonId:old.id,step:c.step,active:c.active,reviewExerciseId:reviewId};
+              }
             }
           }
         }catch{/* Cursor is optional; never overwrite or lose course evidence because of it. */}
