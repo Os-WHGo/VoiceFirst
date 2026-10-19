@@ -92,3 +92,5 @@ export * from './language-pack-install-session.js';
 export * from './small-pack-recovery-policy.js';
 
 export * from './pack-operation-gate.js';
+
+export * from './chunked-file-hash.js';
