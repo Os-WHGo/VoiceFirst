@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {targetLanguages,learningPairs,lessonsFor,offlineLessons,newCourseProgress,availableLessons,checkUtterance,recordCourseAttempt,finishLesson,normalizedUtterance,nextAudioStep,curriculumPlanFor,officialCefrBands} from '../dist/index.js';
 const day='2026-10-16';
-test('60 authored lessons, ten for every language',()=>{ assert.equal(offlineLessons.length,12);for(const lang of targetLanguages)assert.equal(lessonsFor(lang).length,10); });
+test('84 authored lessons, fourteen for every language',()=>{ assert.equal(offlineLessons.length,12);for(const lang of targetLanguages)assert.equal(lessonsFor(lang).length,14); });
 test('30 directed language combinations can use localized help and authored target utterance',()=>{ for(const [native,target] of learningPairs()){const lesson=lessonsFor(target)[0];assert.equal(typeof lesson.goal[native],'string');assert.ok(lesson.exercises[0].meaning[native]);assert.equal(nextAudioStep(lesson,0,native).language,target); } });
 test('only prerequisite-free lesson is unlocked at start',()=>{ const p=newCourseProgress('fr-CA');assert.equal(availableLessons(p).length,1); });
 test('high confidence exact alternatives are accepted without API',()=>{const item=lessonsFor('en-CA')[1].exercises[2];assert.equal(checkUtterance(item,'Could you give me a hand?','en-CA','high').kind,'match');});
