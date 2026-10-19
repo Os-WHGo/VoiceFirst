@@ -23,7 +23,9 @@ async function startPackSessionUnlocked(pack:LanguagePack,store:PackJournalStore
  const begin=beginLanguagePackInstall(pack,pack.dependencies);
  if(begin.status!=='ok')return {status:'blocked',reason:'manifest'};
  const current=await store.load(begin.state.id);
- if(current.status!=='empty')return {status:'blocked',reason:current.status==='ok'?'existing-journal':'unreadable-journal'};
+ if(restartFailed){
+  if(current.status!=='ok'||current.state.phase!=='failed')return {status:'blocked',reason:'journal-not-failed'};
+ }else if(current.status!=='empty')return {status:'blocked',reason:current.status==='ok'?'existing-journal':'unreadable-journal'};
  if(!await store.save(begin.state))return {status:'blocked',reason:'write'};
  return {status:'ok',state:begin.state};
 }
