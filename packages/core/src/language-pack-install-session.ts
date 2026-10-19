@@ -25,7 +25,13 @@ async function startPackSessionUnlocked(pack:LanguagePack,store:PackJournalStore
  if(begin.status!=='ok')return {status:'blocked',reason:'manifest'};
  const current=await store.load(begin.state.id);
  if(restartFailed){
-  if(current.status!=='ok'||current.state.phase!=='failed')return {status:'blocked',reason:'journal-not-failed'};
+  if(current.status!=='ok'||current.state.phase!=='failed'||current.state.id!==begin.state.id)return {status:'blocked',reason:'journal-not-failed'};
+  // A retry is only a retry of the SAME artifact. A different version/hash/size
+  // needs an explicit upgrade procedure, never a silent replacement of failed state.
+  if(current.state.version!==begin.state.version||
+     current.state.expectedSha256!==begin.state.expectedSha256||
+     current.state.expectedBytes!==begin.state.expectedBytes)
+   return {status:'blocked',reason:'retry-manifest-changed'};
  }else if(current.status!=='empty')return {status:'blocked',reason:current.status==='ok'?'existing-journal':'unreadable-journal'};
  const prior=restartFailed&&current.status==='ok'?current.state:null;
  const revision=prior?nextPackRevision(prior):0;
@@ -40,7 +46,7 @@ export async function transitionPackSession(id:string,event:'verify'|'commit'|'a
 }
 async function transitionPackSessionUnlocked(id:string,event:'verify'|'commit'|'abort',store:PackJournalStore,digest?:string):Promise<SessionResult>{
  const current=await store.load(id);
- if(current.status!=='ok')return {status:'blocked',reason:'missing-or-unreadable-journal'};
+ if(current.status!=='ok'||current.state.id!==id)return {status:'blocked',reason:'missing-or-unreadable-journal'};
  const outcome=advanceLanguagePackInstall(current.state,event,digest);
  if(outcome.status!=='ok')return {status:'blocked',reason:outcome.reason};
  if(!await store.save(outcome.state,current.state))return {status:'blocked',reason:'write'};

@@ -153,3 +153,38 @@ test('retry refuses a revision that cannot be advanced safely',async()=>{
  assert.equal((await retryPackSession(pack,s)).reason,'revision-overflow');
  assert.equal(saves,0);
 });
+
+test('failed retry cannot silently substitute version, checksum or payload size',async()=>{
+ const s=store();
+ await startPackSession(pack,s);
+ const failed=(await transitionPackSession(pack.id,'abort',s)).state;
+ const alternatives=[
+  {...pack,version:'2.0.0'},
+  {...pack,sha256:'b'.repeat(64)},
+  {...pack,bytes:pack.bytes+1}
+ ];
+ for(const changed of alternatives){
+  const result=await retryPackSession(changed,s);
+  assert.deepEqual(result,{status:'blocked',reason:'retry-manifest-changed'});
+  assert.equal((await s.load(pack.id)).state.revision,failed.revision);
+  assert.equal((await s.load(pack.id)).state.phase,'failed');
+ }
+ assert.equal((await retryPackSession(pack,s)).state.phase,'staging');
+});
+
+test('legacy journal missing expected byte count cannot be silently rewritten on retry',async()=>{
+ const legacy={id:pack.id,version:pack.version,phase:'failed',expectedSha256:digest};
+ let writes=0;
+ const s={load:async()=>({status:'ok',state:legacy}),save:async()=>{writes++;return true;}};
+ assert.equal((await retryPackSession(pack,s)).reason,'retry-manifest-changed');
+ assert.equal(writes,0);
+});
+
+test('wrong-id journal returned by a storage adapter never authorizes transitions',async()=>{
+ let writes=0;
+ const other={id:'fr-ca-core',version:pack.version,phase:'verified',expectedSha256:digest,expectedBytes:pack.bytes,verifiedSha256:digest};
+ const s={load:async()=>({status:'ok',state:other}),save:async()=>{writes++;return true;}};
+ assert.equal((await transitionPackSession(pack.id,'commit',s)).reason,'missing-or-unreadable-journal');
+ assert.equal((await retryPackSession(pack,s)).reason,'journal-not-failed');
+ assert.equal(writes,0);
+});

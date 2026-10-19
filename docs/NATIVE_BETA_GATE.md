@@ -12,7 +12,7 @@ VoiceFirst is a **prototype**. A passing TypeScript workflow is not an installab
 ## Commands for an authorized operator with Expo setup
 From the repository root, install dependencies using the declared Node/Expo versions:
 ```sh
-npm install --ignore-scripts
+npm ci --ignore-scripts --no-audit --no-fund
 npm run check
 npm run check:mobile
 cd mobile
@@ -89,3 +89,8 @@ en al menos un Android físico. Para iOS hace falta una validación independient
 - En Android 13+ contrastar el resultado del listado `getSupportedLocales()` con descargas confirmadas para **cada dialecto**. En Android 12 y anteriores y en iOS no convertir información ausente en afirmación de soporte o instalación. `requiresOnDeviceRecognition:true` debe impedir la ruta cloud en cada caso.
 - Comparar `expo config --type public` con `expo prebuild` o binario generado cuando sea autorizado. La verificación estática de CI actual **no** equivale a ejecutar plugins nativos, firmar o instalar APK/IPA.
 - Confirmar audio del sistema tras interrumpir con llamadas, cambiar a segundo plano y apagar la pantalla. Ninguna reproducción/captura de fondo es característica habilitada en esta versión.
+
+## Recovery assurance after CI lockfile milestone (2026-10-19)
+- A failed pack restart must re-use precisely the journal's pack identifier, semantic version, SHA-256 and expected byte count. A replacement manifest must go through a separately designed, approved update path, not restart. Legacy journals with missing length stay readable for diagnosis but cannot be silently converted on retry.
+- The recovery inspector has byte-backed deterministic tests using a real SHA-256 implementation, including same-length corruption, oversize, missing file, wrong journal, read failure, both staging and destination. No Android/iOS filesystem semantics are claimed from these simulations.
+- GitHub CI `npm ci` is green on commit bc482e8 for core, Android Debug, Android Offline and lockfile validation. For a physical acceptance run, install the exact APK, interrupt copy/promotion/commit using developer-only injection, reboot/force close, and repeat integrity checks before reporting success. Existing installed material must never be overwritten automatically.
