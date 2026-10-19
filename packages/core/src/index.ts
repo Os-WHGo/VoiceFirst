@@ -47,3 +47,5 @@ export * from './lexical-seed.js';
 export * from './phrase-rotation.js';
 
 export * from './course-review-queue.js';
+
+export * from './placement.js';
