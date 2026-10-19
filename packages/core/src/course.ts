@@ -88,7 +88,7 @@ export function recordCourseAttempt(progress:CourseProgress, exercise:CourseExer
   if(result.kind==='uncertain') return progress;
   const canonical=lessonsFor(progress.language).flatMap(lesson=>lesson.exercises).find(item=>item.id===exercise.id);
   if(!canonical)return progress;
-  if(result.kind==='match'&&normalizedUtterance(result.recognized,progress.language)!==normalizedUtterance(canonical.utterance,progress.language)&&!canonical.alternatives.some(reply=>normalizedUtterance(reply,progress.language)===normalizedUtterance(result.recognized,progress.language)))return progress;
+  if(result.kind==='match'&&!canonical.alternatives.some(reply=>normalizedUtterance(reply,progress.language)===normalizedUtterance(result.recognized,progress.language)))return progress;
   const stamp=Date.parse(`${todayISO}T12:00:00Z`);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(todayISO)||!Number.isFinite(stamp)||new Date(stamp).toISOString().slice(0,10)!==todayISO)throw new Error('Invalid course attempt date');
   const attempts={...progress.attempts,[exercise.id]:(progress.attempts[exercise.id]||0)+1};
