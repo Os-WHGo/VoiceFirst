@@ -5,7 +5,7 @@
 import type {TargetLanguage} from './types.js';
 import {targetLanguages} from './types.js';
 import {guidedDialogues} from './guided-dialogues.js';
-import {offlineLessons} from './course.js';
+import {lessonsFor} from './course.js';
 
 export const voiceLocales:Readonly<Record<TargetLanguage,string>> = {
   'en-CA':'en-CA','fr-CA':'fr-CA',es:'es-ES','pt-BR':'pt-BR',de:'de-DE',it:'it-IT',
@@ -28,7 +28,7 @@ export const authoredVoiceCues:readonly VoiceCue[] = [
     cue(`dialogue/${dialogue.id}/${turn.id}/question`,dialogue.target,turn.teacherCue,'dialogue-question'),
     ...turn.acceptedReplies.map((reply,index)=>cue(`dialogue/${dialogue.id}/${turn.id}/example/${index+1}`,dialogue.target,reply,'dialogue-model-answer')),
   ])),
-  ...offlineLessons.flatMap(lesson=>lesson.exercises.map(exercise=>cue(`lesson/${lesson.id}/${exercise.id}`,lesson.language,exercise.utterance,'lesson-phrase'))),
+  ...targetLanguages.flatMap(lessonsFor).flatMap(lesson=>lesson.exercises.map(exercise=>cue(`lesson/${lesson.id}/${exercise.id}`,lesson.language,exercise.utterance,'lesson-phrase'))),
 ];
 export function voiceCueById(id:string):VoiceCue|undefined{return authoredVoiceCues.find(x=>x.id===id);}
 export function audioCueForDialogue(dialogueId:string,turnId:string):VoiceCue|undefined{
