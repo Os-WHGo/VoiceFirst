@@ -3,9 +3,9 @@ import {planLanguagePacks,type LanguagePack} from './language-packs.js';
 export type PackInstallPhase='absent'|'staging'|'verified'|'installed'|'failed';
 export interface PackInstallState {id:string;version:string;phase:PackInstallPhase;expectedSha256:string;verifiedSha256?:string}
 export type PackInstallOutcome={status:'ok';state:PackInstallState}|{status:'rejected';reason:'manifest'|'transition'|'checksum'};
-export function beginLanguagePackInstall(pack:LanguagePack):PackInstallOutcome {
+export function beginLanguagePackInstall(pack:LanguagePack,installedDependencies:readonly string[]=[]):PackInstallOutcome {
  const plan=planLanguagePacks([pack],[]);
- if(plan.status!=='ready'||!pack||pack.dependencies.length!==0)return {status:'rejected',reason:'manifest'};
+ if(plan.status!=='ready'||!pack||!Array.isArray(installedDependencies)||pack.dependencies.some(id=>!installedDependencies.includes(id)))return {status:'rejected',reason:'manifest'};
  return {status:'ok',state:{id:pack.id,version:pack.version,phase:'staging',expectedSha256:pack.sha256.toLowerCase()}};
 }
 export function advanceLanguagePackInstall(state:PackInstallState,event:'verify'|'commit'|'abort',sha256?:string):PackInstallOutcome {
