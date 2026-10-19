@@ -11,7 +11,7 @@ const offline=new Set([asset.path]);
 test('every authored question and micro-lesson prompt has a unique stable audio cue',()=>{
   assert.equal(new Set(authoredVoiceCues.map(c=>c.id)).size,authoredVoiceCues.length);
   assert.ok(authoredVoiceCues.length>180); // questions, reviewed answer alternatives and lesson prompts
-  assert.equal(authoredVoiceCues.filter(c=>c.kind==='dialogue-question').length,36);
+  assert.equal(authoredVoiceCues.filter(c=>c.kind==='dialogue-question').length,48);
   assert.deepEqual(authoringInventory().map(x=>x.language),targetLanguages);
   for(const d of guidedDialogues)for(const turn of d.turns)
     {assert.equal(audioCueForDialogue(d.id,turn.id).text,turn.teacherCue);
