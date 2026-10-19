@@ -59,3 +59,5 @@ export * from './tutor-inference-gate.js';
 export * from './local-inference-selection.js';
 
 export * from './local-tutor-adapter.js';
+
+export * from './local-inference-benchmark.js';
