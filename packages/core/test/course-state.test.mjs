@@ -49,3 +49,16 @@ test('six-language persistence rejects forged counters, wrong-language lessons a
   assert.throws(()=>chooseCourseLesson(base,'2026-02-30'),/Invalid local date/);
  }
 });
+
+test('six-language storage rejects completed lessons when prerequisites are missing despite forged success evidence',()=>{
+ for(const language of ['en-CA','fr-CA','es','pt-BR','de','it']){
+  const lesson=lessonsFor(language)[1];
+  const critical=lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint');
+  const attempts=Object.fromEntries(critical.map(e=>[e.id,1]));
+  const correct=Object.fromEntries(critical.map(e=>[e.id,1]));
+  const forged={...initialCourseState(language),completed:[lesson.id],attempts,correct};
+  const loaded=loadCourseState(JSON.stringify(forged),language);
+  assert.equal(loaded.kind,'invalid',language);
+  assert.match(loaded.reason,/prerequisite/i);
+ }
+});
