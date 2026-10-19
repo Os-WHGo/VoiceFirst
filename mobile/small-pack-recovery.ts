@@ -33,7 +33,7 @@ export async function inspectSmallPackRecovery(id:string):Promise<SmallPackRecov
    return decision==='blocked'?{status:'blocked',reason:'unexpected-destination'}:{status:decision};
   }
   if(stage.exists){
-   const ok=await matches(new File(stage,'payload.bin'),state.expectedSha256);
+   const ok=await matches(new File(stage,'payload.bin'),state.expectedSha256,state.expectedBytes);
    if(!ok)return {status:'blocked',reason:'staged-file-invalid'};
    const decision=decideSmallPackRecovery(state,'staging-valid');
    return decision==='blocked'?{status:'blocked',reason:'unexpected-staging'}:{status:decision};
