@@ -95,3 +95,5 @@ export * from './pack-operation-gate.js';
 
 export * from './chunked-file-hash.js';
 export * from './playback-request-ownership.js';
+
+export * from './native-speech-session-gate.js';

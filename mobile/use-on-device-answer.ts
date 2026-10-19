@@ -4,7 +4,7 @@
  */
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Platform} from 'react-native';
-import {classifyVoiceConfidence,queryLocalModelState,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
+import {classifyVoiceConfidence,queryLocalModelState,NativeSpeechSessionGate,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
 type Subscription={remove:()=>void};
 // Derive the Android locale query contract from the installed package.
 type NativeLocaleOptions=Parameters<typeof import('expo-speech-recognition')['ExpoSpeechRecognitionModule']['getSupportedLocales']>[0];
@@ -31,6 +31,9 @@ function getRecognizer():NativeRecognition|null{
 export type DictationResult={text:string;confidence:'high'|'unknown'};
 type Owner={stop:()=>void};
 let microphoneOwner:Owner|null=null;
+// Native events have no request ID. Wait for the terminal `end` event before
+// treating a later result as a new listening turn.
+const nativeSessionGate=new NativeSpeechSessionGate();
 
 export function useOnDeviceAnswer(language:TargetLanguage,
  onFinal:(r:DictationResult,exerciseId:string)=>void,
@@ -73,11 +76,15 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  },[checkModel]);
  const stop=useCallback(()=>{
   epoch.current++;
+  const wasListening=active.current!==null;
   active.current=null;
   requesting.current=false;
-  if(microphoneOwner===owner.current){
+  if(owner.current&&microphoneOwner===owner.current){
    microphoneOwner=null;
-   try{native?.abort();}catch{/* A closed recognizer can throw. */}
+   if(wasListening){
+    // Keep the native gate closed until the OS signals session termination.
+    try{native?.abort();}catch{/* Fail closed until an end event arrives. */}
+   }
   }
   owner.current=null;
   if(mounted.current)setListening(false);
@@ -95,7 +102,9 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   const subs:Subscription[]=[
    native.addListener('result',event=>{
     const captured=active.current;
-    if(!captured || microphoneOwner!==owner.current)return;
+    if(!captured||!mounted.current||languageRef.current!==language||
+       AppState.currentState!=='active'||microphoneOwner!==owner.current||
+       nativeSessionGate.canStart())return;
     const spoken=event.results?.[0]?.transcript;
     if(typeof spoken!=='string'||!spoken.trim())return;
     if(!event.isFinal){callbacks.current.onPartial?.(spoken.trim(),captured.id);return;}
@@ -109,6 +118,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     setIssue('No se pudo reconocer la voz localmente. Continúa por texto o vuelve a intentarlo.');
    }),
    native.addListener('end',()=>{
+    nativeSessionGate.end();
     if(!active.current||microphoneOwner!==owner.current)return;
     active.current=null;owner.current=null;microphoneOwner=null;setListening(false);
    }),
@@ -116,32 +126,53 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   return()=>subs.forEach(sub=>sub.remove());
  },[native,language]);
  const start=useCallback(async(exerciseId:string):Promise<boolean>=>{
+  if(!mounted.current||languageRef.current!==language||AppState.currentState!=='active')return false;
   if(!native){setIssue('Este dispositivo no dispone de reconocimiento local compatible.');return false;}
   if(Platform.OS==='android'&&model==='missing'){
    setIssue('El idioma elegido figura como disponible pero no instalado para reconocer voz offline. Instala el modelo y comprueba de nuevo.');
    return false;
   }
   if(requesting.current||active.current)return false;
+  // Reserve ownership BEFORE a potentially long permission prompt. A second
+  // learner view may cancel our pending request, which must then fail closed.
+  if(microphoneOwner&&microphoneOwner!==owner.current)microphoneOwner.stop();
+  if(!nativeSessionGate.canStart()){
+   setIssue('El reconocimiento anterior todavía se está cerrando. Espera a que termine e inténtalo de nuevo.');
+   return false;
+  }
   setIssue('');
-  const token=++epoch.current;requesting.current=true;
+  const token=++epoch.current;
+  const ours:Owner={stop};
+  owner.current=ours;microphoneOwner=ours;
+  requesting.current=true;
+  let begun=false;
   try{
    const permission=await native.requestMicrophonePermissionsAsync();
-   if(epoch.current!==token||AppState.currentState!=='active')return false;
+   if(epoch.current!==token||owner.current!==ours||microphoneOwner!==ours||
+      !mounted.current||languageRef.current!==language||AppState.currentState!=='active')return false;
    if(!permission.granted){setIssue('Autoriza el micrófono para practicar hablando.');return false;}
-   if(microphoneOwner && microphoneOwner!==owner.current)microphoneOwner.stop();
-   const ours:Owner={stop};owner.current=ours;microphoneOwner=ours;
+   if(!nativeSessionGate.begin()){
+    setIssue('La sesión nativa anterior no ha terminado. Inténtalo nuevamente.');
+    return false;
+   }
+   begun=true;
    active.current={id:exerciseId,token};setListening(true);
    native.start({lang:locale[language],requiresOnDeviceRecognition:true,interimResults:true,continuous:false,maxAlternatives:1,recordingOptions:{persist:false},
     iosCategory:{category:'playAndRecord',categoryOptions:['allowBluetooth','defaultToSpeaker'],mode:'measurement'}});
    return true;
   }catch{
+   if(begun)nativeSessionGate.end(); // Only if native.start threw synchronously.
    if(epoch.current===token){
-    if(microphoneOwner===owner.current)microphoneOwner=null;
-    owner.current=null;active.current=null;setListening(false);
-    setIssue('Este idioma necesita un modelo local compatible. Ningún audio se envió a nuestros servidores.');
+    active.current=null;setListening(false);
+    setIssue('Este idioma necesita un modelo local compatible. Puedes continuar por texto.');
    }
    return false;
-  }finally{if(epoch.current===token)requesting.current=false;}
+  }finally{
+   if(epoch.current===token)requesting.current=false;
+   if(active.current?.token!==token&&microphoneOwner===ours){
+    microphoneOwner=null;owner.current=null;
+   }
+  }
  },[native,language,stop,model]);
  const downloadModel=useCallback(async()=>{
   if(Platform.OS!=='android'||!native?.androidTriggerOfflineModelDownload)return;
