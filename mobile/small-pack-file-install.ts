@@ -31,6 +31,7 @@ async function installSmallPackUnlocked(id:string,source:File):Promise<SmallPack
   if(!root.exists)root.create({intermediates:true,idempotent:true});
   stage.create({intermediates:true});created=true;
   await source.copy(new File(stage,'payload.bin'),{overwrite:false});
+  if(new File(stage,'payload.bin').size!==journal.result.state.expectedBytes)return {status:'blocked',reason:'staging-size'};
   const verified=await verifySmallStagedPack(id);
   if(verified.status!=='ok')return {status:'blocked',reason:'checksum-or-journal'};
   // Check the staged bytes again immediately before promotion.
@@ -39,7 +40,7 @@ async function installSmallPackUnlocked(id:string,source:File):Promise<SmallPack
   if(dest.exists)return {status:'blocked',reason:'destination-exists'};
   await stage.move(dest,{overwrite:false});created=false;
   const promoted=new File(dest,'payload.bin');
-  if(!promoted.exists||!Number.isSafeInteger(promoted.size)||promoted.size<=0||promoted.size>LIMIT)return {status:'blocked',reason:'promoted-file-invalid'};
+  if(!promoted.exists||!Number.isSafeInteger(promoted.size)||promoted.size<=0||promoted.size>LIMIT||promoted.size!==journal.result.state.expectedBytes)return {status:'blocked',reason:'promoted-file-invalid'};
   const promotedBytes=await promoted.bytes();
   if(promotedBytes.byteLength!==promoted.size||sha256Bytes(promotedBytes).toLowerCase()!==verified.state.expectedSha256)return {status:'blocked',reason:'promoted-checksum'};
   // Mark installed only after successful promotion. Interrupted promotions
