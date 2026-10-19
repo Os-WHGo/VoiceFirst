@@ -2,6 +2,7 @@
 import {beginLanguagePackInstall,advanceLanguagePackInstall,type PackInstallState} from './language-pack-install-state.js';
 import {planLanguagePacks,type LanguagePack} from './language-packs.js';
 import {PackOperationGate} from './pack-operation-gate.js';
+import {hashFileByChunks,type ChunkedFileSource,type IncrementalSha256} from './chunked-file-hash.js';
 export interface PackJournalStore {
  load(id:string):Promise<{status:'empty'}|{status:'ok';state:PackInstallState}|{status:'blocked'}>;
  save(state:PackInstallState):Promise<boolean>;
@@ -54,4 +55,21 @@ export async function verifyStagedPackSession(id:string,store:PackJournalStore,h
   return transitionPackSessionUnlocked(id,'verify',store,digest);
  });
  return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
+}
+
+/** Connects the bounded chunk reader to the persisted byte-backed verification
+ * while holding the journal gate throughout hashing. Does not select a crypto
+ * provider or a file path: callers must supply trusted native/JS implementations.
+ */
+export async function verifyChunkedPackSession(
+ id:string,
+ store:PackJournalStore,
+ openFile:()=>Promise<ChunkedFileSource>,
+ createHasher:()=>IncrementalSha256,
+ options:{chunkBytes?:number;maxBytes?:number;isCancelled?:()=>boolean}={}
+):Promise<SessionResult>{
+ return verifyStagedPackSession(id,store,async()=>{
+  const result=await hashFileByChunks(openFile,createHasher,options);
+  return result.status==='ok'?result.sha256:null;
+ });
 }
