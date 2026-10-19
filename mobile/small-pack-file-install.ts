@@ -3,7 +3,7 @@
  * Caller must have started a journal session with the trusted manifest.
  */
 import {Directory,File,Paths} from 'expo-file-system';
-import {transitionPackSession,retryPackSession,sha256Bytes,PackOperationGate,type LanguagePack} from '@voicefirst/core';
+import {commitPackSessionIfUnchanged,retryPackSession,sha256Bytes,PackOperationGate,type LanguagePack} from '@voicefirst/core';
 import {packJournalStore,verifySmallStagedPack,loadPackJournal} from './language-pack-journal-storage';
 import {hashSmallStagedPack} from './staged-small-pack-hash';
 import {inspectSmallPackRecovery} from './small-pack-recovery';
@@ -45,7 +45,7 @@ async function installSmallPackUnlocked(id:string,source:File):Promise<SmallPack
   if(promotedBytes.byteLength!==promoted.size||sha256Bytes(promotedBytes).toLowerCase()!==verified.state.expectedSha256)return {status:'blocked',reason:'promoted-checksum'};
   // Mark installed only after successful promotion. Interrupted promotions
   // require an explicit recovery procedure, never an automatic overwrite.
-  const committed=await transitionPackSession(id,'commit',packJournalStore);
+  const committed=await commitPackSessionIfUnchanged(id,packJournalStore,verified.state);
   if(committed.status!=='ok')return {status:'blocked',reason:'promotion-needs-recovery'};
   return {status:'installed'};
  }catch{return {status:'blocked',reason:'file-operation'};}
@@ -66,10 +66,12 @@ export async function finalizeInterruptedSmallPack(id:string):Promise<SmallPackI
  return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
 }
 async function finalizeInterruptedUnlocked(id:string):Promise<SmallPackInstallResult>{
+ const before=await loadPackJournal(id);
+ if(before.status!=='ok'||before.result.state.phase!=='verified')return {status:'blocked',reason:'journal-not-verified'};
  const inspection=await inspectSmallPackRecovery(id);
  if(inspection.status!=='promotion-interrupted')return {status:'blocked',reason:inspection.status};
- const committed=await transitionPackSession(id,'commit',packJournalStore);
- return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:'journal-write'};
+ const committed=await commitPackSessionIfUnchanged(id,packJournalStore,before.result.state);
+ return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:committed.reason};
 }
 
 /** Explicit, opt-in recovery of a verified staging directory after an interruption.
@@ -97,7 +99,7 @@ async function resumeVerifiedUnlocked(id:string):Promise<SmallPackInstallResult>
   // A second full hash of the promoted bytes is required before journal commit.
   const promoted=await inspectSmallPackRecovery(id);
   if(promoted.status!=='promotion-interrupted')return {status:'blocked',reason:'promoted-file-invalid'};
-  const committed=await transitionPackSession(id,'commit',packJournalStore);
+  const committed=await commitPackSessionIfUnchanged(id,packJournalStore,journal.result.state);
   return committed.status==='ok'?{status:'installed'}:{status:'blocked',reason:'promotion-needs-recovery'};
  }catch{return {status:'blocked',reason:'file-operation'};}
 }

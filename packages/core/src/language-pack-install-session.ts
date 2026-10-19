@@ -10,6 +10,12 @@ export interface PackJournalStore {
 }
 const sessionGate=new PackOperationGate();
 export type SessionResult={status:'ok';state:PackInstallState}|{status:'blocked';reason:string};
+/** Bind decisions to exactly the journal generation inspected with staged bytes. */
+export function samePackJournalSnapshot(a:PackInstallState,b:PackInstallState):boolean {
+ return !!a&&!!b&&a.id===b.id&&a.version===b.version&&a.phase===b.phase&&
+  a.expectedSha256===b.expectedSha256&&a.expectedBytes===b.expectedBytes&&
+  a.verifiedSha256===b.verifiedSha256&&a.revision===b.revision;
+}
 export async function startPackSession(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
  if(!pack||typeof pack.id!=='string')return {status:'blocked',reason:'manifest'};
  const guarded=await sessionGate.run(pack.id,()=>startPackSessionUnlocked(pack,store,false));
@@ -44,13 +50,24 @@ export async function transitionPackSession(id:string,event:'verify'|'commit'|'a
  const guarded=await sessionGate.run(id,()=>transitionPackSessionUnlocked(id,event,store,digest));
  return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
 }
-async function transitionPackSessionUnlocked(id:string,event:'verify'|'commit'|'abort',store:PackJournalStore,digest?:string):Promise<SessionResult>{
+async function transitionPackSessionUnlocked(id:string,event:'verify'|'commit'|'abort',store:PackJournalStore,digest?:string,expected?:PackInstallState):Promise<SessionResult>{
  const current=await store.load(id);
  if(current.status!=='ok'||current.state.id!==id)return {status:'blocked',reason:'missing-or-unreadable-journal'};
+ if(expected&&!samePackJournalSnapshot(current.state,expected))return {status:'blocked',reason:'journal-changed'};
  const outcome=advanceLanguagePackInstall(current.state,event,digest);
  if(outcome.status!=='ok')return {status:'blocked',reason:outcome.reason};
  if(!await store.save(outcome.state,current.state))return {status:'blocked',reason:'write'};
  return {status:'ok',state:outcome.state};
+}
+
+/** Commit only if a prior full-file inspection still belongs to the same journal.
+ * The store's transactional compare-and-save protects a subsequent racing write.
+ */
+export async function commitPackSessionIfUnchanged(id:string,store:PackJournalStore,expected:PackInstallState):Promise<SessionResult>{
+ if(!expected||expected.id!==id||expected.phase!=='verified'||expected.verifiedSha256!==expected.expectedSha256)
+  return {status:'blocked',reason:'invalid-expected-journal'};
+ const guarded=await sessionGate.run(id,()=>transitionPackSessionUnlocked(id,'commit',store,undefined,expected));
+ return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
 }
 
 /** Verification must be backed by an actual byte reader, never by a manifest digest alone.
@@ -65,7 +82,7 @@ export async function verifyStagedPackSession(id:string,store:PackJournalStore,h
   let digest:string|null;
   try{digest=await hashStagedBytes(id,current.state.expectedBytes);}catch{return {status:'blocked',reason:'staged-file-read'};}
   if(typeof digest!=='string'||!/^[a-f0-9]{64}$/i.test(digest))return {status:'blocked',reason:'staged-file-read'};
-  return transitionPackSessionUnlocked(id,'verify',store,digest);
+  return transitionPackSessionUnlocked(id,'verify',store,digest,current.state);
  });
  return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
 }

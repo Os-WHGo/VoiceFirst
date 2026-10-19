@@ -32,10 +32,14 @@ function harness(phase='staging',withStage=true,faults={}){
   'expo-file-system':{Directory,File,Paths:{document:'doc'}},
   '@voicefirst/core':{
    PackOperationGate,sha256Bytes:()=>hash,
-   transitionPackSession:async(_id,event)=>{
-    if(event!=='commit'||journal.phase!=='verified')return {status:'blocked',reason:'phase'};
+   commitPackSessionIfUnchanged:async(_id,_store,expected)=>{
+    if(journal.phase!=='verified'||journal.id!==expected.id||journal.version!==expected.version||
+       journal.expectedSha256!==expected.expectedSha256||journal.expectedBytes!==expected.expectedBytes||
+       journal.verifiedSha256!==expected.verifiedSha256||journal.revision!==expected.revision)
+      return {status:'blocked',reason:'journal-changed'};
     if(faults.failFirstCommit&&commitAttempts++===0)return {status:'blocked',reason:'injected-commit-failure'};
-    journal={...journal,phase:'installed'};return {status:'ok',state:journal};
+    journal={...journal,phase:'installed',revision:(journal.revision??0)+1};
+    return {status:'ok',state:journal};
    },
    retryPackSession:async()=>{
     if(journal.phase!=='failed')return {status:'blocked',reason:'phase'};
@@ -56,7 +60,11 @@ function harness(phase='staging',withStage=true,faults={}){
   './small-pack-recovery':{inspectSmallPackRecovery:async()=>{
    if(dirs.has('voicefirst-pack-staging/en-ca')&&dirs.has('voicefirst-installed-packs/en-ca'))return {status:'blocked',reason:'ambiguous-folders'};
    if(dirs.has('voicefirst-pack-staging/en-ca'))return {status:'staging-interrupted'};
-   if(dirs.has('voicefirst-installed-packs/en-ca')&&journal.phase==='verified')return {status:'promotion-interrupted'};
+   if(dirs.has('voicefirst-installed-packs/en-ca')&&journal.phase==='verified'){
+    if(faults.changeJournalAtDestinationInspection)
+      journal={...journal,revision:(journal.revision??0)+1,version:'2.0.0'};
+    return {status:'promotion-interrupted'};
+   }
    return {status:'blocked',reason:'missing'};
   }}
  };
@@ -131,4 +139,20 @@ test('installed journal is not reopened for accidental repeated promotion',async
  assert.equal((await h.api.resumeVerifiedSmallPack('en-ca')).status,'blocked');
  assert.equal((await h.api.restartFailedSmallPack({id:'en-ca'})).status,'blocked');
  assert.equal(h.state().phase,'installed');
+});
+
+test('recovery cannot finalize an old inspected journal after version changes',async()=>{
+ const h=harness('verified',false,{bothFolders:true,changeJournalAtDestinationInspection:true});
+ h.dirs.delete('voicefirst-pack-staging/en-ca');
+ assert.deepEqual(await h.api.finalizeInterruptedSmallPack('en-ca'),{status:'blocked',reason:'journal-changed'});
+ assert.equal(h.state().phase,'verified');
+ assert.equal(h.state().version,'2.0.0');
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
+});
+test('resumed staging cannot commit a journal mutated during final promotion inspection',async()=>{
+ const h=harness('verified',true,{changeJournalAtDestinationInspection:true});
+ assert.deepEqual(await h.api.resumeVerifiedSmallPack('en-ca'),{status:'blocked',reason:'promotion-needs-recovery'});
+ assert.equal(h.state().phase,'verified');
+ assert.equal(h.state().version,'2.0.0');
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
 });

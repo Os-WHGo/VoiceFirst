@@ -186,3 +186,8 @@ No se ha generado ni instalado un IPA/APK; no hay audios originales producidos p
 ## 2026-10-19 · Fail-closed install retry and byte-backed recovery tests
 - A retry of failed optional pack is restricted to the same ID/version/SHA-256/expected byte length. It cannot silently adopt another manifest with the same ID. The coordinator also rejects a journal returned for a different ID.
 - New adapter inspection tests transpile the actual `mobile/small-pack-recovery.ts` with simulated Expo files, use the actual core SHA-256 over bytes, and cover valid promotion, corrupted same-size bytes, truncation, 8 MiB limit, double folders, missing files/journal and read failure. Simulator tests are not actual Android/iOS crash acceptance.
+
+## 2026-10-19 · Snapshot-bound verification and promotion (TOCTOU protection)
+- Byte hash verification now requires the same journal snapshot after hashing. A concurrent revision, version, size or digest change blocks verification rather than authorizing a different manifest.
+- File promotion (initial install, explicit recovery from verified staging, and finalization after a move) commits only against the exact verified journal that the file was checked against. SQLite compare-and-save still guards between final journal read and write.
+- Node regression tests simulate journal mutation mid-hash/mid-recovery. There is no claim of atomicity across SQLite plus filesystem or of a physical crash test.

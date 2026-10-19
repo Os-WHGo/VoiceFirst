@@ -188,3 +188,40 @@ test('wrong-id journal returned by a storage adapter never authorizes transition
  assert.equal((await retryPackSession(pack,s)).reason,'journal-not-failed');
  assert.equal(writes,0);
 });
+
+test('slow hashing cannot verify a newer journal revision from another runtime',async()=>{
+ let current={id:pack.id,version:pack.version,phase:'staging',expectedSha256:digest,expectedBytes:pack.bytes,revision:3};
+ let writes=0;
+ const s={load:async()=>({status:'ok',state:current}),save:async()=>{writes++;return true;}};
+ const result=await verifyStagedPackSession(pack.id,s,async()=>{
+  current={...current,revision:4};
+  return digest;
+ });
+ assert.deepEqual(result,{status:'blocked',reason:'journal-changed'});
+ assert.equal(writes,0);
+});
+test('stale promoted-file snapshot is rejected after version or revision changed',async()=>{
+ const {commitPackSessionIfUnchanged}=await import('../dist/index.js');
+ const old={id:pack.id,version:pack.version,phase:'verified',expectedSha256:digest,expectedBytes:pack.bytes,verifiedSha256:digest,revision:3};
+ let current={...old,revision:4,version:'2.0.0'},writes=0;
+ const s={load:async()=>({status:'ok',state:current}),save:async()=>{writes++;return true;}};
+ assert.deepEqual(await commitPackSessionIfUnchanged(pack.id,s,old),{status:'blocked',reason:'journal-changed'});
+ assert.equal(writes,0);
+});
+test('snapshot-bound commit advances a verified journal once only',async()=>{
+ const {commitPackSessionIfUnchanged}=await import('../dist/index.js');
+ let current={id:pack.id,version:pack.version,phase:'verified',expectedSha256:digest,expectedBytes:pack.bytes,verifiedSha256:digest,revision:2};
+ const snapshot={...current};
+ const s={load:async()=>({status:'ok',state:current}),save:async(next,prior)=>{if(current.revision!==prior.revision)return false;current=next;return true;}};
+ assert.equal((await commitPackSessionIfUnchanged(pack.id,s,snapshot)).status,'ok');
+ assert.equal(current.revision,3);
+ assert.equal(current.phase,'installed');
+ assert.equal((await commitPackSessionIfUnchanged(pack.id,s,snapshot)).status,'blocked');
+});
+test('journal snapshot compares phase, digest, bytes and strict revision',async()=>{
+ const {samePackJournalSnapshot}=await import('../dist/index.js');
+ const state={id:pack.id,version:pack.version,phase:'verified',expectedSha256:digest,expectedBytes:pack.bytes,verifiedSha256:digest,revision:1};
+ assert.equal(samePackJournalSnapshot(state,{...state}),true);
+ for(const change of [{revision:undefined},{revision:2},{version:'2.0.0'},{phase:'failed'},{expectedBytes:pack.bytes+1},{expectedSha256:'b'.repeat(64)}])
+  assert.equal(samePackJournalSnapshot(state,{...state,...change}),false);
+});
