@@ -27,3 +27,15 @@ export async function transitionPackSession(id:string,event:'verify'|'commit'|'a
  if(!await store.save(outcome.state))return {status:'blocked',reason:'write'};
  return {status:'ok',state:outcome.state};
 }
+
+/** Verification must be backed by an actual byte reader, never by a manifest digest alone.
+ * The native adapter must hash the complete staged file and report missing files as null.
+ */
+export async function verifyStagedPackSession(id:string,store:PackJournalStore,hashStagedBytes:(id:string)=>Promise<string|null>):Promise<SessionResult>{
+ const current=await store.load(id);
+ if(current.status!=='ok'||current.state.id!==id||current.state.phase!=='staging')return {status:'blocked',reason:'missing-or-invalid-staging'};
+ let digest:string|null;
+ try{digest=await hashStagedBytes(id);}catch{return {status:'blocked',reason:'staged-file-read'};}
+ if(typeof digest!=='string'||!/^[a-f0-9]{64}$/i.test(digest))return {status:'blocked',reason:'staged-file-read'};
+ return transitionPackSession(id,'verify',store,digest);
+}
