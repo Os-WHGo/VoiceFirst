@@ -3,7 +3,7 @@
  * Caller must have started a journal session with the trusted manifest.
  */
 import {Directory,File,Paths} from 'expo-file-system';
-import {transitionPackSession,sha256Bytes,PackOperationGate} from '@voicefirst/core';
+import {transitionPackSession,retryPackSession,sha256Bytes,PackOperationGate,type LanguagePack} from '@voicefirst/core';
 import {packJournalStore,verifySmallStagedPack,loadPackJournal} from './language-pack-journal-storage';
 import {hashSmallStagedPack} from './staged-small-pack-hash';
 import {inspectSmallPackRecovery} from './small-pack-recovery';
