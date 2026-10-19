@@ -2,7 +2,7 @@
  * Age-sensitive access is intentionally conservative; child-facing distribution requires
  * consent/security/product review beyond this stateless course selector.
  */
-import type { CefrBand, TargetLanguage, LearnerPreferences } from './types.js';
+import { targetLanguages, type CefrBand, type TargetLanguage, type LearnerPreferences } from './types.js';
 
 export const officialCefrBands = ['A1','A2','B1','B2','C1','C2'] as const;
 export type AgeStage = 'preschool' | 'primary' | 'preteen' | 'teen' | 'adult';
