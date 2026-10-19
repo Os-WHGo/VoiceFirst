@@ -13,8 +13,8 @@ export function planLanguagePackUpdate(pack:LanguagePack,installedVersion:string
  const old=semver(installedVersion),next=semver(pack.version);
  if(!old||!next||old.some(n=>!Number.isSafeInteger(n))||next.some(n=>!Number.isSafeInteger(n)))return {status:'rejected',reason:'installed-version'};
  for(let i=0;i<3;i++){
-  if(next[i]>old[i])return {status:'download',id:pack.id,fromVersion:installedVersion,toVersion:pack.version,bytes:pack.bytes};
-  if(next[i]<old[i])return {status:'rejected',reason:'downgrade'};
+  if(next[i]!>old[i]!)return {status:'download',id:pack.id,fromVersion:installedVersion,toVersion:pack.version,bytes:pack.bytes};
+  if(next[i]!<old[i]!)return {status:'rejected',reason:'downgrade'};
  }
  return {status:'current',id:pack.id,version:installedVersion};
 }
