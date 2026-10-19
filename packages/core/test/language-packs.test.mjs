@@ -11,3 +11,16 @@ test('missing dependencies and cycles fail closed',()=>{
  assert.equal(planLanguagePacks([pack('a',['missing'])],['a']).status,'invalid');
  assert.equal(planLanguagePacks([pack('a',['b']),pack('b',['a'])],['a']).status,'invalid');
 });
+
+test('untrusted JSON manifests reject bad primitive types without throwing',()=>{
+ for(const altered of [
+  {licenseId:42},{sourceUrl:42},{licenseReviewed:'false'},
+  {licenseReviewed:1},{sha256:99},{id:9},{version:[]},
+  {dependencies:[null]},{dependencies:['../escape']},{locales:['unknown']}
+ ]){
+  const result=planLanguagePacks([{...pack('sample'),...altered}],['sample']);
+  assert.equal(result.status,'invalid',JSON.stringify(altered));
+ }
+ assert.equal(planLanguagePacks([null],['sample']).status,'invalid');
+ assert.equal(planLanguagePacks([{...pack('sample'),licenseReviewed:true}],['sample']).status,'ready');
+});
