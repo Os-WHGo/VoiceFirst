@@ -10,9 +10,10 @@ const owner=new PlaybackRequestOwnership();
 // Serialize every Speech.stop request: an older pending stop must never
 // execute after the newest request has begun speaking.
 let speechStopQueue:Promise<void>=Promise.resolve();
-function stopSystemVoiceInOrder():Promise<void>{
- speechStopQueue=speechStopQueue.then(()=>Speech.stop()).then(()=>{},()=>{});
- return speechStopQueue;
+function stopSystemVoiceInOrder():Promise<boolean>{
+ const stopped=speechStopQueue.then(()=>Speech.stop()).then(()=>true,()=>false);
+ speechStopQueue=stopped.then(()=>{});
+ return stopped;
 }
 /** Immediately revoke playback ownership even if the native stop is slow. */
 export async function stopCuratedVoice():Promise<void>{
@@ -23,8 +24,13 @@ export async function playCuratedVoice(line:VoiceCue,rate:number,
  onDone?:()=>void,onError?:(message:string)=>void):Promise<void>{
  // This token MUST be allocated before any await, including Speech.stop.
  const request=owner.claim();
- await stopSystemVoiceInOrder();
+ const nativeStopped=await stopSystemVoiceInOrder();
  if(!owner.isCurrent(request))return;
+ if(!nativeStopped){
+  owner.finish(request);
+  onError?.('No se pudo detener la voz anterior. Inténtalo nuevamente.');
+  return;
+ }
  const playbackRate=effectivePlaybackRate(rate);
  try{
   await setAudioModeAsync({playsInSilentMode:true,shouldPlayInBackground:false,interruptionMode:'doNotMix'});
