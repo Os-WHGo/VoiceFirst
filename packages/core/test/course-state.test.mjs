@@ -30,3 +30,22 @@ test('malformed due dates cannot force completed lesson back into review',()=>{
  const state={...initialCourseState('en-CA'),completed:[first.id],due:{[first.exercises[2].id]:'0000-00-00'}};
  assert.equal(chooseCourseLesson(state,'2026-10-18')?.id,lessons[1].id);
 });
+
+test('six-language persistence rejects forged counters, wrong-language lessons and impossible dates',()=>{
+ for(const language of ['en-CA','fr-CA','es','pt-BR','de','it']){
+  const base=initialCourseState(language);
+  const first=lessonsFor(language)[0];
+  const exercise=first.exercises[2];
+  assert.equal(loadCourseState(courseStateToJSON(base),language).kind,'ok');
+  for(const bad of [
+   {...base,attempts:{[exercise.id]:-1}},
+   {...base,attempts:{[exercise.id]:1.5}},
+   {...base,attempts:{[exercise.id]:1},correct:{[exercise.id]:2}},
+   {...base,due:{[exercise.id]:'2026-02-30'}},
+   {...base,completed:[first.id,first.id]},
+   {...base,completed:[first.id]},
+   {...base,attempts:{'foreign-exercise':1}}
+  ])assert.equal(loadCourseState(JSON.stringify(bad),language).kind,'invalid');
+  assert.throws(()=>chooseCourseLesson(base,'2026-02-30'),/Invalid local date/);
+ }
+});
