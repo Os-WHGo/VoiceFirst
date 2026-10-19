@@ -30,5 +30,5 @@ export function courseReviewSummary(progress:CourseProgress,today:string):{due:n
 export function voluntaryCourseReview(progress:CourseProgress,lessonId:string):ReviewQueueEntry[]{
  const lesson=lessonsFor(progress.language).find(l=>l.id===lessonId);
  if(!lesson||!progress.completed.includes(lesson.id))return [];
- return lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint').map(exercise=>({lesson,exercise,dueOn:validDay(progress.due[exercise.id]??'')?progress.due[exercise.id]:'',attempts:progress.attempts[exercise.id]??0,correct:progress.correct[exercise.id]??0}));
+ return lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint').map(exercise=>({lesson,exercise,dueOn:validDay(progress.due[exercise.id]??'')?(progress.due[exercise.id]??''):'',attempts:progress.attempts[exercise.id]??0,correct:progress.correct[exercise.id]??0}));
 }
