@@ -78,7 +78,12 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
   const clear=()=>{history.current=[];setTranscript('');setAnswer('');setError('');};
   return <View style={styles.container}>
     <Text style={styles.header}>Laboratorio de conversación con IA</Text>
-    {experience.instructionFormat==='full-context'&&<Text style={styles.description}>Grabación breve por turnos. El audio se envía para transcribirlo y obtener una respuesta contextual de OpenAI. No es aún el modo manos libres definitivo.</Text>}
+    <Text style={styles.description}>Laboratorio opcional y online: la grabación, idioma y contexto reciente se envían a un servidor de desarrollo que utiliza OpenAI. No forma parte del curso offline.</Text>
+    {!!DEV_URL&&<View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+      <Switch accessibilityLabel="Acepto enviar audio al laboratorio online" value={onlineConsent} onValueChange={value=>{setOnlineConsent(value);if(!value)abort.current?.abort();}}/>
+      <Text style={[styles.note,{flex:1}]}>Acepto el envío de audio y contexto para esta sesión de prueba. Puedo retirarlo aquí.</Text>
+    </View>}
+    {experience.instructionFormat==='full-context'&&<Text style={styles.note}>Función experimental por turnos, sin funcionamiento manos libres certificado.</Text>}
     {!DEV_URL && <Text style={styles.warning}>Sin servidor de desarrollo configurado. El micrófono de esta función permanece inactivo.</Text>}
     {!!DEV_URL && <TextInput accessibilityLabel="Token de desarrollo local" secureTextEntry placeholder="Token de desarrollo local" placeholderTextColor={colors.muted} style={styles.input} autoCapitalize="none" value={devToken} onChangeText={setDevToken}/>}
     <Pressable accessibilityRole="button" disabled={phase==='sending'||(!DEV_URL)} onPress={phase==='recording'?finishRecording:phase==='speaking'?stopSpeaking:startRecording} style={[styles.cta,phase==='sending'&&{opacity:0.5}]}>
