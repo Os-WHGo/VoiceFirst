@@ -26,7 +26,8 @@ test('session does not report success when journal write fails',async()=>{
 });
 
 test('dependent pack requires an installed verified dependency journal',async()=>{
- const s=store();
+ const entries=new Map();
+ const s={load:async(id)=>entries.has(id)?{status:'ok',state:entries.get(id)}:{status:'empty'},save:async(state)=>{entries.set(state.id,state);return true;}};
  const dependent={...pack,id:'en-ca-dialogue',dependencies:[pack.id]};
  assert.equal((await startPackSession(dependent,s)).reason,'dependencies');
  await startPackSession(pack,s);
