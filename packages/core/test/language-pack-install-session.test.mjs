@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {startPackSession,transitionPackSession,verifyStagedPackSession} from '../dist/index.js';
+import {startPackSession,retryPackSession,transitionPackSession,verifyStagedPackSession} from '../dist/index.js';
 const digest='a'.repeat(64);
 const pack={id:'en-ca-core',kind:'course',version:'1.0.0',bytes:100,dependencies:[],locales:['en-CA'],sha256:digest,licenseId:'test',licenseReviewed:true,sourceUrl:'https://example.org'};
 const store=()=>{
