@@ -50,30 +50,31 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
       if(result.kind!=='ok'){setLocked('Los datos de este curso no pueden leerse. No se han borrado; continúa sin reemplazarlos.');return;}
       setProgress(result.progress);
       const suggested=chooseCourseLesson(result.progress,localDay())?.id??lessons[0]?.id??null;
-      let resume: {lessonId:string;step:number;active:boolean}|null=null;
+      let resume: {lessonId:string;step:number;active:boolean;reviewExerciseId:string|null}|null=null;
       if(cursor!==null && experience.returnToLastStep){
         try{
           const value:unknown=JSON.parse(cursor);
           if(value && typeof value==='object'){
-            const c=value as {lessonId?:unknown;step?:unknown;active?:unknown};
+            const c=value as {lessonId?:unknown;step?:unknown;active?:unknown;reviewExerciseId?:unknown};
             const old=lessons.find(x=>x.id===c.lessonId);
             if(old && (old.prerequisite===undefined||result.progress.completed.includes(old.prerequisite)) &&
                 Number.isSafeInteger(c.step) && typeof c.step==='number' && c.step>=0 && c.step<old.exercises.length && typeof c.active==='boolean'){
-              resume={lessonId:old.id,step:c.step,active:c.active};
+              const reviewId=typeof c.reviewExerciseId==='string' && old.exercises[c.step]?.id===c.reviewExerciseId && result.progress.completed.includes(old.id) && (old.exercises[c.step]?.type==='recall'||old.exercises[c.step]?.type==='checkpoint')?c.reviewExerciseId:null;
+              resume={lessonId:old.id,step:c.step,active:c.active,reviewExerciseId:reviewId};
             }
           }
         }catch{/* Cursor is optional; never overwrite or lose course evidence because of it. */}
       }
-      setChosenId(resume?.lessonId??suggested);setStep(resume?.step??0);setActive(resume?.active??false);
+      setChosenId(resume?.lessonId??suggested);setStep(resume?.step??0);setReviewExerciseId(resume?.reviewExerciseId??null);setActive(resume?.active??false);
     }).catch(()=>{if(valid)setLocked('No se pudo abrir la base de datos local.');});
     return()=>{valid=false;mounted.current=false;playbackEpoch.current++;mic.stop();void stopCuratedVoice();};
   },[target]);
   useEffect(()=>{
     if(!progress||!chosenId)return;
-    const raw=JSON.stringify({lessonId:chosenId,step,active});
+    const raw=JSON.stringify({lessonId:chosenId,step,active,reviewExerciseId});
     writeQueue.current=writeQueue.current.catch(()=>undefined).then(()=>Storage.setItem(cursorKey(target),raw));
     void writeQueue.current.catch(()=>{if(mounted.current){setLocked('No se pudo guardar el punto de reanudación. El curso queda pausado.');setActive(false);}});
-  },[target,progress===null,chosenId,step,active]);
+  },[target,progress===null,chosenId,step,active,reviewExerciseId]);
   const save=(next:CourseProgress)=>{
     setProgress(next);
     // Serialize writes. This screen persists no audio, transcripts or personal profiles.
