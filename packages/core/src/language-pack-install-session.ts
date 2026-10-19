@@ -79,10 +79,11 @@ export async function verifyStagedPackSession(id:string,store:PackJournalStore,h
  const guarded=await sessionGate.run(id,async():Promise<SessionResult>=>{
   const current=await store.load(id);
   if(current.status!=='ok'||current.state.id!==id||current.state.phase!=='staging')return {status:'blocked',reason:'missing-or-invalid-staging'};
+  const pinned={...current.state};
   let digest:string|null;
-  try{digest=await hashStagedBytes(id,current.state.expectedBytes);}catch{return {status:'blocked',reason:'staged-file-read'};}
+  try{digest=await hashStagedBytes(id,pinned.expectedBytes);}catch{return {status:'blocked',reason:'staged-file-read'};}
   if(typeof digest!=='string'||!/^[a-f0-9]{64}$/i.test(digest))return {status:'blocked',reason:'staged-file-read'};
-  return transitionPackSessionUnlocked(id,'verify',store,digest,current.state);
+  return transitionPackSessionUnlocked(id,'verify',store,digest,pinned);
  });
  return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
 }
