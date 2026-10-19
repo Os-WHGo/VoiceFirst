@@ -7,9 +7,9 @@ export type PackUpdateDecision=
 const semver=(v:string):number[]|null=>/^\d+\.\d+\.\d+$/.test(v)?v.split('.').map(Number):null;
 export function planLanguagePackUpdate(pack:LanguagePack,installedVersion:string|null,installedDependencies:readonly string[]=[]):PackUpdateDecision{
  if(!pack||!Array.isArray(pack.dependencies)||!Array.isArray(installedDependencies))return {status:'rejected',reason:'manifest'};
- if(pack.dependencies.some(id=>!installedDependencies.includes(id)))return {status:'rejected',reason:'dependencies'};
  const valid=planLanguagePacks([pack],[]);
  if(valid.status!=='ready')return {status:'rejected',reason:'manifest'};
+ if(pack.dependencies.some(id=>!installedDependencies.includes(id)))return {status:'rejected',reason:'dependencies'};
  if(installedVersion===null)return {status:'download',id:pack.id,fromVersion:null,toVersion:pack.version,bytes:pack.bytes};
  const old=semver(installedVersion),next=semver(pack.version);
  if(!old||!next||old.some(n=>!Number.isSafeInteger(n))||next.some(n=>!Number.isSafeInteger(n)))return {status:'rejected',reason:'installed-version'};
