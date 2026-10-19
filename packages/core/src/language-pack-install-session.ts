@@ -11,10 +11,10 @@ const sessionGate=new PackOperationGate();
 export type SessionResult={status:'ok';state:PackInstallState}|{status:'blocked';reason:string};
 export async function startPackSession(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
  if(!pack||typeof pack.id!=='string')return {status:'blocked',reason:'manifest'};
- const guarded=await sessionGate.run(pack.id,()=>startPackSessionUnlocked(pack,store));
+ const guarded=await sessionGate.run(pack.id,()=>startPackSessionUnlocked(pack,store,false));
  return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
 }
-async function startPackSessionUnlocked(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
+async function startPackSessionUnlocked(pack:LanguagePack,store:PackJournalStore,restartFailed:boolean):Promise<SessionResult>{
  if(planLanguagePacks([pack],[]).status!=='ready')return {status:'blocked',reason:'manifest'};
  for(const dependency of pack.dependencies){
   const existing=await store.load(dependency);
