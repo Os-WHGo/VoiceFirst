@@ -79,3 +79,15 @@ test('wrong replies do not skip a dialogue turn',()=>{
   assert.equal(next.attempts[dialogue.turns[0].id],1);
  }
 });
+
+test('forged accepted verdict cannot skip a curated turn',()=>{
+ for(const target of targetLanguages)for(const dialogue of dialoguesFor(target)){
+  const initial=newDialogueRun(dialogue);
+  assert.deepEqual(recordDialogueResponse(initial,dialogue,{verdict:'accepted'}),initial);
+  assert.deepEqual(recordDialogueResponse(initial,dialogue,{verdict:'accepted',matchedReply:'unrelated phrase'}),initial);
+  const real=evaluateDialogueTurn(dialogue.turns[0],dialogue.turns[0].acceptedReplies[0],target,'high');
+  const advanced=recordDialogueResponse(initial,dialogue,real);
+  assert.equal(advanced.turnIndex,1);
+  assert.deepEqual(recordDialogueResponse(advanced,dialogue,real),advanced);
+ }
+});
