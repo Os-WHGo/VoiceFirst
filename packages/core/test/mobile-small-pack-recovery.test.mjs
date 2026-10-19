@@ -4,11 +4,13 @@ import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import {PackOperationGate} from '../dist/index.js';
 
-function harness(phase='staging',withStage=true){
+function harness(phase='staging',withStage=true,faults={}){
+ let moveAttempts=0,commitAttempts=0;
  const id='en-ca',hash='a'.repeat(64),data=new Uint8Array([1,2,3]);
  let journal={id,version:'1.0.0',phase,expectedSha256:hash,expectedBytes:3,
   ...(phase==='verified'||phase==='installed'?{verifiedSha256:hash}:{})};
  const dirs=new Set(withStage?['voicefirst-pack-staging/en-ca']:[]);
+ if(faults.bothFolders)dirs.add('voicefirst-installed-packs/en-ca');
  const pathOf=parts=>parts.map(x=>typeof x==='object'?x.path:x).filter(x=>x!=='doc').join('/');
  class Directory{
   constructor(...parts){this.path=pathOf(parts);}
@@ -16,6 +18,7 @@ function harness(phase='staging',withStage=true){
   create(){dirs.add(this.path);}
   async move(to,options){
    if(options.overwrite!==false||dirs.has(to.path))throw Error('overwrite');
+   if(faults.failFirstMove&&moveAttempts++===0)throw Error('interrupted-move');
    dirs.delete(this.path);dirs.add(to.path);
   }
  }
@@ -31,6 +34,7 @@ function harness(phase='staging',withStage=true){
    PackOperationGate,sha256Bytes:()=>hash,
    transitionPackSession:async(_id,event)=>{
     if(event!=='commit'||journal.phase!=='verified')return {status:'blocked',reason:'phase'};
+    if(faults.failFirstCommit&&commitAttempts++===0)return {status:'blocked',reason:'injected-commit-failure'};
     journal={...journal,phase:'installed'};return {status:'ok',state:journal};
    },
    retryPackSession:async()=>{
@@ -50,6 +54,7 @@ function harness(phase='staging',withStage=true){
   },
   './staged-small-pack-hash':{hashSmallStagedPack:async()=>hash},
   './small-pack-recovery':{inspectSmallPackRecovery:async()=>{
+   if(dirs.has('voicefirst-pack-staging/en-ca')&&dirs.has('voicefirst-installed-packs/en-ca'))return {status:'blocked',reason:'ambiguous-folders'};
    if(dirs.has('voicefirst-pack-staging/en-ca'))return {status:'staging-interrupted'};
    if(dirs.has('voicefirst-installed-packs/en-ca')&&journal.phase==='verified')return {status:'promotion-interrupted'};
    return {status:'blocked',reason:'missing'};
@@ -81,4 +86,49 @@ test('failed journal without files permits explicit staging restart',async()=>{
  const h=harness('failed',false);
  assert.equal((await h.api.restartFailedSmallPack({id:'en-ca'})).status,'staging');
  assert.equal(h.state().phase,'staging');
+});
+
+// Fault-injection tests exercise the real mobile control flow with doubles for
+// Expo FileSystem and SQLite. They are not hardware filesystem guarantees.
+test('a failed move preserves verified staged bytes and permits explicit retry',async()=>{
+ const h=harness('verified',true,{failFirstMove:true});
+ assert.deepEqual(await h.api.resumeVerifiedSmallPack('en-ca'),{status:'blocked',reason:'file-operation'});
+ assert.equal(h.state().phase,'verified');
+ assert.equal(h.dirs.has('voicefirst-pack-staging/en-ca'),true);
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),false);
+ assert.deepEqual(await h.api.resumeVerifiedSmallPack('en-ca'),{status:'installed'});
+ assert.equal(h.dirs.has('voicefirst-pack-staging/en-ca'),false);
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
+});
+test('commit failure after promotion is explicitly recoverable without replacing files',async()=>{
+ const h=harness('verified',true,{failFirstCommit:true});
+ assert.deepEqual(await h.api.resumeVerifiedSmallPack('en-ca'),{status:'blocked',reason:'promotion-needs-recovery'});
+ assert.equal(h.state().phase,'verified');
+ assert.equal(h.dirs.has('voicefirst-pack-staging/en-ca'),false);
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
+ assert.deepEqual(await h.api.finalizeInterruptedSmallPack('en-ca'),{status:'installed'});
+ assert.equal(h.state().phase,'installed');
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
+ assert.equal((await h.api.finalizeInterruptedSmallPack('en-ca')).status,'blocked');
+});
+test('ambiguous staging and destination are not resolved destructively',async()=>{
+ const h=harness('verified',true,{bothFolders:true});
+ const result=await h.api.resumeVerifiedSmallPack('en-ca');
+ assert.equal(result.status,'blocked');
+ assert.equal(h.state().phase,'verified');
+ assert.equal(h.dirs.has('voicefirst-pack-staging/en-ca'),true);
+ assert.equal(h.dirs.has('voicefirst-installed-packs/en-ca'),true);
+});
+test('missing staging cannot be promoted and journal remains unchanged',async()=>{
+ const h=harness('verified',false);
+ const result=await h.api.resumeVerifiedSmallPack('en-ca');
+ assert.equal(result.status,'blocked');
+ assert.equal(h.state().phase,'verified');
+ assert.equal(h.dirs.size,0);
+});
+test('installed journal is not reopened for accidental repeated promotion',async()=>{
+ const h=harness('installed',false);
+ assert.equal((await h.api.resumeVerifiedSmallPack('en-ca')).status,'blocked');
+ assert.equal((await h.api.restartFailedSmallPack({id:'en-ca'})).status,'blocked');
+ assert.equal(h.state().phase,'installed');
 });
