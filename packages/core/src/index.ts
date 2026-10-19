@@ -55,3 +55,5 @@ export * from './situation-practice.js';
 export * from './learning-experience.js';
 
 export * from './tutor-inference-gate.js';
+
+export * from './local-inference-selection.js';
