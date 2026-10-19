@@ -14,3 +14,15 @@ test('journal rejects corrupted or untrusted persisted records',()=>{
  assert.equal(readLanguagePackJournal(JSON.stringify({...base,verifiedSha256:'b'.repeat(64)})).status,'rejected');
  assert.equal(readLanguagePackJournal(JSON.stringify({...base,extra:true})).status,'rejected');
 });
+
+test('journal persists trusted payload size and rejects malformed sizes',()=>{
+ const updated={...base,expectedBytes:100};
+ const read=readLanguagePackJournal(JSON.stringify(updated));
+ assert.equal(read.status,'ok');
+ assert.equal(read.state.expectedBytes,100);
+ for(const expectedBytes of [-1,0,1.2,'100']){
+  assert.equal(readLanguagePackJournal(JSON.stringify({...updated,expectedBytes})).status,'rejected');
+ }
+ // Legacy journals are readable for diagnosis, but mobile activation requires size.
+ assert.equal(readLanguagePackJournal(JSON.stringify(base)).status,'ok');
+});
