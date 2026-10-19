@@ -10,6 +10,7 @@ export function beginLocalModelInstall(pkg:LocalModelPackage):LocalInstallResult
  return {status:'ok',state:{modelId:pkg.id,phase:'staging',expectedSha256:pkg.sha256.toLowerCase()}};
 }
 export function advanceLocalModelInstall(state:LocalInstallState,event:Exclude<LocalInstallEvent,'begin'>,actualSha256?:string):LocalInstallResult {
+ if(!state||typeof state.modelId!=='string'||!(/^[a-zA-Z0-9._-]{1,100}$/).test(state.modelId)||typeof state.expectedSha256!=='string'||!(/^[a-f0-9]{64}$/).test(state.expectedSha256))return {status:'rejected',reason:'invalid-transition'};
  if(event==='abort'&&state.phase!=='installed')return {status:'ok',state:{...state,phase:'failed',verifiedSha256:undefined}};
  if(event==='verify'&&state.phase==='staging'){
   if(typeof actualSha256!=='string'||!(/^[a-fA-F0-9]{64}$/).test(actualSha256)||actualSha256.toLowerCase()!==state.expectedSha256)return {status:'rejected',reason:'checksum-mismatch'};
