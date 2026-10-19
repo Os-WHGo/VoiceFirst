@@ -1,6 +1,6 @@
 /** Read-only crash recovery inspection. Never trust journal alone or delete data. */
 import {Directory,File,Paths} from 'expo-file-system';
-import {sha256Bytes} from '@voicefirst/core';
+import {sha256Bytes,decideSmallPackRecovery} from '@voicefirst/core';
 import {loadPackJournal} from './language-pack-journal-storage';
 const LIMIT=8*1024*1024;
 const valid=(id:string)=>/^[a-z0-9][a-z0-9._-]{0,99}$/.test(id);
@@ -28,15 +28,14 @@ export async function inspectSmallPackRecovery(id:string):Promise<SmallPackRecov
   if(dest.exists){
    const ok=await matches(new File(dest,'payload.bin'),state.expectedSha256);
    if(!ok)return {status:'blocked',reason:'installed-file-invalid'};
-   if(state.phase==='installed')return {status:'installed-verified'};
-   if(state.phase==='verified')return {status:'promotion-interrupted'};
-   return {status:'blocked',reason:'unexpected-destination'};
+   const decision=decideSmallPackRecovery(state,'destination-valid');
+   return decision==='blocked'?{status:'blocked',reason:'unexpected-destination'}:{status:decision};
   }
   if(stage.exists){
    const ok=await matches(new File(stage,'payload.bin'),state.expectedSha256);
    if(!ok)return {status:'blocked',reason:'staged-file-invalid'};
-   if(state.phase==='verified'||state.phase==='staging')return {status:'staging-interrupted'};
-   return {status:'blocked',reason:'unexpected-staging'};
+   const decision=decideSmallPackRecovery(state,'staging-valid');
+   return decision==='blocked'?{status:'blocked',reason:'unexpected-staging'}:{status:decision};
   }
   return {status:'missing-files'};
  }catch{return {status:'blocked',reason:'file-read'};}
