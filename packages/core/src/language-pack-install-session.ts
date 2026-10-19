@@ -5,7 +5,8 @@ import {PackOperationGate} from './pack-operation-gate.js';
 import {hashFileByChunks,type ChunkedFileSource,type IncrementalSha256} from './chunked-file-hash.js';
 export interface PackJournalStore {
  load(id:string):Promise<{status:'empty'}|{status:'ok';state:PackInstallState}|{status:'blocked'}>;
- save(state:PackInstallState):Promise<boolean>;
+ /** Atomic conditional update. Null denotes a key that must not exist. */
+ save(state:PackInstallState,expected:PackInstallState|null):Promise<boolean>;
 }
 const sessionGate=new PackOperationGate();
 export type SessionResult={status:'ok';state:PackInstallState}|{status:'blocked';reason:string};
@@ -26,7 +27,7 @@ async function startPackSessionUnlocked(pack:LanguagePack,store:PackJournalStore
  if(restartFailed){
   if(current.status!=='ok'||current.state.phase!=='failed')return {status:'blocked',reason:'journal-not-failed'};
  }else if(current.status!=='empty')return {status:'blocked',reason:current.status==='ok'?'existing-journal':'unreadable-journal'};
- if(!await store.save(begin.state))return {status:'blocked',reason:'write'};
+ if(!await store.save(begin.state,restartFailed&&current.status==='ok'?current.state:null))return {status:'blocked',reason:'write'};
  return {status:'ok',state:begin.state};
 }
 export async function transitionPackSession(id:string,event:'verify'|'commit'|'abort',store:PackJournalStore,digest?:string):Promise<SessionResult>{
@@ -38,7 +39,7 @@ async function transitionPackSessionUnlocked(id:string,event:'verify'|'commit'|'
  if(current.status!=='ok')return {status:'blocked',reason:'missing-or-unreadable-journal'};
  const outcome=advanceLanguagePackInstall(current.state,event,digest);
  if(outcome.status!=='ok')return {status:'blocked',reason:outcome.reason};
- if(!await store.save(outcome.state))return {status:'blocked',reason:'write'};
+ if(!await store.save(outcome.state,current.state))return {status:'blocked',reason:'write'};
  return {status:'ok',state:outcome.state};
 }
 

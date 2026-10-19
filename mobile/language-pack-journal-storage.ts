@@ -13,12 +13,37 @@ export async function loadPackJournal(id:string){
   return {status:'ok',result} as const;
  }catch{return {status:'blocked'} as const;}
 }
-export async function savePackJournal(state:PackInstallState){
- const current=await loadPackJournal(state.id);
- if(current.status==='blocked')return false;
- if(readLanguagePackJournal(JSON.stringify(state)).status!=='ok')return false;
- try{await Storage.setItem(key(state.id),JSON.stringify(state));return true;}
- catch{return false;}
+/** Optimistic CAS using expo-sqlite SDK57's functional setItem updater.
+ * SDK57 runs that synchronous updater in withExclusiveTransactionAsync.
+ * Throwing from the callback aborts the transaction instead of overwriting
+ * a concurrently committed journal. Existing KV keys and schemas stay intact.
+ */
+export async function savePackJournal(state:PackInstallState,expected:PackInstallState|null):Promise<boolean>{
+ try{
+  const raw=JSON.stringify(state);
+  if(!/^[a-z0-9][a-z0-9._-]{0,99}$/.test(state.id)||readLanguagePackJournal(raw).status!=='ok')return false;
+  if(expected!==null){
+   const prior=readLanguagePackJournal(JSON.stringify(expected));
+   if(prior.status!=='ok'||prior.state.id!==state.id)return false;
+  }
+  await Storage.setItem(key(state.id),(previous:string|null):string=>{
+   if(expected===null){
+    if(previous!==null)throw new Error('PACK_JOURNAL_CONFLICT');
+   }else{
+    if(previous===null)throw new Error('PACK_JOURNAL_CONFLICT');
+    const read=readLanguagePackJournal(previous);
+    if(read.status!=='ok'||read.state.id!==state.id||
+       read.state.version!==expected.version||
+       read.state.phase!==expected.phase||
+       read.state.expectedSha256!==expected.expectedSha256||
+       read.state.expectedBytes!==expected.expectedBytes||
+       read.state.verifiedSha256!==expected.verifiedSha256)
+      throw new Error('PACK_JOURNAL_CONFLICT');
+   }
+   return raw;
+  });
+  return true;
+ }catch{return false;}
 }
 
 /** Adapter for the shared session coordinator. */

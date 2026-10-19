@@ -162,3 +162,9 @@ No se ha generado ni instalado un IPA/APK; no hay audios originales producidos p
 - La preferencia `sensoryPresentation=calm` afecta ahora dos pantallas de clases: paleta y espaciado más sobrios; biblioteca de lecciones/repasos y selector de situaciones tras acciones explícitas reversibles. En la vista estándar siguen visibles.
 - No se ocultan controles principales del ejercicio, progreso, avisos de micrófono ni acciones para acceder a contenidos. No se infiere diagnóstico.
 - Prueba unitaria de la política de visibilidad; pendiente inspección visual y lectores de pantalla en teléfonos Android/iOS reales. No equivale a certificación de accesibilidad.
+
+## 2026-10-19 · Conditional journal writes across runtime instances (A01 follow-up)
+- Package sessions now call `PackJournalStore.save(next, expected)`, with null only for initial absence, and the last validated snapshot on retry/verify/commit/abort. Existing journals and manifest payloads retain the same format.
+- The mobile store uses `expo-sqlite/kv-store` functional `setItem(key, updater)`, which Expo SDK57 executes in an exclusive SQLite transaction; it aborts writes if the current validated snapshot differs from the expected one, including a competing install, failed retry or commit. No new database or dependencies, no deletion or schema migration.
+- Deterministic native-adapter mocks and coordinator tests cover stale abort, competing starts, explicit restart and corrupt journals. A JavaScript gate still guards I/O in the running process; atomicity here applies to the journal key, not the filesystem move, and identical ABA snapshots or different physical app processes remain to be evaluated on hardware.
+- Native Android/iOS execution remains mandatory before classifying this as validated recovery.
