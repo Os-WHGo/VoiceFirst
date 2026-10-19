@@ -10,8 +10,8 @@ export type SmallPackRecovery=
  |{status:'staging-interrupted'}
  |{status:'missing-files'}
  |{status:'blocked';reason:string};
-async function matches(file:File,hash:string){
- if(!file.exists||!Number.isSafeInteger(file.size)||file.size<=0||file.size>LIMIT)return false;
+async function matches(file:File,hash:string,expectedBytes:number){
+ if(!file.exists||!Number.isSafeInteger(file.size)||file.size<=0||file.size>LIMIT||file.size!==expectedBytes)return false;
  const bytes=await file.bytes();
  return bytes.byteLength===file.size&&sha256Bytes(bytes).toLowerCase()===hash;
 }
@@ -20,13 +20,14 @@ export async function inspectSmallPackRecovery(id:string):Promise<SmallPackRecov
  const journal=await loadPackJournal(id);
  if(journal.status!=='ok')return {status:'blocked',reason:'missing-or-corrupt-journal'};
  const {state}=journal.result;
+ if(!Number.isSafeInteger(state.expectedBytes)||!state.expectedBytes||state.expectedBytes>LIMIT)return {status:'blocked',reason:'journal-size-missing-or-invalid'};
  const stage=new Directory(Paths.document,'voicefirst-pack-staging',id);
  const dest=new Directory(Paths.document,'voicefirst-installed-packs',id);
  try{
   // Ambiguous double presence must never be automatically resolved.
   if(stage.exists&&dest.exists)return {status:'blocked',reason:'ambiguous-folders'};
   if(dest.exists){
-   const ok=await matches(new File(dest,'payload.bin'),state.expectedSha256);
+   const ok=await matches(new File(dest,'payload.bin'),state.expectedSha256,state.expectedBytes);
    if(!ok)return {status:'blocked',reason:'installed-file-invalid'};
    const decision=decideSmallPackRecovery(state,'destination-valid');
    return decision==='blocked'?{status:'blocked',reason:'unexpected-destination'}:{status:decision};
