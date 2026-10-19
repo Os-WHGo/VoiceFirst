@@ -18,14 +18,15 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
   const [answer,setAnswer]=useState('');
   const [error,setError]=useState('');
   const [onlineConsent,setOnlineConsent]=useState(false);
+  const onlineConsentRef=useRef(false);
   const history=useRef<HistoryTurn[]>([]);
   const abort=useRef<AbortController|null>(null);
   useEffect(()=>()=>{abort.current?.abort();void Speech.stop();},[]);
-  useEffect(()=>{history.current=[];setTranscript('');setAnswer('');setOnlineConsent(false);abort.current?.abort();},[nativeLanguage,target]);
+  useEffect(()=>{history.current=[];setTranscript('');setAnswer('');setOnlineConsent(false);onlineConsentRef.current=false;abort.current?.abort();},[nativeLanguage,target]);
   const stopSpeaking=useCallback(async()=>{await Speech.stop();setPhase('ready');},[]);
   const startRecording=async()=>{
     if(phase!=='ready')return;
-    if(!onlineConsent)return;
+    if(!onlineConsentRef.current)return;
     setError('');
     if(!DEV_URL) {setError('Configura EXPO_PUBLIC_VOICEFIRST_DEV_URL para utilizar el laboratorio de voz.');return;}
     if(devToken.trim().length<20){setError('Introduce la clave de desarrollo local (no la clave de OpenAI).');return;}
@@ -48,7 +49,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
       uri=recorder.uri;
       await setAudioModeAsync({playsInSilentMode:true,allowsRecording:false});
       if(!uri) throw new Error('NO_AUDIO');
-      if(!onlineConsent)throw new Error('NO_CONSENT');
+      if(!onlineConsentRef.current)throw new Error('NO_CONSENT');
       const form=new FormData();
       form.append('audio', {uri,name:'utterance.m4a',type:'audio/mp4'} as unknown as Blob);
       form.append('preferences',JSON.stringify(validatePreferences({...defaultPreferences,nativeLanguage,target,speechRate:rate,lowStimulation:lowStim,answerWaitMode:'automatic'})));
@@ -81,7 +82,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
     <Text style={styles.header}>Laboratorio de conversación con IA</Text>
     <Text style={styles.description}>Laboratorio opcional y online: la grabación, idioma y contexto reciente se envían a un servidor de desarrollo que utiliza OpenAI. No forma parte del curso offline.</Text>
     {!!DEV_URL&&<View style={{flexDirection:'row',alignItems:'center',gap:10}}>
-      <Switch accessibilityLabel="Acepto enviar audio al laboratorio online" value={onlineConsent} onValueChange={value=>{setOnlineConsent(value);if(!value)abort.current?.abort();}}/>
+      <Switch accessibilityLabel="Acepto enviar audio al laboratorio online" value={onlineConsent} onValueChange={value=>{onlineConsentRef.current=value;setOnlineConsent(value);if(!value)abort.current?.abort();}}/>
       <Text style={[styles.note,{flex:1}]}>Acepto el envío de audio y contexto para esta sesión de prueba. Puedo retirarlo aquí.</Text>
     </View>}
     {experience.instructionFormat==='full-context'&&<Text style={styles.note}>Función experimental por turnos, sin funcionamiento manos libres certificado.</Text>}
