@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   authoredVoiceCues,authoringInventory,voiceCueById,audioCueForDialogue,answerAudioCuesForDialogue,
-  cueFingerprint,planVoiceOutput,targetLanguages,guidedDialogues
+  cueFingerprint,planVoiceOutput,targetLanguages,guidedDialogues,lessonsFor
 } from '../dist/index.js';
 const first=authoredVoiceCues[0];
 const asset={cueId:first.id,fingerprint:cueFingerprint(first.text),language:first.language,locale:first.locale,
@@ -64,4 +64,35 @@ test('an enhanced voice wins between voices of same region',()=>{
 });
 test('the planner rejects invalid cue metadata',()=>{
   assert.throws(()=>planVoiceOutput({cue:{...first,locale:'zz-ZZ'}}),/Invalid voice cue/);
+});
+
+test('all authored exercises have stable cue metadata in all six languages',()=>{
+ const cues=authoredVoiceCues.filter(c=>c.kind==='lesson-phrase');
+ assert.equal(cues.length,336);
+ assert.equal(authoredVoiceCues.length,518);
+ assert.equal(new Set(cues.map(c=>c.id)).size,336);
+ for(const language of targetLanguages){
+  const lessons=lessonsFor(language);
+  assert.equal(lessons.length,14);
+  assert.equal(cues.filter(c=>c.language===language).length,56);
+  for(const lesson of lessons){
+   for(const exercise of lesson.exercises){
+    const cue=voiceCueById(`lesson/${lesson.id}/${exercise.id}`);
+    assert.ok(cue,'missing authored exercise cue '+exercise.id);
+    assert.equal(cue.text,exercise.utterance);
+    assert.equal(cue.locale,authoringInventory().find(x=>x.language===language).locale);
+    assert.equal(cue.source,'voicefirst-original');
+   }
+  }
+ }
+});
+test('newly indexed course cues do not claim offline speech without a verified voice',()=>{
+ for(const language of targetLanguages){
+  const last=lessonsFor(language).at(-1);
+  for(const exercise of last.exercises){
+   const cue=voiceCueById(`lesson/${last.id}/${exercise.id}`);
+   const plan=planVoiceOutput({cue,voices:[],assets:[],installedAssets:new Set(),requireOffline:true});
+   assert.equal(plan.kind,'unavailable');
+  }
+ }
 });
