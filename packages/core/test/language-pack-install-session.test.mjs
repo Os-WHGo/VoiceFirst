@@ -225,3 +225,15 @@ test('journal snapshot compares phase, digest, bytes and strict revision',async(
  for(const change of [{revision:undefined},{revision:2},{version:'2.0.0'},{phase:'failed'},{expectedBytes:pack.bytes+1},{expectedSha256:'b'.repeat(64)}])
   assert.equal(samePackJournalSnapshot(state,{...state,...change}),false);
 });
+
+test('a mutable store cannot change the pinned journal while hashing',async()=>{
+ const current={id:pack.id,version:pack.version,phase:'staging',expectedSha256:digest,expectedBytes:pack.bytes,revision:4};
+ let writes=0;
+ const s={load:async()=>({status:'ok',state:current}),save:async()=>{writes++;return true;}};
+ const answer=await verifyStagedPackSession(pack.id,s,async()=>{
+  current.revision=5;
+  return digest;
+ });
+ assert.deepEqual(answer,{status:'blocked',reason:'journal-changed'});
+ assert.equal(writes,0);
+});
