@@ -15,7 +15,7 @@ import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
 const localDay=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const storeKey=(language:TargetLanguage)=>`voicefirst.curriculum.v1.${language}`;
 const cursorKey=(language:TargetLanguage)=>`voicefirst.curriculum.cursor.v1.${language}`;
-export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaultExperiencePreferences}:{nativeLanguage:TargetLanguage;target:TargetLanguage;rate?:number;experience?:ExperiencePreferences}) {
+export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,experience=defaultExperiencePreferences}:{nativeLanguage:TargetLanguage;target:TargetLanguage;guideLocale?:string|null;rate?:number;experience?:ExperiencePreferences}) {
   const lessons=useMemo(()=>lessonsFor(target),[target]);
   const [progress,setProgress]=useState<CourseProgress|null>(null);
   const [locked,setLocked]=useState('');
@@ -41,13 +41,13 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const lesson=lessons.find(x=>x.id===chosenId)??lessons[0];
   const current=lesson?.exercises[step];
   // Reading guides are opt-in and never supplied during unaided recall/checkpoints.
-  const reading=current&&(current.type==='listen'||current.type==='repeat')
-    ?pronunciationReadingFor(current.utterance,target,nativeLanguage):null;
+  const reading=current&&guideLocale&&(current.type==='listen'||current.type==='repeat')
+    ?pronunciationReadingFor(current.utterance,target,nativeLanguage,guideLocale):null;
   const readingCopy=readingAidCopy[nativeLanguage];
   const today=localDay();
   const reviewSummary=progress?courseReviewSummary(progress,today):null;
   const reviewQueue=progress?courseReviewQueue(progress,today):[];
-  useEffect(()=>{setShowReading(false);},[target,nativeLanguage,chosenId,step]);
+  useEffect(()=>{setShowReading(false);},[target,nativeLanguage,guideLocale,chosenId,step]);
   useEffect(()=>{
     mounted.current=true;let valid=true;setShowOptional(false);
     playbackEpoch.current++;setProgress(null);setLocked('');setStep(0);setReviewExerciseId(null);setActive(false);setAnswer('');setPassed(false);setSessionSummary('');deferred.current=[];

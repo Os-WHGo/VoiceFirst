@@ -20,7 +20,7 @@ const styles=StyleSheet.create({wrap:{backgroundColor:'#142339',borderRadius:18,
 function Action({text,onPress,chosen=false}:{text:string;onPress:()=>void;chosen?:boolean}){
   return <Pressable accessibilityRole="button" accessibilityState={{selected:chosen}} onPress={onPress} style={[styles.button,chosen&&styles.buttonOn]}><Text style={styles.btnText}>{text}</Text></Pressable>;
 }
-export function RegionalComparisons({target,rate=0.88}:{target:TargetLanguage;rate?:number}){
+export function RegionalComparisons({target,rate=0.88,onPrimaryChange}:{target:TargetLanguage;rate?:number;onPrimaryChange?:(primary:LanguageVariant|null)=>void}){
   const initial=useMemo(()=>defaultRegionalPreferences(target),[target]);
   const [pref,setPref]=useState<RegionalPreferences|null>(initial);
   const [compareNow,setCompareNow]=useState(false);
@@ -28,16 +28,22 @@ export function RegionalComparisons({target,rate=0.88}:{target:TargetLanguage;ra
   const [pending,setPending]=useState(true);
   const pendingWrites=useRef(Promise.resolve());
   useEffect(()=>{
-    let live=true;setPref(initial);setCompareNow(false);setPending(true);setError('');void Speech.stop();
+    let live=true;onPrimaryChange?.(null);setPref(initial);setCompareNow(false);setPending(true);setError('');void Speech.stop();
     if(!initial){setPending(false);return()=>{live=false;};}
     void Storage.getItem(key(target)).then(raw=>{
       if(!live)return;
-      if(raw!==null){try{setPref(validateRegionalPreferences(target,JSON.parse(raw)));}catch{setError('Se conservaron las opciones por defecto; la configuración anterior era inválida.');}}
+      let resolved=initial;
+      if(raw!==null){
+        try{resolved=validateRegionalPreferences(target,JSON.parse(raw))??initial;}
+        catch{setError('Se conservaron las opciones por defecto; la configuración anterior era inválida.');}
+      }
+      setPref(resolved);
+      onPrimaryChange?.(resolved.primary);
     }).catch(()=>{if(live)setError('No fue posible leer tus preferencias regionales.');}).finally(()=>{if(live)setPending(false);});
     return()=>{live=false;void Speech.stop();};
-  },[target,initial]);
+  },[target,initial,onPrimaryChange]);
   const save=(next:RegionalPreferences)=>{
-    setPref(next);setError('');
+    setPref(next);onPrimaryChange?.(next.primary);setError('');
     pendingWrites.current=pendingWrites.current.catch(()=>undefined).then(()=>Storage.setItem(key(target),JSON.stringify(next)));
     void pendingWrites.current.catch(()=>setError('No se pudo guardar esta preferencia regional.'));
   };
@@ -48,7 +54,7 @@ export function RegionalComparisons({target,rate=0.88}:{target:TargetLanguage;ra
     <Text style={styles.title}>🌍 Una situación, distintas regiones</Text>
     <Text style={styles.sub}>Elige la variedad principal; los ejemplos de otras regiones son opcionales. No cambiamos tu nivel ni tu progreso.</Text>
     {pending?<Text style={styles.sub}>Cargando preferencias…</Text>:<>
-      <Text style={styles.region}>Variedad para los ejemplos (todavía no cambia el reconocimiento del curso)</Text>
+      <Text style={styles.region}>Variedad para ejemplos y compatibilidad de guías de lectura (no cambia la voz ni el reconocimiento del curso)</Text>
       <View style={styles.row}>{variantsFor(target).map(v=><Action key={v} text={label[v]} chosen={selected.primary===v} onPress={()=>save({...selected,primary:v,compare:variantsFor(target).filter(x=>x!==v)})}/>)}</View>
       <Text style={styles.region}>Regiones que quieres comparar</Text>
       <View style={styles.row}>{variantsFor(target).filter(v=>v!==selected.primary).map(v=><Action key={v} text={label[v]} chosen={selected.compare.includes(v)} onPress={()=>save({...selected,compare:selected.compare.includes(v)?selected.compare.filter(x=>x!==v):[...selected.compare,v]})}/>)}</View>

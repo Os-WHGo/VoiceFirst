@@ -6,6 +6,7 @@
  * present them as native-speaker-verified or use them for scoring.
  */
 import {type TargetLanguage} from './types.js';
+import {voiceLocales} from './voice-library.js';
 
 export interface PronunciationReading {
  readonly target:TargetLanguage;
@@ -54,6 +55,20 @@ export const prototypePronunciationReadings:readonly PronunciationReading[]=[
   approximateSyllables:['OH','lah'],prominentSyllableIndex:0,
   stressAndArticulation:'The Spanish h is silent. Keep the Spanish o vowel steady without the glide common in English. Stress the first syllable. This reading is approximate.',
   status:'prototype-unreviewed',attribution:'voicefirst-original'
+ },
+ {
+  target:'fr-CA',known:'es',phrase:'Bonjour!',targetLocale:'fr-CA',
+  reading:'bon-ZHUR',readingScript:'Latn',noteLanguage:'es',
+  approximateSyllables:['bon','ZHUR'],prominentSyllableIndex:1,
+  stressAndArticulation:'Aproximación para practicar: la vocal de bon es nasal y la n no se pronuncia como una n española completa. El sonido zh requiere vibración de la voz, parecido a sh pero sonoro; la r francesa tampoco es la r española. No imites este texto sin escuchar una voz francófona revisada.',
+  status:'prototype-unreviewed',attribution:'voicefirst-original'
+ },
+ {
+  target:'de',known:'es',phrase:'Hallo!',targetLocale:'de-DE',
+  reading:'ha-lo',readingScript:'Latn',noteLanguage:'es',
+  approximateSyllables:['ha','lo'],prominentSyllableIndex:null,
+  stressAndArticulation:'La h alemana suele dejar salir aire, a diferencia de la h muda del español. La vocal o puede ser más larga, y el acento cambia entre pronunciaciones; por eso no se señala una sílaba como única. Necesita comparación con audio revisado.',
+  status:'prototype-unreviewed',attribution:'voicefirst-original'
  }
 ];
 
@@ -79,14 +94,23 @@ export function consistentPronunciationReading(r:PronunciationReading):boolean{
 /** Return null instead of guessing. Never silently fall back to another region
  * or a spelling hint meant for another learner language.
  */
+/** This only selects the locale of the EXISTING core lessons. A regional
+ * comparison preference does not convert a Canadian lesson into a British or
+ * French-from-France one. Disable phonetic guides for such mismatches.
+ */
+export function courseReadingLocale(target:TargetLanguage,regionalPrimary:string|null):string|null{
+ const authoredLocale=voiceLocales[target];
+ return (target==='en-CA'||target==='fr-CA')&&regionalPrimary!==authoredLocale
+  ?null:authoredLocale;
+}
 export function pronunciationReadingFor(
- phrase:string,target:TargetLanguage,known:TargetLanguage,targetLocale?:string
+ phrase:string,target:TargetLanguage,known:TargetLanguage,targetLocale:string
 ):PronunciationReading|null{
- if(!phrase.trim()||target===known)return null;
+ if(!phrase.trim()||target===known||!targetLocale.trim())return null;
  return prototypePronunciationReadings.find(r=>
   consistentPronunciationReading(r)&&
   r.phrase===phrase.normalize('NFC').trim()&&r.target===target&&
-  r.known===known&&r.noteLanguage===known&&(targetLocale===undefined||r.targetLocale===targetLocale)
+  r.known===known&&r.noteLanguage===known&&r.targetLocale===targetLocale
  )??null;
 }
 

@@ -11,13 +11,18 @@ import { PragmaticsPractice } from './PragmaticsPractice';
 import { VoicePackImporter } from './VoicePackImporter';
 import {stopCuratedVoice} from './curated-voice-output';
 import { useLearningPreferences } from './use-learning-preferences';
-import { missionsFor, languageNames, targetLanguages, type CefrBand, type TargetLanguage, type LearningFocus } from '@voicefirst/core';
+import { missionsFor, languageNames, targetLanguages, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus } from '@voicefirst/core';
 
 const C = { bg:'#0B1421', surface:'#142339', border:'#2B435A', text:'#F2F7FC', secondary:'#A6BBD0', mint:'#89D4C5', gold:'#E1BD83' };
 const bands: CefrBand[] = ['A0','A1','A2','B1','B2','C1','C2'];
 export default function App() {
   const [nativeLanguage, setNativeLanguage] = useState<TargetLanguage>('es');
   const [target, setTarget] = useState<TargetLanguage>('en-CA');
+  const [primaryRegion,setPrimaryRegion]=useState<{target:TargetLanguage;locale:LanguageVariant}|null>(null);
+  const onPrimaryRegion=useCallback((locale:LanguageVariant|null)=>{
+    setPrimaryRegion(locale?{target,locale}:null);
+  },[target]);
+  const guideLocale=courseReadingLocale(target,primaryRegion?.target===target?primaryRegion.locale:null);
   const [level, setLevel] = useState<CefrBand>('A1');
   const learning=useLearningPreferences();
   const experience=learning.settings;
@@ -83,10 +88,10 @@ export default function App() {
         <LearningAdjustments settings={experience} onChange={learning.change}/>
         <PragmaticsPractice/>
         {!!learning.error && <Text style={styles.note}>{learning.error}</Text>}
-        <RegionalComparisons key={'regional-'+target} target={target} rate={rate}/>
+        <RegionalComparisons key={'regional-'+target} target={target} rate={rate} onPrimaryChange={onPrimaryRegion}/>
         <VoicePackImporter target={target}/>
         <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
-        <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} rate={rate} experience={experience} />
+        <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} guideLocale={guideLocale} rate={rate} experience={experience} />
         <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
         </>}
