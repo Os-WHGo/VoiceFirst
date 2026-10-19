@@ -136,3 +136,14 @@ test('attempt boundary rejects unknown exercises and invalid calendar dates in a
   assert.deepEqual(recordCourseAttempt(progress,exercise,{kind:'uncertain',hint:'uncertain'},'2026-02-30'),progress);
  }
 });
+
+test('forged match verdicts with unrelated transcripts never count across 336 exercises',()=>{
+ let checked=0;
+ for(const language of locales)for(const lesson of lessonsFor(language))for(const exercise of lesson.exercises){
+  const base=newCourseProgress(language);
+  const forged=recordCourseAttempt(base,exercise,{kind:'match',recognized:'unrelated fabricated answer'},'2026-10-17');
+  assert.deepEqual(forged,base,exercise.id);
+  checked++;
+ }
+ assert.equal(checked,336);
+});
