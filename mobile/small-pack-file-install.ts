@@ -118,3 +118,16 @@ export async function restartFailedSmallPack(pack:LanguagePack):Promise<{status:
  });
  return gated.status==='busy'?{status:'blocked',reason:'operation-busy'}:gated.value;
 }
+
+export async function resumeUnverifiedSmallPack(id:string):Promise<SmallPackInstallResult>{
+ const guarded=await operationGate.run(id,async()=>{
+  const state=await loadPackJournal(id);
+  if(state.status!=='ok'||state.result.state.phase!=='staging')return {status:'blocked' as const,reason:'journal-not-staging'};
+  const files=await inspectSmallPackRecovery(id);
+  if(files.status!=='staging-interrupted')return {status:'blocked' as const,reason:files.status};
+  const verified=await verifySmallStagedPack(id);
+  if(verified.status!=='ok')return {status:'blocked' as const,reason:'verification-failed'};
+  return resumeVerifiedUnlocked(id);
+ });
+ return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
+}
