@@ -2,15 +2,8 @@
 # Public repository Actions runners are free on GitHub's public-project allowance.
 name: Android native debug APK
 on:
-  pull_request:
-    paths:
-      - 'mobile/**'
-      - 'packages/core/src/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'scripts/check-android-prebuild.mjs'
-      - '.github/workflows/android-debug.yml'
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:
