@@ -18,10 +18,10 @@ test('offline tutor guides a dialogue, retries, then resumes from saved progress
  assert.equal(hint.action,'offer-hint');
  assert.equal(hint.example,dialogue.turns[0].acceptedReplies[0]);
  progress=hint.progress;
- const accepted=applyTutorAttempt(progress,dialogue,'es',{verdict:'accepted'},'2026-10-17');
+ const accepted=applyTutorAttempt(progress,dialogue,'es',{verdict:'accepted',matchedReply:dialogue.turns[0].acceptedReplies[0]},'2026-10-17');
  assert.equal(accepted.action,'advance');
  progress=accepted.progress;
  assert.equal(nextTutorPrompt(progress,dialogue,'es').turnId,dialogue.turns[1].id);
- const last=applyTutorAttempt(progress,dialogue,'es',{verdict:'accepted'},'2026-10-17');
+ const last=applyTutorAttempt(progress,dialogue,'es',{verdict:'accepted',matchedReply:dialogue.turns[1].acceptedReplies[0]},'2026-10-17');
  assert.equal(nextTutorPrompt(last.progress,dialogue,'es').status,'complete');
 });
