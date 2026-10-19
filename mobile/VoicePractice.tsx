@@ -17,6 +17,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
   const [transcript,setTranscript]=useState('');
   const [answer,setAnswer]=useState('');
   const [error,setError]=useState('');
+  const [onlineConsent,setOnlineConsent]=useState(false);
   const history=useRef<HistoryTurn[]>([]);
   const abort=useRef<AbortController|null>(null);
   useEffect(()=>()=>{abort.current?.abort();void Speech.stop();},[]);
