@@ -1,12 +1,19 @@
 /** Persisted state transitions. Callers must verify actual bytes before providing a digest. */
 import {beginLanguagePackInstall,advanceLanguagePackInstall,type PackInstallState} from './language-pack-install-state.js';
 import {planLanguagePacks,type LanguagePack} from './language-packs.js';
+import {PackOperationGate} from './pack-operation-gate.js';
 export interface PackJournalStore {
  load(id:string):Promise<{status:'empty'}|{status:'ok';state:PackInstallState}|{status:'blocked'}>;
  save(state:PackInstallState):Promise<boolean>;
 }
+const sessionGate=new PackOperationGate();
 export type SessionResult={status:'ok';state:PackInstallState}|{status:'blocked';reason:string};
 export async function startPackSession(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
+ if(!pack||typeof pack.id!=='string')return {status:'blocked',reason:'manifest'};
+ const guarded=await sessionGate.run(pack.id,()=>startPackSessionUnlocked(pack,store));
+ return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
+}
+async function startPackSessionUnlocked(pack:LanguagePack,store:PackJournalStore):Promise<SessionResult>{
  if(planLanguagePacks([pack],[]).status!=='ready')return {status:'blocked',reason:'manifest'};
  for(const dependency of pack.dependencies){
   const existing=await store.load(dependency);
@@ -20,6 +27,10 @@ export async function startPackSession(pack:LanguagePack,store:PackJournalStore)
  return {status:'ok',state:begin.state};
 }
 export async function transitionPackSession(id:string,event:'verify'|'commit'|'abort',store:PackJournalStore,digest?:string):Promise<SessionResult>{
+ const guarded=await sessionGate.run(id,()=>transitionPackSessionUnlocked(id,event,store,digest));
+ return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
+}
+async function transitionPackSessionUnlocked(id:string,event:'verify'|'commit'|'abort',store:PackJournalStore,digest?:string):Promise<SessionResult>{
  const current=await store.load(id);
  if(current.status!=='ok')return {status:'blocked',reason:'missing-or-unreadable-journal'};
  const outcome=advanceLanguagePackInstall(current.state,event,digest);
@@ -37,5 +48,6 @@ export async function verifyStagedPackSession(id:string,store:PackJournalStore,h
  let digest:string|null;
  try{digest=await hashStagedBytes(id);}catch{return {status:'blocked',reason:'staged-file-read'};}
  if(typeof digest!=='string'||!/^[a-f0-9]{64}$/i.test(digest))return {status:'blocked',reason:'staged-file-read'};
- return transitionPackSession(id,'verify',store,digest);
+ const guarded=await sessionGate.run(id,()=>transitionPackSessionUnlocked(id,'verify',store,digest));
+ return guarded.status==='busy'?{status:'blocked',reason:'operation-busy'}:guarded.value;
 }
