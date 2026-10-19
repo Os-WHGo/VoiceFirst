@@ -31,6 +31,11 @@ export async function installSmallPackFromLocalFile(id:string,source:File):Promi
   if(!destRoot.exists)destRoot.create({intermediates:true,idempotent:true});
   if(dest.exists)return {status:'blocked',reason:'destination-exists'};
   await stage.move(dest,{overwrite:false});created=false;
+  const promoted=new File(dest,'payload.bin');
+  if(!promoted.exists||promoted.size!==source.size||promoted.size>LIMIT)return {status:'blocked',reason:'promoted-file-invalid'};
+  const promotedBytes=await promoted.bytes();
+  const {sha256Bytes}=await import('@voicefirst/core');
+  if(promotedBytes.byteLength!==promoted.size||sha256Bytes(promotedBytes).toLowerCase()!==verified.state.expectedSha256)return {status:'blocked',reason:'promoted-checksum'};
   // Mark installed only after successful promotion. Interrupted promotions
   // require an explicit recovery procedure, never an automatic overwrite.
   const committed=await transitionPackSession(id,'commit',packJournalStore);
