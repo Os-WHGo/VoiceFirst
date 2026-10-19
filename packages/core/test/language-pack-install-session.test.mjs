@@ -101,3 +101,5 @@ test('failed byte hashing releases journal gate without advancing phase',async()
  assert.equal((await verifyStagedPackSession(pack.id,s,async()=>{throw Error('IO');})).reason,'staged-file-read');
  assert.equal((await transitionPackSession(pack.id,'abort',s)).state.phase,'failed');
 });
+
+test('failed session requires explicit retry',async()=>{const s=store();await startPackSession(pack,s);assert.equal((await retryPackSession(pack,s)).status,'blocked');await transitionPackSession(pack.id,'abort',s);assert.equal((await startPackSession(pack,s)).status,'blocked');assert.equal((await retryPackSession(pack,s)).state.phase,'staging');assert.equal((await retryPackSession(pack,s)).status,'blocked');});
