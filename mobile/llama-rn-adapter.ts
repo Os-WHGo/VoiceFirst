@@ -10,6 +10,7 @@ const STOP=['<|im_end|>','<|eot_id|>','</s>','<|endoftext|>'];
 export async function openLlamaRnSession(args:{modelId:string;verifiedFileUri:string;initLlama:LlamaInitializer;contextTokens:number}):Promise<LlamaSession>{
  if(!/^[a-zA-Z0-9._-]{1,100}$/.test(args.modelId)||!args.verifiedFileUri.startsWith('file:///')||args.verifiedFileUri.includes('..')||args.verifiedFileUri.includes('%')||args.verifiedFileUri.includes('?')||args.verifiedFileUri.includes('#')||args.verifiedFileUri.includes('\\')||!Number.isInteger(args.contextTokens)||args.contextTokens<512||args.contextTokens>8192)throw Error('Invalid local model session');
  const context=await args.initLlama({model:args.verifiedFileUri,n_ctx:args.contextTokens,n_gpu_layers:0});
+ if(!context||typeof context.completion!=='function'||typeof context.release!=='function')throw Error('Invalid native context');
  let closed=false;let busy=false;
  return {adapter:{modelId:args.modelId,async infer(prompt,input,limitTokens){
   if(closed||busy)throw Error('Session unavailable');
