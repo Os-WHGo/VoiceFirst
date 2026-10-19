@@ -45,3 +45,17 @@ test('byte-backed verification refuses missing or mismatched staged data',async(
  assert.equal((await verifyStagedPackSession(pack.id,s,async()=>digest)).state.phase,'verified');
  assert.equal((await verifyStagedPackSession(pack.id,s,async()=>digest)).reason,'missing-or-invalid-staging');
 });
+
+test('malformed manifest never accesses dependency storage',async()=>{
+ let reads=0;
+ const s={load:async()=>{reads++;throw Error('must not read');},save:async()=>{throw Error('must not write');}};
+ for(const bad of [
+  {...pack,dependencies:[null]},
+  {...pack,dependencies:['../escape']},
+  {...pack,dependencies:[pack.id],sha256:'invalid'},
+  {...pack,dependencies:'not-an-array'}
+ ]){
+  assert.equal((await startPackSession(bad,s)).reason,'manifest');
+ }
+ assert.equal(reads,0);
+});
