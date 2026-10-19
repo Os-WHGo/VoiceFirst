@@ -67,3 +67,15 @@ test('minor profiles never receive guided dialogues',()=>{
   assert.equal(result.dialogues.length,0);
  }
 });
+
+test('wrong replies do not skip a dialogue turn',()=>{
+ for(const target of targetLanguages)for(const dialogue of dialoguesFor(target)){
+  const run=newDialogueRun(dialogue);
+  const attempt=evaluateDialogueTurn(dialogue.turns[0],'not a curated reply',target,'high');
+  assert.equal(attempt.verdict,'retry');
+  const next=recordDialogueResponse(run,dialogue,attempt);
+  assert.equal(next.turnIndex,0);
+  assert.equal(next.completed,false);
+  assert.equal(next.attempts[dialogue.turns[0].id],1);
+ }
+});
