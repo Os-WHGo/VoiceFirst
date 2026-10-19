@@ -21,6 +21,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const [locked,setLocked]=useState('');
   const [chosenId,setChosenId]=useState<string|null>(null);
   const [step,setStep]=useState(0);
+  const [reviewExerciseId,setReviewExerciseId]=useState<string|null>(null);
   const [active,setActive]=useState(false);
   const [speaking,setSpeaking]=useState(false);
   const [answer,setAnswer]=useState('');
@@ -42,7 +43,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const reviewQueue=progress?courseReviewQueue(progress,today):[];
   useEffect(()=>{
     mounted.current=true;let valid=true;
-    playbackEpoch.current++;setProgress(null);setLocked('');setStep(0);setActive(false);setAnswer('');setPassed(false);setSessionSummary('');deferred.current=[];
+    playbackEpoch.current++;setProgress(null);setLocked('');setStep(0);setReviewExerciseId(null);setActive(false);setAnswer('');setPassed(false);setSessionSummary('');deferred.current=[];
     void Promise.all([Storage.getItem(storeKey(target)),Storage.getItem(cursorKey(target))]).then(([raw,cursor])=>{
       if(!valid)return;
       const result=raw===null?{kind:'ok',progress:newCourseProgress(target)} as const:loadCourseState(raw,target);
@@ -100,6 +101,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const forward=()=>{
     if(!lesson)return;
     playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);setAnswer('');setFeedback('');setRequestedDetail('');setPassed(false);setShowContext(false);
+    if(reviewExerciseId){setReviewExerciseId(null);setSessionSummary('Repaso finalizado. Puedes continuar el curso o elegir otro repaso.');deferred.current=[];setStep(0);setActive(false);return;}
     if(step<lesson.exercises.length-1){setStep(s=>s+1);return;}
     setSessionSummary(experience.correctionTiming==='after-exercise'&&deferred.current.length ? deferred.current.join(' · ') : 'Ejercicio terminado. Puedes continuar con otra clase o repasar.');
     deferred.current=[];setStep(0);setActive(false);
@@ -114,9 +116,9 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
     const result=checkUtterance(current,spoken,target,'high');
     const next=recordCourseAttempt(progress,current,result,localDay());
     if(result.kind==='match'){
-      const final=current.type==='checkpoint'?finishLesson(next,lesson):next;
+      const final=current.type==='checkpoint'&&!reviewExerciseId?finishLesson(next,lesson):next;
       save(final);
-      if(current.type==='checkpoint' && !final.completed.includes(lesson.id)){
+      if(current.type==='checkpoint' && !reviewExerciseId && !final.completed.includes(lesson.id)){
         setFeedback('Todavía faltan resultados de recuperación para terminar la lección.');return;
       }
       setPassed(true);
@@ -154,7 +156,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
     {!progress&&!locked&&<Text style={s.muted}>Recuperando tu progreso…</Text>}
     <Text style={s.muted}>{lesson.band} · {lesson.goal[nativeLanguage]} · {status==='completed'?'Repaso':'Lección'} · {progress?.completed.length??0}/{lessons.length} completadas</Text>
     {progress&&!locked&&(active? <>
-      <Text style={s.stage}>Paso {step+1}/{lesson.exercises.length}: {current?.type}</Text>
+      <Text style={s.stage}>{reviewExerciseId?'Repaso individual':`Paso ${step+1}/${lesson.exercises.length}`}: {current?.type}</Text>
       <Action label="Pausar clase" onPress={()=>{playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);setActive(false);}}/>
       {current?.type==='listen'||current?.type==='repeat'?<>
         <Text style={s.phrase}>{current?.utterance}</Text>
@@ -196,19 +198,19 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
       {reviewQueue.length>0&&<Action label="Practicar el primer repaso" onPress={()=>{
         const entry=reviewQueue[0];if(!entry)return;
         playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);
-        setChosenId(entry.lesson.id);setStep(entry.lesson.exercises.findIndex(e=>e.id===entry.exercise.id));
+        setChosenId(entry.lesson.id);setStep(entry.lesson.exercises.findIndex(e=>e.id===entry.exercise.id));setReviewExerciseId(entry.exercise.id);
         setActive(true);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];
       }}/>}
       {reviewQueue.length===0&&<Text style={s.muted}>No hay repasos vencidos. Puedes continuar el curso a tu ritmo.</Text>}
       {progress.completed.length>0&&<View style={s.row}>{lessons.filter(l=>progress.completed.includes(l.id)).map(l=><Action key={'review-'+l.id} label={'Repasar '+l.focusTag} onPress={()=>{
         const entries=voluntaryCourseReview(progress,l.id);const first=entries[0];if(!first)return;
         playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);
-        setChosenId(l.id);setStep(l.exercises.findIndex(e=>e.id===first.exercise.id));setActive(true);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];
+        setChosenId(l.id);setStep(l.exercises.findIndex(e=>e.id===first.exercise.id));setReviewExerciseId(first.exercise.id);setActive(true);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];
       }}/>)}</View>}
     </View>}
     {progress&&!locked&&<View style={s.row}>{lessons.map(l=><Action key={l.id} label={`${l.band}: ${l.focusTag}${progress.completed.includes(l.id)?' ✓':''}`} onPress={()=>{
       if(courseLessonStatus(progress,l)==='locked'){setFeedback('Primero completa la lección anterior.');return;}
-      playbackEpoch.current++;setChosenId(l.id);setStep(0);setActive(false);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];mic.stop();void stopCuratedVoice();
+      playbackEpoch.current++;setChosenId(l.id);setReviewExerciseId(null);setStep(0);setActive(false);setPassed(false);setAnswer('');setFeedback('');setRequestedDetail('');setSessionSummary('');deferred.current=[];mic.stop();void stopCuratedVoice();
     }}/>)}</View>}
     <Text style={s.note}>Se guarda progreso local sin audio ni transcripciones. Reconocimiento limitado al primer plano, al idioma y modelos instalados; no hay audio de fondo garantizado. La síntesis de voz del sistema tampoco está verificada sin Internet. Falta probar en hardware y cifrar datos sensibles.</Text>
   </View>;
