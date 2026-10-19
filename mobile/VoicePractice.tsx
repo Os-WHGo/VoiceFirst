@@ -25,6 +25,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
   const stopSpeaking=useCallback(async()=>{await Speech.stop();setPhase('ready');},[]);
   const startRecording=async()=>{
     if(phase!=='ready')return;
+    if(!onlineConsent)return;
     setError('');
     if(!DEV_URL) {setError('Configura EXPO_PUBLIC_VOICEFIRST_DEV_URL para utilizar el laboratorio de voz.');return;}
     if(devToken.trim().length<20){setError('Introduce la clave de desarrollo local (no la clave de OpenAI).');return;}
