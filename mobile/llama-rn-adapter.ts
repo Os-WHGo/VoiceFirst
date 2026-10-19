@@ -11,7 +11,9 @@ export async function openLlamaRnSession(args:{modelId:string;verifiedFileUri:st
  if(!/^[a-zA-Z0-9._-]{1,100}$/.test(args.modelId)||!args.verifiedFileUri.startsWith('file:///')||args.verifiedFileUri.includes('..')||args.verifiedFileUri.includes('%')||args.verifiedFileUri.includes('?')||args.verifiedFileUri.includes('#')||args.verifiedFileUri.includes('\\')||!Number.isInteger(args.contextTokens)||args.contextTokens<512||args.contextTokens>8192)throw Error('Invalid local model session');
  const context=await args.initLlama({model:args.verifiedFileUri,n_ctx:args.contextTokens,n_gpu_layers:0});
  if(!context||typeof context.completion!=='function'||typeof context.release!=='function'){
-  if(context&&typeof context.release==='function')await context.release();
+  if(context&&typeof context.release==='function'){
+   try{await context.release();}catch{/* Keep the original invalid-context failure. */}
+  }
   throw Error('Invalid native context');
  }
  let closed=false;let busy=false;
