@@ -71,3 +71,5 @@ export * from './local-model-file-verification.js';
 export * from './chilean-spanish.js';
 
 export * from './pragmatics.js';
+
+export * from './skill-evidence.js';
