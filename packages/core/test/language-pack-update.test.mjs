@@ -14,4 +14,5 @@ test('upgrade planner requires dependencies and valid manifest',()=>{
  assert.deepEqual(planLanguagePackUpdate(pack,'bogus'),{status:'rejected',reason:'installed-version'});
  assert.deepEqual(planLanguagePackUpdate({...pack,dependencies:null},'1.0.0'),{status:'rejected',reason:'manifest'});
  assert.deepEqual(planLanguagePackUpdate(pack,'1.0.0',null),{status:'rejected',reason:'manifest'});
+ assert.deepEqual(planLanguagePackUpdate({...pack,dependencies:['shared'],licenseReviewed:false},'1.0.0'),{status:'rejected',reason:'manifest'});
 });
