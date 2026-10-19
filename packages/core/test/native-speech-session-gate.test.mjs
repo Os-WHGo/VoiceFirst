@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {NativeSpeechSessionGate} from '../dist/index.js';
 
 test('a completed transcript does not reopen recognition before native end',()=>{
@@ -25,4 +26,20 @@ test('a failed synchronous start can restore the idle gate',()=>{
  assert.equal(g.begin(),true);
  g.end();
  assert.equal(g.begin(),true);
+});
+
+test('mobile hook reserves the mic before awaiting OS permissions',()=>{
+ const source=readFileSync(new URL('../../../mobile/use-on-device-answer.ts',import.meta.url),'utf8');
+ const claim=source.indexOf('owner.current=ours;microphoneOwner=ours;');
+ const ask=source.indexOf('await native.requestMicrophonePermissionsAsync()');
+ assert.ok(claim>=0&&ask>claim,'pending permissions must already have a cancellable mic owner');
+ assert.match(source,/epoch\.current!==token\|\|owner\.current!==ours\|\|microphoneOwner!==ours/);
+ assert.match(source,/languageRef\.current!==language\|\|AppState\.currentState!=='active'/);
+});
+test('mobile hook does not reopen native recognition from final or abort alone',()=>{
+ const source=readFileSync(new URL('../../../mobile/use-on-device-answer.ts',import.meta.url),'utf8');
+ assert.match(source,/if\(!nativeSessionGate\.canStart\(\)\)/);
+ assert.match(source,/nativeSessionGate\.begin\(\)/);
+ assert.match(source,/native\.addListener\('end',\(\)=>\{\s*nativeSessionGate\.end\(\)/);
+ assert.match(source,/native\?\.abort\(\)/);
 });
