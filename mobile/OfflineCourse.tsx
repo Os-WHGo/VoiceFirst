@@ -176,6 +176,10 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
         {showReading&&(reading?<View style={s.readingBox}>
           <Text style={s.readingLabel}>{readingCopy.heading}</Text>
           <Text selectable style={s.readingText}>{reading.reading}</Text>
+          <Text style={s.muted}>{readingCopy.syllables}: {reading.approximateSyllables.join(' · ')}</Text>
+          {reading.prominentSyllableIndex!==null&&<Text style={s.readingLabel}>
+            {readingCopy.emphasis}: {reading.approximateSyllables[reading.prominentSyllableIndex]}
+          </Text>}
           <Text style={s.muted}>{reading.stressAndArticulation}</Text>
           <Text style={s.note}>{readingCopy.disclaimer}</Text>
         </View>:<Text style={s.note}>{readingCopy.unavailable}</Text>)}
