@@ -78,4 +78,3 @@ export * from './written-followup.js';
 
 export * from './language-packs.js';
 
-export * from './modular-catalog.js';
