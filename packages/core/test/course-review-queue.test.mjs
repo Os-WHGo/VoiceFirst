@@ -38,3 +38,33 @@ test('voluntary review hides malformed stored due dates without blocking practic
  assert.equal(entries.length,2);
  assert.equal(entries.find(e=>e.exercise.id===recall.id).dueOn,'');
 });
+
+test('all six languages isolate their due review queues and voluntary exercises',()=>{
+ for(const language of ['en-CA','fr-CA','es','pt-BR','de','it']){
+  const lessons=lessonsFor(language);
+  const completed=lessons[0];
+  const dueExercise=completed.exercises.find(e=>e.type==='recall');
+  const notCompleted=lessons[1];
+  const future=completed.exercises.find(e=>e.type==='checkpoint');
+  const state={...newCourseProgress(language),completed:[completed.id],due:{
+   [dueExercise.id]:'2026-10-17',[future.id]:'2026-10-20',
+   [notCompleted.exercises[2].id]:'2026-10-16',
+   ['unknown-exercise']:'2026-10-16'
+  }};
+  const due=courseReviewQueue(state,'2026-10-18');
+  assert.deepEqual(due.map(e=>e.exercise.id),[dueExercise.id]);
+  assert.deepEqual(courseReviewSummary(state,'2026-10-18'),{due:1,overdue:1,completedLessons:1});
+  assert.deepEqual(voluntaryCourseReview(state,completed.id).map(e=>e.exercise.type),['recall','checkpoint']);
+  assert.deepEqual(voluntaryCourseReview(state,notCompleted.id),[]);
+ }
+});
+
+test('due review queue sorts by date then weakest success count and exercise ID',()=>{
+ const lesson=lessonsFor('en-CA')[0];
+ const exercises=lesson.exercises;
+ const state={...newCourseProgress('en-CA'),completed:[lesson.id],due:Object.fromEntries(exercises.map(e=>[e.id,'2026-10-17'])),correct:{[exercises[0].id]:2,[exercises[1].id]:0,[exercises[2].id]:1,[exercises[3].id]:0}};
+ const queue=courseReviewQueue(state,'2026-10-18');
+ assert.equal(queue.length,4);
+ assert.deepEqual(queue.map(e=>e.correct),[0,0,1,2]);
+ assert.deepEqual(queue.map(e=>e.exercise.id).slice(0,2),[exercises[1].id,exercises[3].id].sort());
+});
