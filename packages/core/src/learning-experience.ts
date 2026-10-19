@@ -6,11 +6,11 @@ import {type AgeStage} from './learning-paths.js';
 
 export type LearningSkill='listening'|'speaking'|'vocabulary'|'reading'|'interaction';
 export type AssessmentAnswer='correct'|'retry'|'uncertain'|'skipped';
-export interface PlacementItem {id:string;skill:LearningSkill;exercise:CourseExercise;lessonId:string}
-export interface PlacementResult {target:TargetLanguage;observed:Record<LearningSkill,{correct:number;attempted:number}>;suggestedLessonId:string;status:'exploratory-not-certified'}
-export function initialPlacement(target:TargetLanguage,limit=8):readonly PlacementItem[]{
+export interface ExperiencePlacementItem {id:string;skill:LearningSkill;exercise:CourseExercise;lessonId:string}
+export interface ExperiencePlacementResult {target:TargetLanguage;observed:Record<LearningSkill,{correct:number;attempted:number}>;suggestedLessonId:string;status:'exploratory-not-certified'}
+export function initialPlacement(target:TargetLanguage,limit=8):readonly ExperiencePlacementItem[]{
  const lessons=lessonsFor(target);
- const sample:PlacementItem[]=[];
+ const sample:ExperiencePlacementItem[]=[];
  for(const lesson of lessons){
   const exercise=lesson.exercises.find(e=>e.type==='recall');
   if(exercise)sample.push({id:exercise.id,skill:sample.length%2===0?'vocabulary':'speaking',exercise,lessonId:lesson.id});
@@ -18,9 +18,9 @@ export function initialPlacement(target:TargetLanguage,limit=8):readonly Placeme
  }
  return sample;
 }
-export function scorePlacement(target:TargetLanguage,answers:Readonly<Record<string,AssessmentAnswer>>,limit=8):PlacementResult{
+export function scoreExperiencePlacement(target:TargetLanguage,answers:Readonly<Record<string,AssessmentAnswer>>,limit=8):ExperiencePlacementResult{
  const items=initialPlacement(target,limit);
- const observed:PlacementResult['observed']={listening:{correct:0,attempted:0},speaking:{correct:0,attempted:0},vocabulary:{correct:0,attempted:0},reading:{correct:0,attempted:0},interaction:{correct:0,attempted:0}};
+ const observed:ExperiencePlacementResult['observed']={listening:{correct:0,attempted:0},speaking:{correct:0,attempted:0},vocabulary:{correct:0,attempted:0},reading:{correct:0,attempted:0},interaction:{correct:0,attempted:0}};
  let passed=0;
  for(const item of items){
   const answer=answers[item.id];
