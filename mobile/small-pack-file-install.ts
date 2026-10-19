@@ -1,0 +1,43 @@
+/** Explicit local-file installer for small optional resources (<=8 MiB).
+ * No network access, no model downloads, no replacement of installed packs.
+ * Caller must have started a journal session with the trusted manifest.
+ */
+import {Directory,File,Paths} from 'expo-file-system';
+import {transitionPackSession} from '@voicefirst/core';
+import {packJournalStore,verifySmallStagedPack,loadPackJournal} from './language-pack-journal-storage';
+import {hashSmallStagedPack} from './staged-small-pack-hash';
+const LIMIT=8*1024*1024;
+const valid=(id:string)=>/^[a-z0-9][a-z0-9._-]{0,99}$/.test(id);
+export type SmallPackInstallResult={status:'installed'}|{status:'blocked';reason:string};
+export async function installSmallPackFromLocalFile(id:string,source:File):Promise<SmallPackInstallResult>{
+ if(!valid(id))return {status:'blocked',reason:'invalid-id'};
+ const journal=await loadPackJournal(id);
+ if(journal.status!=='ok'||journal.result.state.phase!=='staging')return {status:'blocked',reason:'journal-not-staging'};
+ const root=new Directory(Paths.document,'voicefirst-pack-staging');
+ const stage=new Directory(root,id);
+ const destRoot=new Directory(Paths.document,'voicefirst-installed-packs');
+ const dest=new Directory(destRoot,id);
+ if(dest.exists||stage.exists)return {status:'blocked',reason:'destination-or-staging-exists'};
+ let created=false;
+ try{
+  if(!source.exists||!Number.isSafeInteger(source.size)||source.size<=0||source.size>LIMIT)return {status:'blocked',reason:'source-size'};
+  if(!root.exists)root.create({intermediates:true,idempotent:true});
+  stage.create({intermediates:true});created=true;
+  await source.copy(new File(stage,'payload.bin'),{overwrite:false});
+  const verified=await verifySmallStagedPack(id);
+  if(verified.status!=='ok')return {status:'blocked',reason:'checksum-or-journal'};
+  // Check the staged bytes again immediately before promotion.
+  if(await hashSmallStagedPack(id)!==verified.state.expectedSha256)return {status:'blocked',reason:'staging-changed'};
+  if(!destRoot.exists)destRoot.create({intermediates:true,idempotent:true});
+  if(dest.exists)return {status:'blocked',reason:'destination-exists'};
+  await stage.move(dest,{overwrite:false});created=false;
+  // Mark installed only after successful promotion. Interrupted promotions
+  // require an explicit recovery procedure, never an automatic overwrite.
+  const committed=await transitionPackSession(id,'commit',packJournalStore);
+  if(committed.status!=='ok')return {status:'blocked',reason:'promotion-needs-recovery'};
+  return {status:'installed'};
+ }catch{return {status:'blocked',reason:'file-operation'};}
+ finally{
+  if(created&&stage.exists){try{stage.delete();}catch{/* leave for inspection */}}
+ }
+}
