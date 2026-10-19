@@ -86,6 +86,10 @@ export function checkUtterance(exercise:CourseExercise, spoken:string, language:
 /** Two independent successful recalls including a checkpoint, with unlimited time and no negative streaks. */
 export function recordCourseAttempt(progress:CourseProgress, exercise:CourseExercise, result:Evaluation, todayISO:string):CourseProgress {
   if(result.kind==='uncertain') return progress;
+  const canonical=lessonsFor(progress.language).flatMap(lesson=>lesson.exercises).find(item=>item.id===exercise.id);
+  if(!canonical)return progress;
+  const stamp=Date.parse(`${todayISO}T12:00:00Z`);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(todayISO)||!Number.isFinite(stamp)||new Date(stamp).toISOString().slice(0,10)!==todayISO)throw new Error('Invalid course attempt date');
   const attempts={...progress.attempts,[exercise.id]:(progress.attempts[exercise.id]||0)+1};
   const correct={...progress.correct,[exercise.id]:(progress.correct[exercise.id]||0)+(result.kind==='match'?1:0)};
   // Due next day for known answer; retrying is voluntary, not forced.
