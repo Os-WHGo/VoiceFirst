@@ -13,6 +13,8 @@ if(!args.has('--allow-native-download')){
  console.error('Opt-in only: pass --allow-native-download to permit fetching llama.rn native binaries.');process.exit(2);
 }
 if(args.has('--ios')){console.error('iOS probe requires a separately audited macOS build.');process.exit(2);}
+const version=process.env.VOICEFIRST_LLAMA_RN_VERSION;
+if(!version||!/^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9.-]+)?$/.test(version)){console.error('Set VOICEFIRST_LLAMA_RN_VERSION to an audited exact version');process.exit(2);}
 const temp=mkdtempSync(join(tmpdir(),'voicefirst-llama-probe-'));
 const run=(cmd,argv,cwd)=>{const r=spawnSync(cmd,argv,{cwd,stdio:'inherit',env:{...process.env,CI:'1',EXPO_NO_TELEMETRY:'1'},timeout:1200000});if(r.status!==0)throw Error(cmd+' failed: '+String(r.status));};
 try{
@@ -24,8 +26,6 @@ try{
  cpSync(join(root,'mobile'),join(temp,'mobile'),{recursive:true,filter:p=>!p.includes('/node_modules')&&!p.includes('/android')&&!p.includes('/ios')});
  run('npm',['install','--ignore-scripts'],temp);
  // Version must be pinned by the investigator, not resolved implicitly to latest.
- const version=process.env.VOICEFIRST_LLAMA_RN_VERSION;
- if(!version||!/^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9.-]+)?$/.test(version))throw Error('Set VOICEFIRST_LLAMA_RN_VERSION to an audited exact version');
  run('npm',['install','--workspace','mobile','--save-exact','llama.rn@'+version],temp);
  run('npx',['--no-install','expo','prebuild','--platform','android','--no-install','--clean'],join(temp,'mobile'));
  run('node',['-e',"const fs=require('fs');const p='mobile/android/settings.gradle';if(!fs.existsSync(p))process.exit(1);"],temp);
