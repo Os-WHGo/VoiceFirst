@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {targetLanguages,learningPairs,guidedDialogues,dialoguesFor,selectGuidedDialogues,dialogueAudioCue,
   newDialogueRun,evaluateDialogueTurn,recordDialogueResponse} from '../dist/index.js';
 
-test('18 original guided dialogues across all six languages',()=>{
-  assert.equal(guidedDialogues.length,18);
-  for(const language of targetLanguages){const lessons=dialoguesFor(language);assert.equal(lessons.length,3);assert.equal(lessons[0].isFoundation,true);assert.ok(lessons.every(x=>x.turns.length===2&&x.original));}
+test('24 original guided dialogues across all six languages',()=>{
+  assert.equal(guidedDialogues.length,24);
+  for(const language of targetLanguages){const lessons=dialoguesFor(language);assert.equal(lessons.length,4);assert.equal(lessons[0].isFoundation,true);assert.ok(lessons.every(x=>x.turns.length===2&&x.original));}
 });
 test('all thirty directional language pairs have real native-language support and target voice cues',()=>{
   for(const [known,target] of learningPairs()){
@@ -17,7 +17,7 @@ test('all thirty directional language pairs have real native-language support an
 });
 test('focus moves career tasks first but foundational and travel lessons remain',()=>{
   const p=selectGuidedDialogues('en-CA','work','adult');assert.equal(p.status,'available');
-  assert.deepEqual(p.dialogues.map(x=>x.domain),['work','foundation','travel']);
+  assert.deepEqual(p.dialogues.map(x=>x.domain),['work','foundation','travel','shopping']);
 });
 test('child-facing paths stay gated until consent/pedagogical safety review',()=>{
   for(const age of ['preschool','primary','preteen','teen']){
