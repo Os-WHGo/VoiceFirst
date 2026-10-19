@@ -34,7 +34,7 @@ function createAudioHarness(){
  })[name];
  const run=new Function('require','module','exports','setTimeout','clearTimeout',compiled);
  run(injected,module,module.exports,(cb,ms)=>{const timer={cb,ms};timers.push(timer);return timer;},()=>{});
- return {api:module.exports,players,stops,timers};
+ return {api:module.exports,players,stops,timers,Speech};
 }
 const flush=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
 test('last request wins despite deferred native speech stop',async()=>{
@@ -63,4 +63,13 @@ test('slow local narration receives sufficient completion timeout',async()=>{
  await pending;
  assert.equal(h.players[0].playbackRate,0.65);
  assert.ok(h.timers[0].ms>40000);
+});
+
+test('native stop failure never permits overlapping new playback',async()=>{
+ const h=createAudioHarness();
+ h.Speech.stop=async()=>{throw Error('native-stop-failed');};
+ const errors=[];
+ await h.api.playCuratedVoice({id:'test',language:'en-CA',text:'text'},1,undefined,message=>errors.push(message));
+ assert.equal(h.players.length,0);
+ assert.equal(errors.length,1);
 });
