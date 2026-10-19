@@ -10,7 +10,7 @@ import Storage from 'expo-sqlite/kv-store';
 import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
   chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,courseReviewQueue,courseReviewSummary,voluntaryCourseReview,
   type CourseProgress,type TargetLanguage,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences,
-  currentVoiceTurn,voiceTranscriptDisposition,lessonDisplayPolicy} from '@voicefirst/core';
+  currentVoiceTurn,voiceTranscriptDisposition,lessonDisplayPolicy,pronunciationReadingFor} from '@voicefirst/core';
 
 const localDay=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const storeKey=(language:TargetLanguage)=>`voicefirst.curriculum.v1.${language}`;
@@ -31,6 +31,7 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const [sessionSummary,setSessionSummary]=useState('');
   const [showContext,setShowContext]=useState(false);
   const [showOptional,setShowOptional]=useState(false);
+  const [showReading,setShowReading]=useState(false);
   const deferred=useRef<string[]>([]);
   const mounted=useRef(true);
   const playbackEpoch=useRef(0);
@@ -39,9 +40,13 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   const mic=useOnDeviceAnswer(target,(result,id)=>onDictation.current(result,id));
   const lesson=lessons.find(x=>x.id===chosenId)??lessons[0];
   const current=lesson?.exercises[step];
+  // Reading guides are opt-in and never supplied during unaided recall/checkpoints.
+  const reading=current&&(current.type==='listen'||current.type==='repeat')
+    ?pronunciationReadingFor(current.utterance,target,nativeLanguage):null;
   const today=localDay();
   const reviewSummary=progress?courseReviewSummary(progress,today):null;
   const reviewQueue=progress?courseReviewQueue(progress,today):[];
+  useEffect(()=>{setShowReading(false);},[target,nativeLanguage,chosenId,step]);
   useEffect(()=>{
     mounted.current=true;let valid=true;setShowOptional(false);
     playbackEpoch.current++;setProgress(null);setLocked('');setStep(0);setReviewExerciseId(null);setActive(false);setAnswer('');setPassed(false);setSessionSummary('');deferred.current=[];
@@ -166,6 +171,13 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
       <Action label="Pausar clase" onPress={()=>{playbackEpoch.current++;mic.stop();void stopCuratedVoice();setSpeaking(false);setActive(false);}}/>
       {current?.type==='listen'||current?.type==='repeat'?<>
         <Text style={s.phrase}>{current?.utterance}</Text>
+        <Action label={showReading?'Ocultar guía de pronunciación':'Cómo leer esta frase'} onPress={()=>setShowReading(x=>!x)}/>
+        {showReading&&(reading?<View style={s.readingBox}>
+          <Text style={s.readingLabel}>Lectura aproximada en tu idioma · pendiente de revisión lingüística</Text>
+          <Text selectable style={s.readingText}>{reading.reading}</Text>
+          <Text style={s.muted}>{reading.stressAndArticulation}</Text>
+          <Text style={s.note}>Borrador experimental. No determina si tu pronunciación es correcta; escucha un modelo si hay una voz compatible.</Text>
+        </View>:<Text style={s.note}>Aún no hay guía de lectura para esta frase y este idioma de apoyo. No generamos pronunciaciones sin revisar.</Text>)}
         {(experience.instructionFormat==='full-context'||showContext)&&<Text style={s.muted}>{current?.meaning[nativeLanguage]}</Text>}
         {experience.instructionFormat==='one-step'&&<Action label={showContext?'Ocultar ayuda':'Mostrar significado'} onPress={()=>setShowContext(x=>!x)}/>}
         <View style={s.row}><Action label={speaking?'Reproduciendo…':'Escuchar modelo'} onPress={()=>play()}/><Action label="Continuar" onPress={forward}/></View>
@@ -226,4 +238,4 @@ export function OfflineCourse({nativeLanguage,target,rate=0.88,experience=defaul
   </View>;
 }
 function Action({label,onPress}:{label:string;onPress:()=>void}){return <Pressable accessibilityRole="button" style={s.btn} onPress={onPress}><Text style={s.btnTxt}>{label}</Text></Pressable>}
-const s=StyleSheet.create({calmWrap:{backgroundColor:'#101B28',borderColor:'#344759',gap:14},calmNotice:{color:'#E3ECF3',fontSize:13,lineHeight:20},wrap:{backgroundColor:'#142339',borderColor:'#2B435A',borderWidth:1,borderRadius:18,padding:20,gap:11,marginTop:12},kicker:{fontSize:11,color:'#89D4C5',fontWeight:'700',letterSpacing:1.2},heading:{fontSize:20,color:'#F2F7FC',fontWeight:'700'},muted:{fontSize:13,color:'#A6BBD0',lineHeight:20},stage:{color:'#89D4C5',fontSize:13,fontWeight:'700'},phrase:{color:'#F3DFC1',fontSize:18,fontWeight:'700'},row:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:6},btn:{backgroundColor:'#22414A',borderColor:'#89D4C5',borderWidth:1,borderRadius:12,paddingVertical:12,paddingHorizontal:15,minHeight:44},btnTxt:{color:'#F2F7FC',fontWeight:'700',fontSize:12},input:{borderColor:'#567284',borderWidth:1,borderRadius:12,padding:12,minHeight:55,color:'#F2F7FC',fontSize:15},warning:{color:'#FFE19C',fontSize:12,lineHeight:18},note:{color:'#A6BBD0',fontSize:11,lineHeight:17}});
+const s=StyleSheet.create({calmWrap:{backgroundColor:'#101B28',borderColor:'#344759',gap:14},calmNotice:{color:'#E3ECF3',fontSize:13,lineHeight:20},wrap:{backgroundColor:'#142339',borderColor:'#2B435A',borderWidth:1,borderRadius:18,padding:20,gap:11,marginTop:12},kicker:{fontSize:11,color:'#89D4C5',fontWeight:'700',letterSpacing:1.2},heading:{fontSize:20,color:'#F2F7FC',fontWeight:'700'},muted:{fontSize:13,color:'#A6BBD0',lineHeight:20},stage:{color:'#89D4C5',fontSize:13,fontWeight:'700'},phrase:{color:'#F3DFC1',fontSize:18,fontWeight:'700'},row:{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:6},btn:{backgroundColor:'#22414A',borderColor:'#89D4C5',borderWidth:1,borderRadius:12,paddingVertical:12,paddingHorizontal:15,minHeight:44},btnTxt:{color:'#F2F7FC',fontWeight:'700',fontSize:12},input:{borderColor:'#567284',borderWidth:1,borderRadius:12,padding:12,minHeight:55,color:'#F2F7FC',fontSize:15},readingBox:{borderWidth:1,borderColor:'#567284',borderRadius:12,padding:12,gap:6,backgroundColor:'#172B3B'},readingLabel:{color:'#89D4C5',fontSize:12,fontWeight:'700'},readingText:{color:'#F3DFC1',fontSize:21,fontWeight:'700'},warning:{color:'#FFE19C',fontSize:12,lineHeight:18},note:{color:'#A6BBD0',fontSize:11,lineHeight:17}});
