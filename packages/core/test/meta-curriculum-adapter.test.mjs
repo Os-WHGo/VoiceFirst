@@ -21,3 +21,14 @@ test('Meta adapter handles French unit-indexed translation layout',()=>{
  const r=adaptMetaCurriculumCandidate('fr-CA',{units:[french]},{dialogues:[{unitId:french.id,turns:[{speaker:'A',text:'Bonjour'}]}]},{translations:{[french.id]:{'en-CA':'Hello',es:'Hola','pt-BR':'Olá',de:'Hallo',it:'Ciao'}}});
  assert.equal(r.supports.length,5);assert.equal(r.issues.length,0);
 });
+
+
+test('Meta adapter preserves explicit A0 activities without fabricating dialogue',()=>{
+ const a0={...unit,id:'a0-sounds',level:'A0',activities:[{instructions:'Select the sound you hear'}]};
+ const r=adaptMetaCurriculumCandidate('en-CA',{units:[a0]},{dialogues:[]},{translations:{es:{[a0.id]:'Identifica el sonido'}}});
+ assert.equal(r.units.length,1);
+ assert.deepEqual(r.units[0].dialogue,[]);
+ assert.deepEqual(r.units[0].activities,['Select the sound you hear']);
+ assert.equal(r.readyForPublicRelease,false);
+ assert.equal(r.supports.length,1);
+});
