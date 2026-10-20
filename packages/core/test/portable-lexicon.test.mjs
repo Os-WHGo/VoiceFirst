@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
- targetLanguages,lexicalSeed,portableLexiconDraftsFromSeed,
+ targetLanguages,lexicalSeed,portableLexiconDraftsFromSeed,portableLexiconDraftsFromCourse,lessonsFor,
  validatePortableLexicalRecord,buildPortableLexiconBundle,findPortableLexicalHints
 } from '../dist/index.js';
 
@@ -98,4 +98,38 @@ test('portable format excludes unrecognized metadata and never performs ASR or s
  assert.equal(JSONText.includes('editorPrivateNotes'),false);
  assert.equal(findPortableLexicalHints(result.bundle,'¡Buenos días!')[0].form,'¡Buenos días!');
  assert.equal(findPortableLexicalHints({...result.bundle,use:'speech-hint'},'¡Buenos días!').length,0);
+});
+
+test('the current 84 lessons are discoverable for editorial lexicon production, not pre-approved',()=>{
+ const rows=portableLexiconDraftsFromCourse();
+ assert.equal(rows.length,84);
+ assert.equal(new Set(rows.map(x=>x.id)).size,84);
+ assert.ok(rows.every(x=>x.review.status==='draft'&&x.rights.status==='pending'));
+ for(const lang of targetLanguages){
+  const own=rows.filter(x=>x.locale===lang);
+  assert.equal(own.length,14);
+  const course=lessonsFor(lang);
+  for(const row of own){
+   const lesson=course.find(x=>x.id===row.sourceLessonId);
+   assert.ok(lesson,row.sourceLessonId);
+   assert.equal(row.form,lesson.exercises[0].utterance);
+   assert.equal(row.band,lesson.band);
+   assert.equal(validatePortableLexicalRecord(row),null);
+  }
+  const published=buildPortableLexiconBundle(rows,'subtitle-hint',lang);
+  assert.equal(published.status,'ok');
+  assert.deepEqual(published.bundle.entries,[]);
+  assert.equal(published.notExported,rows.length);
+ }
+});
+test('cross-app subtitle hinting refuses forged or unreleased assets',()=>{
+ const base=approved();
+ const good=buildPortableLexiconBundle([base],'subtitle-hint','es-CL');
+ assert.equal(good.status,'ok');
+ const forged={...good.bundle,entries:[{...base,rights:{...base.rights,status:'pending'}}]};
+ assert.equal(findPortableLexicalHints(forged,'¡Buenos días!').length,0);
+ const unapproved={...good.bundle,entries:[{...base,review:{status:'draft'}}]};
+ assert.equal(findPortableLexicalHints(unapproved,'¡Buenos días!').length,0);
+ const community={...good.bundle,entries:[{...base,rights:{...base.rights,communityControlled:true}}]};
+ assert.equal(findPortableLexicalHints(community,'¡Buenos días!').length,0);
 });
