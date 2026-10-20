@@ -137,3 +137,5 @@ export * from './a0-prerequisite-audit.js';
 export * from './a0-catalog-gate.js';
 
 export * from './a0-journal-compatibility.js';
+
+export * from './a0-catalog-update.js';
