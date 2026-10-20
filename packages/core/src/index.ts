@@ -103,3 +103,4 @@ export * from './pronunciation-reading.js';
 export * from './a1-known-language-help.js';
 export * from './a1-localized-preview.js';
 export * from './a1-audio-readiness.js';
+export * from './a1-audio-file-verification.js';
