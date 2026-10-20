@@ -116,3 +116,5 @@ export * from './multilingual-candidate-gate.js';
 export * from './pt-br-candidate-adapter.js';
 
 export * from './spanish-situations-candidate.js';
+
+export * from './reusable-curriculum.js';
