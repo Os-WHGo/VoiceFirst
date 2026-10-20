@@ -7,14 +7,21 @@ export type A0CatalogLoad =
  | {kind:'blocked';lessons:[];issues:A0CatalogIssue[];publishable:false};
 export function loadA0CandidateCatalog(input:unknown):A0CatalogLoad {
  const parsed=importA0FunctionalCandidates(input);
- const graphIssues:A0GraphIssue[]=auditA0Prerequisites(parsed.lessons);
+ // Authoring files may reference a concept rather than a lesson ID. Resolve only
+ // when exactly one lesson in the same target language owns that concept.
+ const resolved=parsed.lessons.map(lesson=>({...lesson,prerequisites:lesson.prerequisites.map(ref=>{
+  if(parsed.lessons.some(candidate=>candidate.lessonId===ref))return ref;
+  const matches=parsed.lessons.filter(candidate=>candidate.targetLanguage===lesson.targetLanguage&&candidate.conceptId===ref);
+  return matches.length===1?matches[0].lessonId:ref;
+ })}));
+ const graphIssues:A0GraphIssue[]=auditA0Prerequisites(resolved);
  const issues:A0CatalogIssue[]=[
   ...parsed.issues,
   ...graphIssues.map(issue=>({path:'lesson:'+issue.lessonId,code:issue.code}))
  ];
- if(issues.length||parsed.lessons.length===0){
+ if(issues.length||resolved.length===0){
   if(!issues.length)issues.push({path:'$',code:'EMPTY_CATALOG'});
   return {kind:'blocked',lessons:[],issues,publishable:false};
  }
- return {kind:'candidate',lessons:parsed.lessons,issues:[],publishable:false};
+ return {kind:'candidate',lessons:resolved,issues:[],publishable:false};
 }
