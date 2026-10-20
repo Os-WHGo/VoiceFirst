@@ -127,3 +127,5 @@ export * from './a0-functional-candidate-import.js';
 export * from './a0-choice-evaluation.js';
 
 export * from './a0-attempt-journal.js';
+
+export * from './a0-session-storage.js';
