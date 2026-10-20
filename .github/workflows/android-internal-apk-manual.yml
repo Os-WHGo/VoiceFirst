@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_internal_build:
-        description: 'Type BUILD_INTERNAL_APK to acknowledge runner usage; no publishing'
+        description: 'Type BUILD_INTERNAL_APK to acknowledge runner usage; debug build may need Metro'
         required: true
         type: string
 permissions:
@@ -37,8 +37,17 @@ jobs:
       - name: Build debug APK without release signing
         working-directory: mobile/android
         run: ./gradlew :app:assembleDebug --no-daemon
-      - name: Verify APK exists
-        run: test -s mobile/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify APK exists and inspect bundled assets
+        run: |
+          set -eu
+          APK=mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          unzip -l "$APK" | tee /tmp/voicefirst-apk-contents.txt
+          if grep -Eq 'assets/(index\.android\.bundle|.*\.hbc)' /tmp/voicefirst-apk-contents.txt; then
+            echo 'A bundled JavaScript/Hermes asset was detected. Offline operation still requires testing.'
+          else
+            echo 'WARNING: No bundled JS/Hermes asset detected; debug APK likely requires Metro.'
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: voicefirst-android-debug-apk
