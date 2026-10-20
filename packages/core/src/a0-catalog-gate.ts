@@ -12,7 +12,7 @@ export function loadA0CandidateCatalog(input:unknown):A0CatalogLoad {
  const resolved=parsed.lessons.map(lesson=>({...lesson,prerequisites:lesson.prerequisites.map(ref=>{
   if(parsed.lessons.some(candidate=>candidate.lessonId===ref))return ref;
   const matches=parsed.lessons.filter(candidate=>candidate.targetLanguage===lesson.targetLanguage&&candidate.conceptId===ref);
-  return matches.length===1?matches[0].lessonId:ref;
+  return matches.length===1?matches[0]!.lessonId:ref;
  })}));
  const graphIssues:A0GraphIssue[]=auditA0Prerequisites(resolved);
  const issues:A0CatalogIssue[]=[
