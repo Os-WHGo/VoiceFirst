@@ -118,3 +118,4 @@ export * from './pt-br-candidate-adapter.js';
 export * from './spanish-situations-candidate.js';
 
 export * from './reusable-curriculum.js';
+export * from './curriculum-coverage.js';
