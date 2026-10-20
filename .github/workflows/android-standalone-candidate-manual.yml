@@ -59,6 +59,15 @@ jobs:
             echo 'Release candidate manifest indicates debuggable=true; refusing artifact.'
             exit 1
           fi
+          # Reuse the same independently tested policy against actual APK tool output.
+          unzip -Z1 "$APK" > /tmp/voicefirst-apk-entries.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > /tmp/voicefirst-apk-signature.txt
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > /tmp/voicefirst-apk-manifest.txt
+          node scripts/verify-android-release-artifact.mjs \
+            /tmp/voicefirst-apk-entries.txt \
+            /tmp/voicefirst-apk-signature.txt \
+            /tmp/voicefirst-apk-badging.txt \
+            /tmp/voicefirst-apk-manifest.txt
           sha256sum "$APK" > mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
           echo 'JS asset present. Offline startup and signing/installability still require verification.'
       - name: Write candidate limitations
