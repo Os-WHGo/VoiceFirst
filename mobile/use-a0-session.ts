@@ -27,9 +27,10 @@ export function useA0Session(target:TargetLanguage,lessons:readonly A0LessonCand
   let committed=false;
   const operation=queue.current.catch(()=>undefined).then(async()=>{
    if(epoch.current!==session||!current.current)return;
-   const saved=await commitA0Attempt(a0DeviceStorage,current.current,lesson,event);
+   const before=current.current;
+   const saved=await commitA0Attempt(a0DeviceStorage,before,lesson,event);
    if(epoch.current!==session)return;
-   current.current=saved;setJournal(saved);committed=saved.revision>0;
+   current.current=saved;setJournal(saved);committed=saved.revision===before.revision+1;
   });
   queue.current=operation.then(()=>undefined,()=>undefined);
   return operation.then(()=>committed).catch(()=>{if(epoch.current===session){setStatus('blocked');setError('No se pudo guardar la respuesta. Se detuvo la sesión para proteger el historial.');}return false;});
