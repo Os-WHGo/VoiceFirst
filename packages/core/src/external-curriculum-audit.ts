@@ -1,34 +1,35 @@
-/** Gate external curriculum candidates before merging with the canonical A1 drafts.
- * No candidate becomes public or replaces existing course content through this check.
- */
+/** Gate external curriculum candidates without publication. */
 import {a1EditorialDrafts} from './course-content-a1-drafts.js';
 export interface ExternalCurriculumAudit {acceptedForReview:boolean;unitCount:number;duplicates:readonly string[];collisions:readonly string[];errors:readonly string[];readyForPublicRelease:false}
+const supported=new Set(['en-CA','fr-CA','es','pt-BR','de','it']);
+const skillsRequired=['listening','speaking','reading','writing','interaction','mediation'];
+const validId=(x:unknown):x is string=>typeof x==='string'&&/^[a-z0-9][a-z0-9-]{2,100}$/.test(x);
 export function auditExternalCurriculumCandidate(candidate:unknown):ExternalCurriculumAudit {
  const errors:string[]=[],duplicates:string[]=[],collisions:string[]=[];
- const units=(candidate&&typeof candidate==='object'&&!Array.isArray(candidate)?(candidate as {units?:unknown}).units:undefined);
+ const doc=candidate&&typeof candidate==='object'&&!Array.isArray(candidate)?candidate as {units?:unknown;metadata?:unknown}:null;
+ const units=doc?.units;
  if(!Array.isArray(units))return {acceptedForReview:false,unitCount:0,duplicates,collisions,errors:['Missing units array'],readyForPublicRelease:false};
+ const meta=doc?.metadata&&typeof doc.metadata==='object'&&!Array.isArray(doc.metadata)?doc.metadata as {language?:unknown;target?:unknown;targetLanguage?:unknown}:null;
+ const declared=[meta?.language,meta?.target,meta?.targetLanguage].filter(x=>x!==undefined);
+ if(declared.some(x=>typeof x!=='string'||!supported.has(x)))errors.push('Unsupported metadata target language');
+ if(new Set(declared).size>1)errors.push('Conflicting metadata target languages');
+ const target=declared[0]??'en-CA';
  const known=new Set(a1EditorialDrafts.map(u=>u.targetLanguage+'/'+u.unitId));
  const seen=new Set<string>(),seenCanonical=new Set<string>();
  for(const item of units){
   if(!item||typeof item!=='object'||Array.isArray(item)){errors.push('Invalid unit object');continue;}
-  const u=item as {id?:unknown;unitId?:unknown;targetLanguage?:unknown;level?:unknown};
-  const id=u.id??u.unitId;
-  const canonicalId=u.unitId??u.id;
-  if(typeof id!=='string'||!/^[a-z0-9][a-z0-9-]{2,100}$/.test(id)){errors.push('Invalid unit ID');continue;}
-  const key=String(u.targetLanguage??'en-CA')+'/'+id;
-  const canonicalKey=String(u.targetLanguage??'en-CA')+'/'+canonicalId;
+  const u=item as {id?:unknown;unitId?:unknown;targetLanguage?:unknown;level?:unknown;skills?:unknown;status?:unknown};
+  if(!validId(u.id)){errors.push('Invalid unit ID');continue;}
+  if(!validId(u.unitId)){errors.push('Missing or invalid explicit canonical unit ID '+u.id);continue;}
+  const locale=u.targetLanguage??target;
+  if(typeof locale!=='string'||!supported.has(locale)||locale!==target)errors.push('Unit target language mismatch '+u.id);
+  const key=String(locale)+'/'+u.id,canonicalKey=String(locale)+'/'+u.unitId;
   if(seen.has(key))duplicates.push(key);seen.add(key);
   if(seenCanonical.has(canonicalKey))duplicates.push(canonicalKey);seenCanonical.add(canonicalKey);
-  if(typeof u.unitId!=='string')errors.push('Missing explicit canonical unit ID '+id);
-  if(typeof u.targetLanguage!=='string'||u.targetLanguage!=='en-CA')errors.push('Explicit en-CA target language required '+id);
   if(known.has(canonicalKey))collisions.push(canonicalKey);
-  if(u.level!=='A1'&&u.level!=='A2')errors.push('Invalid level '+id);
-  const skills=(item as {skills?:unknown}).skills;
-  const required=['listening','speaking','reading','writing','interaction','mediation'];
-  if(!skills||typeof skills!=='object'||Array.isArray(skills)||required.some(skill=>!(skill in skills)))errors.push('Missing required skills '+id);
-  const status=(item as {status?:unknown}).status;
-  if(!status||typeof status!=='object'||Array.isArray(status)||(status as {publishable?:unknown}).publishable!==false)errors.push('Candidate must explicitly prohibit publication '+id);
-
+  if(u.level!=='A1'&&u.level!=='A2')errors.push('Invalid level '+u.id);
+  if(!u.skills||typeof u.skills!=='object'||Array.isArray(u.skills)||skillsRequired.some(s=>!(s in (u.skills as object))))errors.push('Missing required skills '+u.id);
+  if(!u.status||typeof u.status!=='object'||Array.isArray(u.status)||(u.status as {publishable?:unknown}).publishable!==false)errors.push('Candidate must explicitly prohibit publication '+u.id);
  }
  return {acceptedForReview:errors.length===0&&duplicates.length===0,unitCount:units.length,duplicates,collisions,errors,readyForPublicRelease:false};
 }
