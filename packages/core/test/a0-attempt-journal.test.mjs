@@ -17,3 +17,13 @@ test('A0 journal rejects missing or tampered events',()=>{
  assert.equal(loadA0Journal(JSON.stringify({...j,revision:1}),'fr-CA',[lesson]).kind,'invalid');
  assert.equal(loadA0Journal(JSON.stringify(j),'en-CA',[lesson]).kind,'invalid');
 });
+
+test('A0 journal allows retry after incorrect answer but rejects answers after completion',()=>{
+ const j=newA0Journal('fr-CA');
+ const wrong=appendA0JournalEvent(j,lesson,{eventId:'wrong',lessonId:lesson.lessonId,selectedOptionId:'b',attemptNumber:1});
+ const correct=appendA0JournalEvent(wrong,lesson,{eventId:'correct',lessonId:lesson.lessonId,selectedOptionId:'a',attemptNumber:2});
+ assert.equal(correct.revision,2);
+ const repeated=appendA0JournalEvent(correct,lesson,{eventId:'extra',lessonId:lesson.lessonId,selectedOptionId:'b',attemptNumber:3});
+ assert.equal(repeated,correct);
+ assert.equal(loadA0Journal(JSON.stringify(correct),'fr-CA',[lesson]).kind,'ok');
+});
