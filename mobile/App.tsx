@@ -5,6 +5,8 @@ import { VoicePractice } from './VoicePractice';
 import { OfflineCourse } from './OfflineCourse';
 import { A0CandidatePreview } from './A0CandidatePreview';
 import { A0TextOrientation } from './A0TextOrientation';
+import {readA0CatalogSource} from './a0-catalog-source';
+import a0CandidateJson from './assets/VoiceFirst_A0_Functional_6Langs_v0.2.json';
 import { GuidedDialoguePractice } from './GuidedDialoguePractice';
 import { FreeResources } from './FreeResources';
 import { RegionalComparisons } from './RegionalComparisons';
@@ -16,7 +18,8 @@ import { useLearningPreferences } from './use-learning-preferences';
 import { missionsFor, languageNames, targetLanguages, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus, type A0LessonCandidate } from '@voicefirst/core';
 
 const C = { bg:'#0B1421', surface:'#142339', border:'#2B435A', text:'#F2F7FC', secondary:'#A6BBD0', mint:'#89D4C5', gold:'#E1BD83' };
-const pendingA0Lessons: readonly A0LessonCandidate[] = [];
+const a0Catalog=readA0CatalogSource({id:'VoiceFirst_A0_Functional_6Langs_v0.2',read:()=>a0CandidateJson});
+const pendingA0Lessons: readonly A0LessonCandidate[] = a0Catalog.kind==='candidate'?a0Catalog.catalog.lessons:[];
 const bands: CefrBand[] = ['A0','A1','A2','B1','B2','C1','C2'];
 export default function App() {
   const [nativeLanguage, setNativeLanguage] = useState<TargetLanguage>('es');
@@ -95,7 +98,8 @@ export default function App() {
         <VoicePackImporter target={target}/>
         <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
         {level==='A0' && <A0TextOrientation key={'orientation-'+target} target={target} nativeLanguage={nativeLanguage} />}
-        {level==='A0' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={pendingA0Lessons} />}
+        {level==='A0' && a0Catalog.kind==='blocked' && <Text style={styles.note}>Catálogo A0 bloqueado por validación. No se cargaron ejercicios.</Text>}
+        {level==='A0' && a0Catalog.kind==='candidate' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={pendingA0Lessons} />}
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} guideLocale={guideLocale} rate={rate} experience={experience} />
         <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
