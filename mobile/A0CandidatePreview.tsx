@@ -13,11 +13,12 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const [lastSaved,setLastSaved]=useState<string|null>(null);
  const inFlight=useRef(false);
  const viewEpoch=useRef(0);
- useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');setLastSaved(null);},[target,chosen,session.status]);
+ 
  const routes=session.journal?a0LessonRoutes(eligible,session.journal):[];
  const suggested=session.journal?nextA0LessonId(eligible,session.journal):null;
  const selected=routes.find(r=>r.lessonId===chosen&&r.available)?.lessonId??suggested??routes.find(r=>r.completed)?.lessonId??null;
  const lesson=eligible.find(l=>l.lessonId===selected);
+ useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');setLastSaved(null);},[target,selected,session.status]);
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
  const context=lesson?.contextByKnownLanguage[nativeLanguage];
  const prompt=lesson?.promptByKnownLanguage[nativeLanguage];
