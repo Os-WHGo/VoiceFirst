@@ -28,6 +28,6 @@ try{
    console.error('Metro produced no JavaScript bundle for '+platform);
    process.exitCode=1;break;
   }
-  console.log('Metro '+platform+' bundle exported successfully (not a native installable).');
+  console.log('Metro '+platform+' bundle exported successfully: '+names.filter(x=>/\\.(js|hbc|bundle)$/.test(x)).slice(0,5).join(', ')+' (not a native installable).');
  }
 }finally{rmSync(temp,{recursive:true,force:true});}
