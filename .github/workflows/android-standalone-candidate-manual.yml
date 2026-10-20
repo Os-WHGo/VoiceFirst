@@ -55,13 +55,27 @@ jobs:
           "$AAPT" dump badging "$APK" > /tmp/voicefirst-apk-badging.txt
           grep -Eq "^package: name='com\\.oswhgo\\.voicefirst'" /tmp/voicefirst-apk-badging.txt || { echo 'Incorrect APK application ID.'; exit 1; }
           grep '^package:' /tmp/voicefirst-apk-badging.txt
+          if grep -Eq 'android:debuggable="true"|application-debuggable' /tmp/voicefirst-apk-badging.txt; then
+            echo 'Release candidate is debuggable; refusing standalone artifact.'
+            exit 1
+          fi
           sha256sum "$APK" > mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
           echo 'JS asset present. Offline startup and signing/installability still require verification.'
+      - name: Write candidate limitations
+        run: |
+          cat > mobile/android/app/build/outputs/apk/release/README-CANDIDATE.txt <<'EOF'
+          VoiceFirst Android internal release candidate.
+          Not Play Store signed, not production approved, not device validated.
+          CI verifies APK signature, application ID, embedded JS/Hermes and SHA-256.
+          Offline startup, microphone, SQLite persistence and accessibility still require physical-device tests.
+          Do not distribute publicly as a verified offline beta.
+          EOF
       - uses: actions/upload-artifact@v4
         with:
           name: voicefirst-android-release-candidate-unverified
           path: |
             mobile/android/app/build/outputs/apk/release/app-release.apk
             mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
+            mobile/android/app/build/outputs/apk/release/README-CANDIDATE.txt
           if-no-files-found: error
           retention-days: 7
