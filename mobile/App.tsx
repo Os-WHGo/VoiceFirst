@@ -3,6 +3,7 @@ import { ScrollView, SafeAreaView, StatusBar, StyleSheet, View, Text, Pressable,
 import * as Speech from 'expo-speech';
 import { VoicePractice } from './VoicePractice';
 import { OfflineCourse } from './OfflineCourse';
+import { A0CandidatePreview } from './A0CandidatePreview';
 import { GuidedDialoguePractice } from './GuidedDialoguePractice';
 import { FreeResources } from './FreeResources';
 import { RegionalComparisons } from './RegionalComparisons';
@@ -91,6 +92,7 @@ export default function App() {
         <RegionalComparisons key={'regional-'+target} target={target} rate={rate} onPrimaryChange={onPrimaryRegion}/>
         <VoicePackImporter target={target}/>
         <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
+        {level==='A0' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={[]} />}
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} guideLocale={guideLocale} rate={rate} experience={experience} />
         <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
