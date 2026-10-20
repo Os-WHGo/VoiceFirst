@@ -1,0 +1,64 @@
+name: Android standalone candidate (manual only)
+# Operator approval required. Builds a release-variant APK, never publishes.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_internal_build:
+        description: 'Type BUILD_STANDALONE_CANDIDATE to authorize runner use'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  standalone-candidate:
+    if: ${{ inputs.confirm_internal_build == 'BUILD_STANDALONE_CANDIDATE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: npm ci --ignore-scripts
+      - run: npm run build:core
+      - name: Generate Android project
+        working-directory: mobile
+        env:
+          EXPO_NO_TELEMETRY: '1'
+          EXPO_NO_GIT_STATUS: '1'
+          CI: '1'
+        run: npx --no-install expo prebuild --platform android --no-install --clean
+      - name: Inspect release Gradle signing and bundling
+        working-directory: mobile/android
+        run: |
+          grep -n -A 14 'release {' app/build.gradle
+          echo 'Release build may require signing configuration. No production credentials are supplied.'
+      - name: Build release-variant candidate
+        working-directory: mobile/android
+        run: ./gradlew :app:assembleRelease --no-daemon
+      - name: Verify embedded JavaScript and checksum
+        run: |
+          set -eu
+          APK=mobile/android/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          unzip -l "$APK" > /tmp/voicefirst-release-apk-contents.txt
+          if ! grep -Eq 'assets/(index\.android\.bundle|.*\.hbc)' /tmp/voicefirst-release-apk-contents.txt; then
+            echo 'ERROR: No embedded JavaScript/Hermes asset; cannot label standalone.'
+            exit 1
+          fi
+          sha256sum "$APK" > mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
+          echo 'JS asset present. Offline startup and signing/installability still require verification.'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voicefirst-android-release-candidate-unverified
+          path: |
+            mobile/android/app/build/outputs/apk/release/app-release.apk
+            mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
