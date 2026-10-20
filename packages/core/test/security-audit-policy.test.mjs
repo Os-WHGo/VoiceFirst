@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assessAudit} from '../../scripts/security-audit-policy.mjs';
+import {assessAudit} from '../../../scripts/security-audit-policy.mjs';
 const known=['GHSA-vfj7-8cjw-p6xm','GHSA-86w9-cpqp-85rv','GHSA-w5hq-g745-h8pq'];
 const fixture=()=>({metadata:{vulnerabilities:{critical:0,high:15,moderate:7,low:0,total:22}},vulnerabilities:Object.fromEntries(known.map((id,i)=>['root'+i,{via:[{url:'https://github.com/advisories/'+id}]}]))});
 test('known audit baseline is accepted but not declared fixed',()=>{const r=assessAudit(fixture());assert.equal(r.ok,true);assert.equal(r.counts.total,22);});
