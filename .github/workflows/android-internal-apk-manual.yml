@@ -48,9 +48,13 @@ jobs:
           else
             echo 'WARNING: No bundled JS/Hermes asset detected; debug APK likely requires Metro.'
           fi
+      - name: Record APK SHA-256
+        run: sha256sum mobile/android/app/build/outputs/apk/debug/app-debug.apk | tee mobile/android/app/build/outputs/apk/debug/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: voicefirst-android-debug-apk
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            mobile/android/app/build/outputs/apk/debug/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 7
