@@ -56,7 +56,10 @@ jobs:
             adb shell am start -W -n com.oswhgo.voicefirst/.MainActivity
             sleep 15
             adb shell pidof com.oswhgo.voicefirst
-
+            adb shell uiautomator dump /sdcard/voicefirst-ui.xml
+            adb pull /sdcard/voicefirst-ui.xml voicefirst-ui-online.xml
+            adb exec-out screencap -p > voicefirst-online.png
+            grep -q 'Aprende con tu voz' voicefirst-ui-online.xml
             adb shell am force-stop com.oswhgo.voicefirst
             adb shell svc wifi disable
             adb shell svc data disable
@@ -64,7 +67,10 @@ jobs:
             adb shell am start -W -n com.oswhgo.voicefirst/.MainActivity
             sleep 15
             adb shell pidof com.oswhgo.voicefirst
-
+            adb shell uiautomator dump /sdcard/voicefirst-ui-offline.xml
+            adb pull /sdcard/voicefirst-ui-offline.xml voicefirst-ui-offline.xml
+            adb exec-out screencap -p > voicefirst-offline.png
+            grep -q 'Aprende con tu voz' voicefirst-ui-offline.xml
             adb logcat -d -t 1000 > android-emulator-logcat.txt
 
       - name: Upload diagnostics
@@ -72,6 +78,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: voicefirst-android-emulator-smoke-diagnostics
-          path: android-emulator-logcat.txt
+          path: |
+            android-emulator-logcat.txt
+            voicefirst-ui-online.xml
+            voicefirst-ui-offline.xml
+            voicefirst-online.png
+            voicefirst-offline.png
           if-no-files-found: ignore
           retention-days: 7
