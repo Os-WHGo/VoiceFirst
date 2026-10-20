@@ -1,0 +1,76 @@
+
+name: Android emulator APK smoke (internal one-shot)
+
+on:
+  push:
+    branches:
+      - codex/voicefirst-initial-source
+    paths:
+      - .github/workflows/android-emulator-apk-smoke-once.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  emulator-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download existing internal APK
+        uses: actions/download-artifact@v4
+        with:
+          name: voicefirst-android-release-candidate-unverified
+          run-id: 39514938027
+          github-token: ${{ github.token }}
+          path: candidate
+
+      - name: Verify APK checksum
+        run: |
+          set -eu
+          test -s candidate/app-release.apk
+          test -s candidate/SHA256SUMS.txt
+          cd candidate
+          sha256sum -c SHA256SUMS.txt
+
+      - name: Enable KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install and launch on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -eu
+            adb install -r candidate/app-release.apk
+            adb shell am start -W -n com.oswhgo.voicefirst/.MainActivity
+            sleep 15
+            adb shell pidof com.oswhgo.voicefirst
+
+            adb shell am force-stop com.oswhgo.voicefirst
+            adb shell svc wifi disable
+            adb shell svc data disable
+
+            adb shell am start -W -n com.oswhgo.voicefirst/.MainActivity
+            sleep 15
+            adb shell pidof com.oswhgo.voicefirst
+
+            adb logcat -d -t 1000 > android-emulator-logcat.txt
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicefirst-android-emulator-smoke-diagnostics
+          path: android-emulator-logcat.txt
+          if-no-files-found: ignore
+          retention-days: 7
