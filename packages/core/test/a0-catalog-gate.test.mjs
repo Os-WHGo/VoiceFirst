@@ -27,3 +27,20 @@ test('catalog blocks cyclic graph and empty input',()=>{
  assert.equal(loadA0CandidateCatalog(pack([lesson('a',1,['b']),lesson('b',2,['a'])])).kind,'blocked');
  assert.ok(loadA0CandidateCatalog(pack([])).issues.some(x=>x.code==='EMPTY_CATALOG'));
 });
+
+test('candidate catalog resolves authored concept prerequisites within the target language',()=>{
+ const first=lesson('first',1);
+ first.concept_id='concept.a0.first';
+ const second=lesson('second',2,['concept.a0.first']);
+ const result=loadA0CandidateCatalog(pack([first,second]));
+ assert.equal(result.kind,'candidate');
+ assert.deepEqual(result.lessons[1].prerequisites,['first']);
+});
+test('candidate catalog blocks ambiguous concept references rather than guessing',()=>{
+ const first=lesson('first',1);first.concept_id='concept.shared';
+ const duplicate=lesson('other',2);duplicate.concept_id='concept.shared';
+ const next=lesson('next',3,['concept.shared']);
+ const result=loadA0CandidateCatalog(pack([first,duplicate,next]));
+ assert.equal(result.kind,'blocked');
+ assert.ok(result.issues.some(x=>x.code==='MISSING_PREREQUISITE'));
+});
