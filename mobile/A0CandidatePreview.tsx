@@ -17,7 +17,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  
  const routes=session.journal?a0LessonRoutes(eligible,session.journal):[];
  const suggested=session.journal?nextA0LessonId(eligible,session.journal):null;
- const selected=routes.find(r=>r.lessonId===chosen&&r.available)?.lessonId??suggested??routes.find(r=>r.completed)?.lessonId??null;
+ const selected=routes.find(r=>r.lessonId===chosen&&r.available&&!r.completed)?.lessonId??suggested??routes.find(r=>r.completed)?.lessonId??null;
  const lesson=eligible.find(l=>l.lessonId===selected);
  useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');setLastSaved(null);setLastOutcome(null);},[target,selected,session.status]);
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
@@ -46,7 +46,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
   {session.status==='ready'&&!lesson?<Text style={styles.small}>Todavía no hay lecciones A0 verificadas para mostrar.</Text>:null}
   {session.status==='ready'&&lesson?<View style={styles.content}>
    <Text style={styles.small}>{session.progress?.completedLessonIds.length??0} lecciones completadas en esta colección</Text>
-   <View style={styles.options}>{routes.map(route=><Pressable key={route.lessonId} accessibilityRole="button" accessibilityLabel={'Lección '+route.sequence+(route.completed?' completada':route.available?' disponible':' bloqueada')} disabled={pending||!route.available} accessibilityState={{disabled:pending||!route.available,selected:route.lessonId===selected}} onPress={()=>{setChosen(route.lessonId);setFeedback('')}} style={styles.tab}><Text style={styles.text}>{route.sequence}{route.completed?' ✓':route.available?'':' 🔒'}</Text></Pressable>)}</View>
+   <View style={styles.options}>{routes.map(route=><Pressable key={route.lessonId} accessibilityRole="button" accessibilityLabel={'Lección '+route.sequence+(route.completed?' completada':route.available?' disponible':' bloqueada')} disabled={pending||!route.available} accessibilityState={{disabled:pending||!route.available,selected:route.lessonId===selected}} onPress={()=>{setChosen(route.completed?null:route.lessonId);setFeedback('')}} style={styles.tab}><Text style={styles.text}>{route.sequence}{route.completed?' ✓':route.available?'':' 🔒'}</Text></Pressable>)}</View>
    {!lesson&&<Text style={styles.small}>No hay una siguiente lección disponible. Revisa el progreso o los requisitos de esta colección.</Text>}
    {lesson&&(!context||!prompt)?<Text style={styles.small}>Falta la ayuda en tu idioma. Esta actividad no puede mostrarse.</Text>:null}
    {lesson&&context&&prompt?<>
