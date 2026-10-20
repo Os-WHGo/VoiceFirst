@@ -24,3 +24,13 @@ test('A0 route excludes other languages and blocks missing prerequisites',()=>{
  assert.deepEqual(routes.map(x=>x.lessonId),['start','orphan']);
  assert.deepEqual(routes[1].missingPrerequisites,['not-in-pack']);
 });
+
+test('A0 navigation handles empty and fully completed collections',()=>{
+ const empty=newA0Journal('en-CA');
+ assert.deepEqual(a0LessonRoutes([],empty),[]);
+ assert.equal(nextA0LessonId([],empty),null);
+ const first=mk('only',1);
+ const completed=appendA0JournalEvent(empty,first,{eventId:'complete',lessonId:'only',selectedOptionId:'yes',attemptNumber:1});
+ assert.equal(nextA0LessonId([first],completed),null);
+ assert.equal(a0LessonRoutes([first],completed)[0].completed,true);
+});
