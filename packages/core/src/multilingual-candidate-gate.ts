@@ -17,7 +17,7 @@ export function auditMultilingualCandidate(input:unknown,expectedLocale:Candidat
   if(typeof id!=='string'||!/^[a-z0-9][a-z0-9-]{2,100}$/.test(id)){errors.push('Invalid unit id at '+index);continue;}
   if(seen.has(id))errors.push('Duplicate unit '+id);
   seen.add(id);
-  if(!['A1','A2','B1','B2'].includes(String(value.level))){errors.push('Invalid level '+id);continue;}
+  if(value.level !== 'A1' && value.level !== 'A2' && value.level !== 'B1' && value.level !== 'B2'){errors.push('Invalid level '+id);continue;}
   if(typeof value.targetLanguage==='string'&&value.targetLanguage!==expectedLocale)errors.push('Unit locale mismatch '+id);
   if(value.publishable===true||(record(value.status)&&value.status.publishable===true))errors.push('Publishable candidate '+id);
   if(value.editorial_status==='human-reviewed')errors.push('Unverified editorial approval '+id);
