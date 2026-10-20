@@ -21,16 +21,18 @@ export function useA0Session(target:TargetLanguage,lessons:readonly A0LessonCand
   return()=>{epoch.current++;current.current=null;};
  },[target,lessons]);
  const submit=useCallback((lesson:A0LessonCandidate,event:A0JournalEvent)=>{
-  if(status!=='ready'||!current.current||lesson.targetLanguage!==target)return;
+  if(status!=='ready'||!current.current||lesson.targetLanguage!==target)return Promise.resolve(false);
   const session=epoch.current;
   // Queue each event in order; do not write into a different language after switching.
-  queue.current=queue.current.catch(()=>undefined).then(async()=>{
+  let committed=false;
+  const operation=queue.current.catch(()=>undefined).then(async()=>{
    if(epoch.current!==session||!current.current)return;
    const saved=await commitA0Attempt(a0DeviceStorage,current.current,lesson,event);
    if(epoch.current!==session)return;
-   current.current=saved;setJournal(saved);
+   current.current=saved;setJournal(saved);committed=saved.revision>0;
   });
-  void queue.current.catch(()=>{if(epoch.current===session){setStatus('blocked');setError('No se pudo guardar la respuesta. Se detuvo la sesión para proteger el historial.');}});
+  queue.current=operation.then(()=>undefined,()=>undefined);
+  return operation.then(()=>committed).catch(()=>{if(epoch.current===session){setStatus('blocked');setError('No se pudo guardar la respuesta. Se detuvo la sesión para proteger el historial.');}return false;});
  },[status,target]);
  return {status,error,journal,progress:journal?a0JournalProgress(journal,lessons):null,submit};
 }
