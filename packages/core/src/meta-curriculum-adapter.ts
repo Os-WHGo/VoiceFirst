@@ -30,9 +30,10 @@ export function adaptMetaCurriculumCandidate(targetLanguage:TargetLanguage,curri
   if(seen.has(id)){issue('DUPLICATE_UNIT',path,id);continue;}seen.add(id);
   const vocab=Array.isArray(u.vocabulary)?u.vocabulary.map(v=>rec(v)?str(v.lemma):'').filter(Boolean):[];
   const lines=byUnit.get(id)??[];
-  if(!vocab.length||!lines.length){issue('INCOMPLETE_UNIT',path,`Missing vocabulary or dialogues for ${id}`);continue;}
+  const activities=Array.isArray(u.activities)?u.activities.map(a=>typeof a==='string'?str(a):rec(a)?str(a.instructions)||str(a.prompt):'').filter(Boolean):[];
+  if(!vocab.length||(!lines.length&&!activities.length)){issue('INCOMPLETE_UNIT',path,`Missing vocabulary or learning activity for ${id}`);continue;}
   result.concepts.push({id:conceptId,level:u.level as SharedConcept['level'],goal:u.objectives.map(str).filter(Boolean).join('; '),prerequisites:[],skills:[...skills]});
-  result.units.push({conceptId,targetLanguage,dialogue:lines,vocabulary:vocab,editorialStatus:'candidate',rightsCleared:false,audioReviewed:false});
+  result.units.push({conceptId,targetLanguage,dialogue:lines,activities,vocabulary:vocab,editorialStatus:'candidate',rightsCleared:false,audioReviewed:false});
   for(const knownLanguage of targetLanguages){
    if(knownLanguage===targetLanguage)continue;
    let value:unknown;
