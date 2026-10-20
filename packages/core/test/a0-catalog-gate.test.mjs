@@ -44,3 +44,22 @@ test('candidate catalog blocks ambiguous concept references rather than guessing
  assert.equal(result.kind,'blocked');
  assert.ok(result.issues.some(x=>x.code==='MISSING_PREREQUISITE'));
 });
+
+test('catalog rejects cross-language prerequisite even when concept ID exists elsewhere',()=>{
+ const english=lesson('english',1);english.concept_id='concept.shared';
+ const spanish=lesson('spanish',1,['concept.shared']);spanish.target_language='es';
+ spanish.activity.context_by_known_language={...local,'en-CA':'Choose the correct expression'};
+ spanish.activity.prompt_by_known_language={...local,'en-CA':'Choose the correct expression'};
+ delete spanish.activity.context_by_known_language.es;
+ delete spanish.activity.prompt_by_known_language.es;
+ const result=loadA0CandidateCatalog(pack([english,spanish]));
+ assert.equal(result.kind,'blocked');
+ assert.ok(result.issues.some(x=>x.code==='MISSING_PREREQUISITE'));
+});
+test('catalog preserves explicit lesson prerequisite IDs over concept resolution',()=>{
+ const first=lesson('first',1);first.concept_id='shared';
+ const second=lesson('second',2,['first']);
+ const result=loadA0CandidateCatalog(pack([first,second]));
+ assert.equal(result.kind,'candidate');
+ assert.deepEqual(result.lessons[1].prerequisites,['first']);
+});
