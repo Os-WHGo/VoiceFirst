@@ -25,7 +25,7 @@ export function adaptMetaCurriculumCandidate(targetLanguage:TargetLanguage,curri
  const seen=new Set<string>();
  for(const [i,u] of curriculum.units.entries()){
   const path=`curriculum.units[${i}]`;
-  if(!rec(u)||!str(u.id)||!levels.has(str(u.level))||!Array.isArray(u.objectives)||!u.objectives.length||!rec(u.skills)||!skills.every(s=>rec(u.skills[s]))){issue('INVALID_UNIT',path,'Missing ID, level, objectives or six skills');continue;}
+  if(!rec(u)||!str(u.id)||!levels.has(str(u.level))||!Array.isArray(u.objectives)||!u.objectives.length||!rec(u.skills)||!skills.every(s=>rec((u.skills as Record<string,unknown>)[s]))){issue('INVALID_UNIT',path,'Missing ID, level, objectives or six skills');continue;}
   const id=str(u.id),conceptId=`meta:${id}`;
   if(seen.has(id)){issue('DUPLICATE_UNIT',path,id);continue;}seen.add(id);
   const vocab=Array.isArray(u.vocabulary)?u.vocabulary.map(v=>rec(v)?str(v.lemma):'').filter(Boolean):[];
