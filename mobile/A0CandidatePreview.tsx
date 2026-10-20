@@ -1,7 +1,7 @@
 /** A0 candidate preview. No lesson is bundled or marked publishable here. */
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {View,Text,Pressable,StyleSheet} from 'react-native';
-import {type A0LessonCandidate,type TargetLanguage} from '@voicefirst/core';
+import {a0LessonRoutes,nextA0LessonId,type A0LessonCandidate,type TargetLanguage} from '@voicefirst/core';
 import {useA0Session} from './use-a0-session';
 const palette={background:'#142339',text:'#F2F7FC',secondary:'#A6BBD0',accent:'#89D4C5'};
 export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:TargetLanguage;nativeLanguage:TargetLanguage;lessons:readonly A0LessonCandidate[]}){
@@ -14,7 +14,10 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const inFlight=useRef(false);
  const viewEpoch=useRef(0);
  useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');setLastSaved(null);},[target,chosen,session.status]);
- const lesson=eligible.find(l=>l.lessonId===chosen)??eligible[0];
+ const routes=session.journal?a0LessonRoutes(eligible,session.journal):[];
+ const suggested=session.journal?nextA0LessonId(eligible,session.journal):null;
+ const selected=routes.find(r=>r.lessonId===chosen&&r.available)?.lessonId??suggested;
+ const lesson=eligible.find(l=>l.lessonId===selected);
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
  const context=lesson?.contextByKnownLanguage[nativeLanguage];
  const prompt=lesson?.promptByKnownLanguage[nativeLanguage];
@@ -40,7 +43,8 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
   {session.status==='ready'&&!lesson?<Text style={styles.small}>Todavía no hay lecciones A0 verificadas para mostrar.</Text>:null}
   {session.status==='ready'&&lesson?<View style={styles.content}>
    <Text style={styles.small}>{session.progress?.completedLessonIds.length??0} lecciones completadas en esta colección</Text>
-   <View style={styles.options}>{eligible.map(l=><Pressable key={l.lessonId} accessibilityRole="button" disabled={pending} accessibilityState={{disabled:pending}} onPress={()=>{setChosen(l.lessonId);setFeedback('')}} style={styles.tab}><Text style={styles.text}>{l.sequence}</Text></Pressable>)}</View>
+   <View style={styles.options}>{routes.map(route=><Pressable key={route.lessonId} accessibilityRole="button" accessibilityLabel={'Lección '+route.sequence+(route.completed?' completada':route.available?' disponible':' bloqueada')} disabled={pending||!route.available} accessibilityState={{disabled:pending||!route.available,selected:route.lessonId===selected}} onPress={()=>{setChosen(route.lessonId);setFeedback('')}} style={styles.tab}><Text style={styles.text}>{route.sequence}{route.completed?' ✓':route.available?'':' 🔒'}</Text></Pressable>)}</View>
+   {!lesson&&<Text style={styles.small}>No hay una siguiente lección disponible. Revisa el progreso o los requisitos de esta colección.</Text>}
    {!context||!prompt?<Text style={styles.small}>Falta la ayuda en tu idioma. Esta actividad no puede mostrarse.</Text>:<>
     <Text style={styles.text}>{context}</Text><Text style={styles.heading}>{prompt}</Text>
     {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} accessibilityState={{disabled:pending||lastSaved!==null}} disabled={pending||lastSaved!==null} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
