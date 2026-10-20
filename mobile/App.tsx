@@ -12,9 +12,10 @@ import { PragmaticsPractice } from './PragmaticsPractice';
 import { VoicePackImporter } from './VoicePackImporter';
 import {stopCuratedVoice} from './curated-voice-output';
 import { useLearningPreferences } from './use-learning-preferences';
-import { missionsFor, languageNames, targetLanguages, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus } from '@voicefirst/core';
+import { missionsFor, languageNames, targetLanguages, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus, type A0LessonCandidate } from '@voicefirst/core';
 
 const C = { bg:'#0B1421', surface:'#142339', border:'#2B435A', text:'#F2F7FC', secondary:'#A6BBD0', mint:'#89D4C5', gold:'#E1BD83' };
+const pendingA0Lessons: readonly A0LessonCandidate[] = [];
 const bands: CefrBand[] = ['A0','A1','A2','B1','B2','C1','C2'];
 export default function App() {
   const [nativeLanguage, setNativeLanguage] = useState<TargetLanguage>('es');
@@ -92,7 +93,7 @@ export default function App() {
         <RegionalComparisons key={'regional-'+target} target={target} rate={rate} onPrimaryChange={onPrimaryRegion}/>
         <VoicePackImporter target={target}/>
         <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
-        {level==='A0' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={[]} />}
+        {level==='A0' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={pendingA0Lessons} />}
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} guideLocale={guideLocale} rate={rate} experience={experience} />
         <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
