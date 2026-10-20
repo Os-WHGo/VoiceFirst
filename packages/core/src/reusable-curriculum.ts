@@ -42,7 +42,11 @@ export function composeCurriculumCandidate(
  if(!targetLanguages.includes(unit.targetLanguage)||!targetLanguages.includes(support.knownLanguage))return null;
  if(unit.targetLanguage===support.knownLanguage||concept.id!==unit.conceptId||concept.id!==support.conceptId)return null;
  if(!concept.id.trim()||!concept.goal.trim()||!unit.dialogue.length||!unit.vocabulary.length||!support.instructions.trim())return null;
- const notes=pairNotes.filter(n=>n.conceptId===concept.id&&n.knownLanguage===support.knownLanguage&&n.targetLanguage===unit.targetLanguage);
+ if(!concept.skills.length||concept.skills.some(skill=>!(['listening','speaking','reading','writing','interaction','mediation'] as readonly string[]).includes(skill)))return null;
+ if(concept.prerequisites.some(id=>!id.trim()||id===concept.id)||new Set(concept.prerequisites).size!==concept.prerequisites.length)return null;
+ if(unit.dialogue.some(line=>!line.trim())||unit.vocabulary.some(word=>!word.trim()))return null;
+ if(!(['candidate','reviewed'] as readonly string[]).includes(unit.editorialStatus)||!(['candidate','reviewed'] as readonly string[]).includes(support.editorialStatus))return null;
+ const notes=pairNotes.filter(n=>n.conceptId===concept.id&&n.knownLanguage===support.knownLanguage&&n.targetLanguage===unit.targetLanguage&&n.note.trim()&&(['candidate','reviewed'] as readonly string[]).includes(n.editorialStatus));
  /** Candidate composition cannot authorize publication, even if incoming flags claim review. */
  const readyForPublicRelease=false as const;
  return {conceptId:concept.id,level:concept.level,goal:concept.goal,skills:concept.skills,
