@@ -13,11 +13,13 @@ export interface ExternalCurriculumCatalog {
 export function catalogueExternalCurriculum(candidate:unknown):ExternalCurriculumCatalog {
  const audit=auditExternalCurriculumCandidate(candidate);
  if(!audit.acceptedForReview)return {acceptedForReview:false,entries:[],errors:audit.errors,collisions:audit.collisions,readyForPublicRelease:false};
- const units=(candidate as {units:readonly unknown[]}).units;
+ const doc=candidate as {units:readonly unknown[];metadata?:{language?:string;target?:string;targetLanguage?:string}};
+ const units=doc.units;
+ const declaredTarget=doc.metadata?.language??doc.metadata?.target??doc.metadata?.targetLanguage??'en-CA';
  const collisions=new Set(audit.collisions);
  const entries=units.map(item=>{
   const u=item as {id:string;unitId:string;level:'A1'|'A2';targetLanguage?:string};
-  const targetLanguage=u.targetLanguage??'en-CA';
+  const targetLanguage=u.targetLanguage??declaredTarget;
   return {sourceId:u.id,canonicalUnitId:u.unitId,targetLanguage,level:u.level,
    conflictsWithExistingDraft:collisions.has(targetLanguage+'/'+u.unitId),
    reviewState:'candidate-only' as const,publicAvailable:false as const};
