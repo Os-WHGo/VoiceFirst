@@ -13,15 +13,19 @@ export function auditExternalCurriculumCandidate(candidate:unknown):ExternalCurr
   if(!item||typeof item!=='object'||Array.isArray(item)){errors.push('Invalid unit object');continue;}
   const u=item as {id?:unknown;unitId?:unknown;targetLanguage?:unknown;level?:unknown};
   const id=u.id??u.unitId;
-  const canonicalId=u.unitId;
-  if(typeof canonicalId!=='string'||!/^[a-z0-9][a-z0-9-]{2,100}$/.test(canonicalId)){errors.push('Invalid canonical unit ID');continue;}
+  const canonicalId=u.unitId??u.id;
   if(typeof id!=='string'||!/^[a-z0-9][a-z0-9-]{2,100}$/.test(id)){errors.push('Invalid unit ID');continue;}
   const key=String(u.targetLanguage??'en-CA')+'/'+id;
   const canonicalKey=String(u.targetLanguage??'en-CA')+'/'+canonicalId;
   if(seen.has(key))duplicates.push(key);seen.add(key);
+  if(typeof u.unitId!=='string')errors.push('Missing explicit canonical unit ID '+id);
   if(known.has(canonicalKey))collisions.push(canonicalKey);
   if(u.level!=='A1'&&u.level!=='A2')errors.push('Invalid level '+id);
-  if(!Array.isArray((item as {skills?:unknown}).skills)&&typeof (item as {skills?:unknown}).skills!=='object')errors.push('Missing skills '+id);
+  const skills=(item as {skills?:unknown}).skills;
+  const required=['listening','speaking','reading','writing','interaction','mediation'];
+  if(!skills||typeof skills!=='object'||Array.isArray(skills)||required.some(skill=>!(skill in skills)))errors.push('Missing required skills '+id);
+  const status=(item as {status?:unknown}).status;
+  if(!status||typeof status!=='object'||Array.isArray(status)||(status as {publishable?:unknown}).publishable!==false)errors.push('Candidate must explicitly prohibit publication '+id);
   if(u.targetLanguage!==undefined&&u.targetLanguage!=='en-CA')errors.push('Unexpected target language '+id);
  }
  return {acceptedForReview:errors.length===0&&duplicates.length===0,unitCount:units.length,duplicates,collisions,errors,readyForPublicRelease:false};
