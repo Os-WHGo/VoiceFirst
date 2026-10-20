@@ -59,3 +59,31 @@ test('A0 storage failure never claims a successful answer',async()=>{
  await assert.rejects(()=>commitA0Attempt(port,initial.journal,first,{eventId:'write.fail',lessonId:first.lessonId,selectedOptionId:first.correctOptionId,attemptNumber:1}),/disk full/);
  assert.equal(initial.journal.revision,0);
 });
+
+test('corrupted stored A0 progress is not overwritten or silently reset',async()=>{
+ const lesson=catalog.lessons[0];
+ const key='voicefirst.a0.journal.v1.'+lesson.targetLanguage;
+ const saved=new Map([[key,'{broken-json']]);
+ const port={read:async k=>saved.get(k)??null,write:async(k,v)=>{saved.set(k,v)}};
+ const restored=await restoreA0Session(port,lesson.targetLanguage,[lesson]);
+ assert.equal(restored.kind,'invalid');
+ assert.equal(saved.get(key),'{broken-json');
+});
+test('failed A0 write preserves the previous valid journal for recovery',async()=>{
+ const lesson=catalog.lessons[0];
+ const key='voicefirst.a0.journal.v1.'+lesson.targetLanguage;
+ const saved=new Map();
+ let fail=false;
+ const port={read:async k=>saved.get(k)??null,write:async(k,v)=>{if(fail)throw new Error('simulated write failure');saved.set(k,v)}};
+ const initial=await restoreA0Session(port,lesson.targetLanguage,[lesson]);
+ assert.equal(initial.kind,'ok');
+ const first=await commitA0Attempt(port,initial.journal,lesson,{eventId:'persist.first',lessonId:lesson.lessonId,selectedOptionId:lesson.options.find(x=>x.id!==lesson.correctOptionId).id,attemptNumber:1});
+ assert.equal(first.revision,1);
+ const original=saved.get(key);
+ fail=true;
+ await assert.rejects(()=>commitA0Attempt(port,first,lesson,{eventId:'persist.second',lessonId:lesson.lessonId,selectedOptionId:lesson.correctOptionId,attemptNumber:2}),/simulated write failure/);
+ assert.equal(saved.get(key),original);
+ const recovered=await restoreA0Session(port,lesson.targetLanguage,[lesson]);
+ assert.equal(recovered.kind,'ok');
+ assert.equal(recovered.journal.revision,1);
+});
