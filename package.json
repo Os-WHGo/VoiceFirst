@@ -16,6 +16,7 @@
     "voices:plan": "npm run build:core && node scripts/voice-cue-plan.mjs",
     "voices:pack": "npm run build:core && node scripts/voice-pack.mjs",
     "check:expo-config": "node scripts/check-expo-config.mjs",
-    "check:android-prebuild": "node scripts/check-android-prebuild.mjs"
+    "check:android-prebuild": "node scripts/check-android-prebuild.mjs",
+    "check:mobile-bundle": "node scripts/check-mobile-bundle.mjs"
   }
 }
