@@ -1,5 +1,5 @@
 /** A0 candidate preview. No lesson is bundled or marked publishable here. */
-import React,{useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useState} from 'react';
 import {View,Text,Pressable,StyleSheet} from 'react-native';
 import {type A0LessonCandidate,type TargetLanguage} from '@voicefirst/core';
 import {useA0Session} from './use-a0-session';
@@ -9,15 +9,18 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const session=useA0Session(target,eligible);
  const [chosen,setChosen]=useState<string|null>(null);
  const [feedback,setFeedback]=useState('');
+ const [pending,setPending]=useState(false);
+ useEffect(()=>{setPending(false);setFeedback('');},[target,chosen,session.journal?.revision,session.status]);
  const lesson=eligible.find(l=>l.lessonId===chosen)??eligible[0];
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
  const context=lesson?.contextByKnownLanguage[nativeLanguage];
  const prompt=lesson?.promptByKnownLanguage[nativeLanguage];
  const answer=(optionId:string)=>{
-  if(!lesson||session.status!=='ready'||!session.journal)return;
+  if(!lesson||session.status!=='ready'||!session.journal||pending)return;
   const eventId='a0.'+Date.now().toString(36)+'.'+Math.random().toString(36).slice(2,10);
+  setPending(true);
   session.submit(lesson,{eventId,lessonId:lesson.lessonId,selectedOptionId:optionId,attemptNumber:count+1});
-  setFeedback('Respuesta enviada para guardar. Revisa el progreso al terminar.');
+  setFeedback('Guardando respuesta en el dispositivo…');
  };
  return <View style={styles.card}>
   <Text style={styles.heading}>Laboratorio A0 · contenido en revisión</Text>
@@ -30,7 +33,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
    <View style={styles.options}>{eligible.map(l=><Pressable key={l.lessonId} accessibilityRole="button" onPress={()=>{setChosen(l.lessonId);setFeedback('')}} style={styles.tab}><Text style={styles.text}>{l.sequence}</Text></Pressable>)}</View>
    {!context||!prompt?<Text style={styles.small}>Falta la ayuda en tu idioma. Esta actividad no puede mostrarse.</Text>:<>
     <Text style={styles.text}>{context}</Text><Text style={styles.heading}>{prompt}</Text>
-    {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
+    {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} accessibilityState={{disabled:pending}} disabled={pending} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
     {!!feedback&&<Text style={styles.small}>{feedback}</Text>}
    </>}
   </View>:null}
