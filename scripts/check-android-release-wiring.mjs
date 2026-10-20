@@ -19,7 +19,7 @@ const s=readFileSync(app,'utf8');
 const checks={
  reactNativeGradlePlugin:/com\.facebook\.react/.test(s),
  releaseVariant:/release\s*\{/.test(s),
- expoBundlingHook:/expo\/scripts\/resolveAppEntry|expo\/scripts\/resolveAppEntry|expo\/bin\/cli|expo\/scripts\/resolveAppEntry/.test(s),
+ expoBundlingHook:/expo\/scripts\/resolveAppEntry|expo\/bin\/cli/.test(s),
  releaseNotMarkedDebuggable:!/debuggableVariants\s*=\s*\[[^\]]*release/.test(s)
 };
 console.log(JSON.stringify({checks,source:app,interpretation:'Gradle source readiness only: does not prove APK contains a JS bundle or runs offline.'},null,2));
