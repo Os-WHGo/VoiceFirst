@@ -131,3 +131,5 @@ export * from './a0-attempt-journal.js';
 export * from './a0-session-storage.js';
 
 export * from './a0-lesson-navigation.js';
+
+export * from './a0-prerequisite-audit.js';
