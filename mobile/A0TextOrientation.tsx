@@ -18,13 +18,22 @@ const explanations:Record<TargetLanguage,string>={
  'de':'Lies die ersten Wörter. Diese Vorschau bietet weder Audio noch Aussprachebewertung.',
  'it':'Leggi le prime parole. Questa anteprima non include audio né valutazione della pronuncia.'
 };
+const labels:Record<TargetLanguage,{heading:string;disclaimer:string;show:string;hide:string}>={
+ 'en-CA':{heading:'A0 · First contact · Text preview',disclaimer:'Draft material. No score or progress is recorded.',show:'Show words',hide:'Hide words'},
+ 'fr-CA':{heading:'A0 · Premier contact · Aperçu texte',disclaimer:'Contenu provisoire. Aucun score ni progrès enregistré.',show:'Voir les mots',hide:'Masquer les mots'},
+ es:{heading:'A0 · Primer contacto · Vista de texto',disclaimer:'Material en revisión. No se registra puntuación ni progreso.',show:'Ver palabras',hide:'Ocultar palabras'},
+ 'pt-BR':{heading:'A0 · Primeiro contato · Prévia em texto',disclaimer:'Material em revisão. Nenhuma pontuação ou progresso é registrado.',show:'Ver palavras',hide:'Ocultar palavras'},
+ de:{heading:'A0 · Erster Kontakt · Textvorschau',disclaimer:'Entwurf. Keine Punkte oder Fortschritte werden gespeichert.',show:'Wörter anzeigen',hide:'Wörter ausblenden'},
+ it:{heading:'A0 · Primo contatto · Anteprima testuale',disclaimer:'Materiale in revisione. Nessun punteggio o progresso viene registrato.',show:'Mostra parole',hide:'Nascondi parole'}
+};
 export function A0TextOrientation({target,nativeLanguage}:{target:TargetLanguage;nativeLanguage:TargetLanguage}){
  const [visible,setVisible]=useState(false);
+ const ui=labels[nativeLanguage];
  return <View style={styles.card}>
-  <Text style={styles.heading}>A0 · Primer contacto · Vista de texto</Text>
-  <Text style={styles.note}>Material de orientación en revisión. No guarda puntuaciones ni acredita progreso.</Text>
+  <Text style={styles.heading}>{ui.heading}</Text>
+  <Text style={styles.note}>{ui.disclaimer}</Text>
   <Text style={styles.note}>{explanations[nativeLanguage]}</Text>
-  <Pressable accessibilityRole="button" accessibilityState={{expanded:visible}} style={styles.action} onPress={()=>setVisible(v=>!v)}><Text style={styles.text}>{visible?'Ocultar ejemplos':'Ver ejemplos de palabras'}</Text></Pressable>
+  <Pressable accessibilityRole="button" accessibilityState={{expanded:visible}} style={styles.action} onPress={()=>setVisible(v=>!v)}><Text style={styles.text}>{visible?ui.hide:ui.show}</Text></Pressable>
   {visible?examples[target].map((entry,i)=><View key={i}><Text style={styles.word}>{entry.word}</Text>{nativeLanguage!==target&&entry.translations[nativeLanguage]?<Text style={styles.note}>{entry.translations[nativeLanguage]}</Text>:null}</View>):null}
  </View>;
 }
