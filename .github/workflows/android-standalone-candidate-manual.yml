@@ -27,20 +27,13 @@ jobs:
       - uses: android-actions/setup-android@v3
       - run: npm ci --ignore-scripts
       - run: npm run build:core
-      - name: Generate Android project
-        working-directory: mobile
-        env:
-          EXPO_NO_TELEMETRY: '1'
-          EXPO_NO_GIT_STATUS: '1'
-          CI: '1'
-        run: npx --no-install expo prebuild --platform android --no-install --clean
+      - name: Generate and validate native release wiring
+        run: node scripts/check-android-release-wiring.mjs
       - name: Inspect release Gradle signing and bundling
         working-directory: mobile/android
         run: |
           grep -n -A 14 'release {' app/build.gradle
           echo 'Release build may require signing configuration. No production credentials are supplied.'
-      - name: Validate native release wiring
-        run: node scripts/check-android-release-wiring.mjs
       - name: Build release-variant candidate
         working-directory: mobile/android
         run: ./gradlew :app:assembleRelease --no-daemon
