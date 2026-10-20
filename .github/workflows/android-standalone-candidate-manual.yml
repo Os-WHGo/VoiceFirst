@@ -49,7 +49,12 @@ jobs:
           fi
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           test -n "$APKSIGNER"
-          "$APKSIGNER" verify "$APK" || { echo 'APK unsigned or signature invalid; not installable.'; exit 1; }
+          "$APKSIGNER" verify --verbose --print-certs "$APK" || { echo 'APK unsigned or signature invalid; not installable.'; exit 1; }
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
+          test -n "$AAPT"
+          "$AAPT" dump badging "$APK" > /tmp/voicefirst-apk-badging.txt
+          grep -Eq "^package: name='com\\.oswhgo\\.voicefirst'" /tmp/voicefirst-apk-badging.txt || { echo 'Incorrect APK application ID.'; exit 1; }
+          grep '^package:' /tmp/voicefirst-apk-badging.txt
           sha256sum "$APK" > mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
           echo 'JS asset present. Offline startup and signing/installability still require verification.'
       - uses: actions/upload-artifact@v4
