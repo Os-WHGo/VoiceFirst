@@ -18,3 +18,19 @@ test('rejected inventory entry blocks editorial preview',()=>{
  const result=a1ListeningAvailability({expected:24,verified:24,missing:[],rejected:[{id:'unknown',reason:'unexpected-or-duplicate'}],readyForEditorialPlayback:false,readyForPublicRelease:false});
  assert.ok(result.every(x=>!x.editorialPreviewAvailable));
 });
+
+test('forged inventory counts and unknown IDs cannot unlock editorial previews',()=>{
+ const first=a1AudioExpectedIds[0],second=a1AudioExpectedIds[1];
+ const base={expected:24,verified:2,missing:a1AudioExpectedIds.filter(id=>id!==first&&id!==second),rejected:[],readyForEditorialPlayback:false,readyForPublicRelease:false};
+ const variants=[
+  {...base,verified:24},
+  {...base,expected:12},
+  {...base,missing:[...base.missing,'unknown']},
+  {...base,missing:[...base.missing,base.missing[0]]},
+  {...base,verified:NaN},
+ ];
+ for(const audit of variants){
+  const cards=a1ListeningAvailability(audit);
+  assert.ok(cards.every(card=>!card.editorialPreviewAvailable&&card.verifiedCount===0));
+ }
+});
