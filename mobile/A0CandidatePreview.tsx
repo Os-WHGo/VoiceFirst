@@ -11,6 +11,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const [feedback,setFeedback]=useState('');
  const [pending,setPending]=useState(false);
  const [lastSaved,setLastSaved]=useState<string|null>(null);
+ const [lastOutcome,setLastOutcome]=useState<'correct'|'review'|null>(null);
  const inFlight=useRef(false);
  const viewEpoch=useRef(0);
  
@@ -18,7 +19,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const suggested=session.journal?nextA0LessonId(eligible,session.journal):null;
  const selected=routes.find(r=>r.lessonId===chosen&&r.available)?.lessonId??suggested??routes.find(r=>r.completed)?.lessonId??null;
  const lesson=eligible.find(l=>l.lessonId===selected);
- useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');setLastSaved(null);},[target,selected,session.status]);
+ useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');setLastSaved(null);setLastOutcome(null);},[target,selected,session.status]);
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
  const context=lesson?.contextByKnownLanguage[nativeLanguage];
  const prompt=lesson?.promptByKnownLanguage[nativeLanguage];
@@ -31,7 +32,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
   setFeedback('Guardando respuesta en el dispositivo…');
   const saved=await session.submit(lesson,{eventId,lessonId:lesson.lessonId,selectedOptionId:optionId,attemptNumber:count+1});
   if(view!==viewEpoch.current)return;
-  if(saved)setLastSaved(optionId);
+  if(saved){setLastSaved(optionId);setLastOutcome(optionId===lesson.correctOptionId?'correct':'review');}
   setFeedback(saved?'Respuesta guardada en este dispositivo.':'No se confirmó el guardado. Revisa el estado de la sesión.');
   inFlight.current=false;
   setPending(false);
@@ -50,7 +51,10 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
    {lesson&&context&&prompt?<>
     <Text style={styles.text}>{context}</Text><Text style={styles.heading}>{prompt}</Text>
     {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} accessibilityState={{disabled:pending||lastSaved!==null}} disabled={pending||lastSaved!==null} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
-    {!!feedback&&<Text style={styles.small}>{feedback}</Text>}
+    {!!feedback&&<Text accessibilityLiveRegion="polite" style={styles.small}>{feedback}</Text>}
+    {lastOutcome==='correct'?<Text accessibilityLiveRegion="polite" style={styles.small}>Respuesta correcta. Puedes continuar con la siguiente lección disponible.</Text>:null}
+    {lastOutcome==='review'?<Text accessibilityLiveRegion="polite" style={styles.small}>Respuesta registrada. Revisa el contexto y vuelve a practicar esta lección.</Text>:null}
+    {lastSaved!==null&&lastOutcome==='review'?<Pressable accessibilityRole="button" style={styles.tab} onPress={()=>{setLastSaved(null);setLastOutcome(null);setFeedback('')}}><Text style={styles.text}>Intentar de nuevo</Text></Pressable>:null}
    </>:null}
   </View>:null}
  </View>;
