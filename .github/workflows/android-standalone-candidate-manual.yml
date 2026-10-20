@@ -55,8 +55,8 @@ jobs:
           "$AAPT" dump badging "$APK" > /tmp/voicefirst-apk-badging.txt
           grep -Eq "^package: name='com\\.oswhgo\\.voicefirst'" /tmp/voicefirst-apk-badging.txt || { echo 'Incorrect APK application ID.'; exit 1; }
           grep '^package:' /tmp/voicefirst-apk-badging.txt
-          if grep -Eq 'android:debuggable="true"|application-debuggable' /tmp/voicefirst-apk-badging.txt; then
-            echo 'Release candidate is debuggable; refusing standalone artifact.'
+          if "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -Eq 'android:debuggable.*(0xffffffff|true)'; then
+            echo 'Release candidate manifest indicates debuggable=true; refusing artifact.'
             exit 1
           fi
           sha256sum "$APK" > mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
