@@ -6,6 +6,7 @@ on:
       - 'packages/core/**'
       - 'scripts/check-expo-config.mjs'
       - 'scripts/check-android-prebuild.mjs'
+      - 'scripts/check-android-release-wiring.mjs'
       - 'scripts/check-mobile-bundle.mjs'
       - 'package.json'
       - 'package-lock.json'
@@ -37,6 +38,8 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run check:android-prebuild
+      - name: Check Android release bundling wiring
+        run: node scripts/check-android-release-wiring.mjs
   mobile-js-bundle:
     runs-on: ubuntu-latest
     timeout-minutes: 20
