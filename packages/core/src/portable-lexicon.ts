@@ -154,6 +154,27 @@ export function buildPortableLexiconBundle(input:unknown,use:LexiconUse,locale:s
  return{status:'ok',bundle:{schema:'voicefirst.lexicon.v1',locale,use,entries},notExported};
 }
 
+
+/** Strict import boundary for another app. No network, disk or code execution.
+ * JSON from third parties is NOT trusted simply because it claims to be reviewed.
+ * Real signature/licensing checks remain a separate integrator responsibility.
+ */
+export function parsePortableLexiconBundle(raw:unknown):LexiconBuildResult{
+ if(typeof raw!=='string'||raw.length===0||raw.length>1_000_000)
+  return{status:'blocked',errors:['Invalid serialized bundle size']};
+ let decoded:unknown;
+ try{decoded=JSON.parse(raw);}catch{return{status:'blocked',errors:['Invalid JSON']};}
+ if(!plain(decoded)||decoded.schema!=='voicefirst.lexicon.v1'||
+    !isLexiconUse(decoded.use)||typeof decoded.locale!=='string')
+  return{status:'blocked',errors:['Unsupported lexical schema']};
+ const result=buildPortableLexiconBundle(decoded.entries,decoded.use,decoded.locale);
+ if(result.status!=='ok')return result;
+ // Published bundles must contain only permitted and reviewed records. Internal
+ // draft queues may be loaded by the editor separately, never by consumers.
+ if(result.notExported!==0)return{status:'blocked',errors:['Unapproved entry in exported bundle']};
+ return result;
+}
+
 /** Subtitle suggestions are optional exact hints, never a correction of ASR output.
  * Normalization preserves orthographic distinctions, accents and punctuation.
  */
