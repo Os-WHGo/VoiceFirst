@@ -15,12 +15,14 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
  const context=lesson?.contextByKnownLanguage[nativeLanguage];
  const prompt=lesson?.promptByKnownLanguage[nativeLanguage];
- const answer=(optionId:string)=>{
+ const answer=async(optionId:string)=>{
   if(!lesson||session.status!=='ready'||!session.journal||pending)return;
   const eventId='a0.'+Date.now().toString(36)+'.'+Math.random().toString(36).slice(2,10);
   setPending(true);
-  session.submit(lesson,{eventId,lessonId:lesson.lessonId,selectedOptionId:optionId,attemptNumber:count+1});
   setFeedback('Guardando respuesta en el dispositivo…');
+  const saved=await session.submit(lesson,{eventId,lessonId:lesson.lessonId,selectedOptionId:optionId,attemptNumber:count+1});
+  setFeedback(saved?'Respuesta guardada en este dispositivo.':'No se confirmó el guardado. Revisa el estado de la sesión.');
+  setPending(false);
  };
  return <View style={styles.card}>
   <Text style={styles.heading}>Laboratorio A0 · contenido en revisión</Text>
