@@ -26,7 +26,9 @@ Normalization for exact comparison is NFC and locale-aware case folding, not acc
 const result = buildPortableLexiconBundle(records, 'subtitle-hint', 'es-CL');
 if (result.status === 'ok') {
   const portableJSON = JSON.stringify(result.bundle);
-  // Future Wivra bridge validates this v1 format locally before import.
+  const imported = parsePortableLexiconBundle(portableJSON);
+  if (imported.status !== 'ok') throw new Error('Invalid licensed lexicon');
+  // Future Wivra bridge verifies rights references and imports locally.
   // Each suggestion is reviewed by a user; it never replaces recognized audio.
 }
 ```
