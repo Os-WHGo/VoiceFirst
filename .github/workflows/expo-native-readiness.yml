@@ -1,0 +1,38 @@
+name: Expo native configuration readiness
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'packages/core/**'
+      - 'scripts/check-expo-config.mjs'
+      - 'scripts/check-android-prebuild.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/expo-native-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  expo-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build:core
+      - run: npm run check:expo-config
+  android-native-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:android-prebuild
