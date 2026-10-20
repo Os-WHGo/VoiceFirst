@@ -33,8 +33,9 @@ jobs:
           set -eu
           test -s candidate/app-release.apk
           test -s candidate/SHA256SUMS.txt
+          sed 's|mobile/android/app/build/outputs/apk/release/app-release.apk|app-release.apk|' candidate/SHA256SUMS.txt > candidate/SHA256SUMS-local.txt
           cd candidate
-          sha256sum -c SHA256SUMS.txt
+          sha256sum -c SHA256SUMS-local.txt
 
       - name: Enable KVM acceleration
         run: |
