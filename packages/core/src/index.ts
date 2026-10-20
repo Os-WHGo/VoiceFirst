@@ -135,3 +135,5 @@ export * from './a0-lesson-navigation.js';
 export * from './a0-prerequisite-audit.js';
 
 export * from './a0-catalog-gate.js';
+
+export * from './a0-journal-compatibility.js';
