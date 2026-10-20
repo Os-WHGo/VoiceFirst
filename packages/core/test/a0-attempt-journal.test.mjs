@@ -27,3 +27,11 @@ test('A0 journal allows retry after incorrect answer but rejects answers after c
  assert.equal(repeated,correct);
  assert.equal(loadA0Journal(JSON.stringify(correct),'fr-CA',[lesson]).kind,'ok');
 });
+
+test('A0 restore rejects historical events after a correct completion',()=>{
+ const saved=appendA0JournalEvent(newA0Journal('fr-CA'),lesson,{eventId:'finish',lessonId:lesson.lessonId,selectedOptionId:'a',attemptNumber:1});
+ const corrupted={...saved,revision:2,events:[...saved.events,{eventId:'extra-old',lessonId:lesson.lessonId,selectedOptionId:'b',attemptNumber:2}]};
+ const restored=loadA0Journal(JSON.stringify(corrupted),'fr-CA',[lesson]);
+ assert.equal(restored.kind,'invalid');
+ assert.equal(restored.reason,'Event after completion');
+});
