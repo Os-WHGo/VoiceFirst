@@ -121,3 +121,5 @@ export * from './reusable-curriculum.js';
 export * from './curriculum-coverage.js';
 export * from './reusable-curriculum-import.js';
 export * from './meta-curriculum-adapter.js';
+
+export * from './a0-functional-candidate-import.js';
