@@ -7,6 +7,7 @@ test('Hermes bytecode accepted',()=>{const x=good();x.entries=['assets/index.and
 test('missing bundle rejected',()=>{const x=good();x.entries=['classes.dex'];assert.match(inspectReleaseApk(x).errors.join(),/bundle/);});
 test('unsigned artifact rejected',()=>{const x=good();x.signature='Verified using v2 scheme: false';assert.equal(inspectReleaseApk(x).ok,false);});
 test('wrong application ID rejected',()=>{const x=good();x.packageBadging="package: name='com.other.app'";assert.equal(inspectReleaseApk(x).ok,false);});
-test('debuggable true in binary manifest rejected',()=>{const x=good();x.manifest='A: android:debuggable(0x0101000f)=(type 0x12)0xffffffff';assert.equal(inspectReleaseApk(x).ok,false);});
-test('debuggable false in binary manifest accepted',()=>{const x=good();x.manifest='A: android:debuggable(0x0101000f)=(type 0x12)0x0';assert.equal(inspectReleaseApk(x).ok,true);});
+test('debuggable true in binary manifest rejected',()=>{const x=good();x.manifest='E: manifest\n A: android:debuggable(0x0101000f)=(type 0x12)0xffffffff';assert.equal(inspectReleaseApk(x).ok,false);});
+test('debuggable false in binary manifest accepted',()=>{const x=good();x.manifest='E: manifest\n A: android:debuggable(0x0101000f)=(type 0x12)0x0';assert.equal(inspectReleaseApk(x).ok,true);});
+test('nonempty but unparseable manifest rejected',()=>{const x=good();x.manifest='aapt: error: failed to read manifest';assert.equal(inspectReleaseApk(x).ok,false);});
 test('missing manifest output rejected',()=>{const x=good();x.manifest='';assert.equal(inspectReleaseApk(x).ok,false);});
