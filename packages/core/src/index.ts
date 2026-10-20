@@ -139,3 +139,5 @@ export * from './a0-catalog-gate.js';
 export * from './a0-journal-compatibility.js';
 
 export * from './a0-catalog-update.js';
+
+export * from './a0-stored-catalog-review.js';
