@@ -114,3 +114,5 @@ export * from './meta-en-ca-candidate-manifest.js';
 export * from './multilingual-candidate-gate.js';
 
 export * from './pt-br-candidate-adapter.js';
+
+export * from './spanish-situations-candidate.js';
