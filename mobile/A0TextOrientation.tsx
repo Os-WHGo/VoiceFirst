@@ -3,7 +3,7 @@ import React,{useState} from 'react';
 import {View,Text,Pressable,StyleSheet} from 'react-native';
 import type {TargetLanguage} from '@voicefirst/core';
 const examples:Record<TargetLanguage,readonly string[]>={
- 'en-CA':['hello','hi'],'fr-CA':['bonjour','salut'],'es':['hola','buenos días'],'pt-BR':['olá','oi'],'de':['hallo','guten Tag'],'it':['ciao','buongiorno']
+ 'en-CA':['hello','hi'],'fr-CA':['bonjour','salut'],'es':['hola','idioma'],'pt-BR':['olá','oi'],'de':['hallo','hi'],'it':['ciao','buongiorno']
 };
 const explanations:Record<TargetLanguage,string>={
  'en-CA':'Read the first words. No audio or pronunciation assessment is available in this preview.',
