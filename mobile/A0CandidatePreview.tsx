@@ -10,9 +10,10 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const [chosen,setChosen]=useState<string|null>(null);
  const [feedback,setFeedback]=useState('');
  const [pending,setPending]=useState(false);
+ const [lastSaved,setLastSaved]=useState<string|null>(null);
  const inFlight=useRef(false);
  const viewEpoch=useRef(0);
- useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');},[target,chosen,session.status]);
+ useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');setLastSaved(null);},[target,chosen,session.status]);
  const lesson=eligible.find(l=>l.lessonId===chosen)??eligible[0];
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
  const context=lesson?.contextByKnownLanguage[nativeLanguage];
@@ -26,6 +27,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
   setFeedback('Guardando respuesta en el dispositivo…');
   const saved=await session.submit(lesson,{eventId,lessonId:lesson.lessonId,selectedOptionId:optionId,attemptNumber:count+1});
   if(view!==viewEpoch.current)return;
+  if(saved)setLastSaved(optionId);
   setFeedback(saved?'Respuesta guardada en este dispositivo.':'No se confirmó el guardado. Revisa el estado de la sesión.');
   inFlight.current=false;
   setPending(false);
@@ -41,7 +43,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
    <View style={styles.options}>{eligible.map(l=><Pressable key={l.lessonId} accessibilityRole="button" disabled={pending} accessibilityState={{disabled:pending}} onPress={()=>{setChosen(l.lessonId);setFeedback('')}} style={styles.tab}><Text style={styles.text}>{l.sequence}</Text></Pressable>)}</View>
    {!context||!prompt?<Text style={styles.small}>Falta la ayuda en tu idioma. Esta actividad no puede mostrarse.</Text>:<>
     <Text style={styles.text}>{context}</Text><Text style={styles.heading}>{prompt}</Text>
-    {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} accessibilityState={{disabled:pending}} disabled={pending} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
+    {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} accessibilityState={{disabled:pending||lastSaved!==null}} disabled={pending||lastSaved!==null} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
     {!!feedback&&<Text style={styles.small}>{feedback}</Text>}
    </>}
   </View>:null}
