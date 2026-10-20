@@ -1,5 +1,5 @@
 /** A0 candidate preview. No lesson is bundled or marked publishable here. */
-import React,{useEffect,useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {View,Text,Pressable,StyleSheet} from 'react-native';
 import {type A0LessonCandidate,type TargetLanguage} from '@voicefirst/core';
 import {useA0Session} from './use-a0-session';
@@ -10,18 +10,24 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const [chosen,setChosen]=useState<string|null>(null);
  const [feedback,setFeedback]=useState('');
  const [pending,setPending]=useState(false);
- useEffect(()=>{setPending(false);setFeedback('');},[target,chosen,session.journal?.revision,session.status]);
+ const inFlight=useRef(false);
+ const viewEpoch=useRef(0);
+ useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');},[target,chosen,session.status]);
  const lesson=eligible.find(l=>l.lessonId===chosen)??eligible[0];
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
  const context=lesson?.contextByKnownLanguage[nativeLanguage];
  const prompt=lesson?.promptByKnownLanguage[nativeLanguage];
  const answer=async(optionId:string)=>{
-  if(!lesson||session.status!=='ready'||!session.journal||pending)return;
+  if(!lesson||session.status!=='ready'||!session.journal||inFlight.current)return;
   const eventId='a0.'+Date.now().toString(36)+'.'+Math.random().toString(36).slice(2,10);
+  inFlight.current=true;
+  const view=viewEpoch.current;
   setPending(true);
   setFeedback('Guardando respuesta en el dispositivo…');
   const saved=await session.submit(lesson,{eventId,lessonId:lesson.lessonId,selectedOptionId:optionId,attemptNumber:count+1});
+  if(view!==viewEpoch.current)return;
   setFeedback(saved?'Respuesta guardada en este dispositivo.':'No se confirmó el guardado. Revisa el estado de la sesión.');
+  inFlight.current=false;
   setPending(false);
  };
  return <View style={styles.card}>
@@ -32,7 +38,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
   {session.status==='ready'&&!lesson?<Text style={styles.small}>Todavía no hay lecciones A0 verificadas para mostrar.</Text>:null}
   {session.status==='ready'&&lesson?<View style={styles.content}>
    <Text style={styles.small}>{session.progress?.completedLessonIds.length??0} lecciones completadas en esta colección</Text>
-   <View style={styles.options}>{eligible.map(l=><Pressable key={l.lessonId} accessibilityRole="button" onPress={()=>{setChosen(l.lessonId);setFeedback('')}} style={styles.tab}><Text style={styles.text}>{l.sequence}</Text></Pressable>)}</View>
+   <View style={styles.options}>{eligible.map(l=><Pressable key={l.lessonId} accessibilityRole="button" disabled={pending} accessibilityState={{disabled:pending}} onPress={()=>{setChosen(l.lessonId);setFeedback('')}} style={styles.tab}><Text style={styles.text}>{l.sequence}</Text></Pressable>)}</View>
    {!context||!prompt?<Text style={styles.small}>Falta la ayuda en tu idioma. Esta actividad no puede mostrarse.</Text>:<>
     <Text style={styles.text}>{context}</Text><Text style={styles.heading}>{prompt}</Text>
     {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} accessibilityState={{disabled:pending}} disabled={pending} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
