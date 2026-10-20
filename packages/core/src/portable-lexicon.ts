@@ -3,6 +3,8 @@
  * A syntactically valid review reference is NOT evidence that review occurred.
  */
 import {lexicalSeed} from './lexical-seed.js';
+import {lessonsFor} from './course.js';
+import {targetLanguages} from './types.js';
 
 export type LexiconUse='lesson'|'subtitle-hint'|'speech-hint';
 export type LexiconReview='draft'|'reviewed';
@@ -18,6 +20,9 @@ export interface PortableLexicalRecord{
  form:string;
  alternatives:readonly string[];
  senseId:string;
+ /** Optional exact source linkage, not a dictionary translation or CEFR claim. */
+ sourceLessonId?:string;
+ band?:'A0'|'A1';
  register:'neutral'|'polite'|'informal'|'vulgar';
  review:{status:LexiconReview;evidenceRef?:string};
  rights:{
@@ -62,6 +67,8 @@ export function validatePortableLexicalRecord(value:unknown):string|null{
  if(r.kind!=='word'&&r.kind!=='phrase')return 'Invalid entry kind';
  if(!safeText(r.form,600)||r.form!==r.form.trim())return 'Invalid original form';
  if(typeof r.senseId!=='string'||!idRE.test(r.senseId))return 'Invalid sense ID';
+ if(r.sourceLessonId!==undefined&&(typeof r.sourceLessonId!=='string'||!(/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/).test(r.sourceLessonId)))return 'Invalid source lesson';
+ if(r.band!==undefined&&r.band!=='A0'&&r.band!=='A1')return 'Invalid course band';
  if(!['neutral','polite','informal','vulgar'].includes(r.register as string))return 'Invalid register';
  if(!Array.isArray(r.alternatives)||r.alternatives.length>20||
     r.alternatives.some((v:unknown)=>!safeText(v,600)||v!==v.trim()))return 'Invalid alternatives';
@@ -95,6 +102,25 @@ export function portableLexiconDraftsFromSeed():readonly PortableLexicalRecord[]
  }));
 }
 
+/** Link all 84 existing micro-lessons to a portable editorial lexicon queue.
+ * Only first authored exercise phrases and their already-authored alternatives.
+ * No tokenizing, invention of translations, automatic CEFR advancement or rights claim.
+ */
+export function portableLexiconDraftsFromCourse():readonly PortableLexicalRecord[]{
+ return targetLanguages.flatMap(locale=>lessonsFor(locale).map(lesson=>{
+  const first=lesson.exercises[0]!;
+  const alternatives=[...new Set(first.alternatives.filter(text=>text!==first.utterance))];
+  return{
+   id:'course-'+lesson.id.toLowerCase(),locale,script:'Latn',kind:'phrase' as const,
+   form:first.utterance,alternatives,senseId:'context-'+lesson.focusTag,
+   sourceLessonId:lesson.id,band:lesson.band,register:'neutral' as const,
+   review:{status:'draft' as const},
+   rights:{status:'pending' as const,rightsHolder:'VoiceFirst - verification pending',
+    licenseRef:'pending',allowedUses:[] as LexiconUse[],communityControlled:false}
+  };
+ }));
+}
+
 /** Safe, JSON-serializable cross-app export: only explicitly reviewed,
  * explicitly licensed, per-use records in the EXACT requested locale.
  */
@@ -115,6 +141,8 @@ export function buildPortableLexiconBundle(input:unknown,use:LexiconUse,locale:s
   entries.push({
    id:record.id,locale:record.locale,script:record.script,kind:record.kind,
    form:record.form,alternatives:[...record.alternatives],senseId:record.senseId,
+   ...(record.sourceLessonId?{sourceLessonId:record.sourceLessonId}:{}),
+   ...(record.band?{band:record.band}:{}),
    register:record.register,review:{status:'reviewed',evidenceRef:record.review.evidenceRef},
    rights:{status:'granted',rightsHolder:record.rights.rightsHolder,
     licenseRef:record.rights.licenseRef,allowedUses:[...record.rights.allowedUses],
@@ -133,5 +161,9 @@ export function findPortableLexicalHints(bundle:PortableLexiconBundle,phrase:str
  if(!safeText(phrase,600)||bundle.schema!=='voicefirst.lexicon.v1'||bundle.use!=='subtitle-hint')return [];
  const normalized=phrase.normalize('NFC').toLocaleLowerCase(bundle.locale);
  return bundle.entries.filter(r=>r.locale===bundle.locale&&
+  r.review.status==='reviewed'&&r.rights.status==='granted'&&
+  r.rights.allowedUses.includes('subtitle-hint')&&
+  (!r.rights.communityControlled||!!r.rights.communityAuthorizationRef)&&
+  validatePortableLexicalRecord(r)===null&&
   [r.form,...r.alternatives].some(f=>f.normalize('NFC').toLocaleLowerCase(bundle.locale)===normalized));
 }
