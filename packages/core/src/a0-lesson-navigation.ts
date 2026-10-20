@@ -6,9 +6,10 @@ export interface A0LessonRoute {lessonId:string;sequence:number;available:boolea
 export function a0LessonRoutes(lessons:readonly A0LessonCandidate[],journal:A0Journal):A0LessonRoute[]{
  const scoped=lessons.filter(l=>l.targetLanguage===journal.targetLanguage);
  const ids=new Set(scoped.map(l=>l.lessonId));
+ const validSequence=new Set(scoped.filter(l=>Number.isSafeInteger(l.sequence)&&l.sequence>0).map(l=>l.lessonId));
  const completed=new Set(summarizeA0Attempts(scoped,journal.events).completedLessonIds);
  return [...scoped].sort((a,b)=>a.sequence-b.sequence||a.lessonId.localeCompare(b.lessonId)).map(lesson=>{
-  const missingPrerequisites=lesson.prerequisites.filter(id=>!ids.has(id)||!completed.has(id));
+  const missingPrerequisites=lesson.prerequisites.filter(id=>!ids.has(id)||!validSequence.has(id)||!completed.has(id));
   return {lessonId:lesson.lessonId,sequence:lesson.sequence,available:missingPrerequisites.length===0,completed:completed.has(lesson.lessonId),missingPrerequisites};
  });
 }
