@@ -119,3 +119,4 @@ export * from './spanish-situations-candidate.js';
 
 export * from './reusable-curriculum.js';
 export * from './curriculum-coverage.js';
+export * from './reusable-curriculum-import.js';
