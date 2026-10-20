@@ -25,3 +25,12 @@ test('all six skills and explicit unpublished status are mandatory',()=>{
  assert.equal(auditExternalCurriculumCandidate({units:[{...base,skills:{listening:{}}}]}).acceptedForReview,false);
  assert.equal(auditExternalCurriculumCandidate({units:[{...base,status:{publishable:true}}]}).acceptedForReview,false);
 });
+
+test('ambiguous language and duplicate canonical IDs fail closed',()=>{
+ const base={id:'unit-one',unitId:'shared-topic',targetLanguage:'en-CA',level:'A1',skills,status};
+ const noLanguage=auditExternalCurriculumCandidate({units:[{...base,targetLanguage:undefined}]});
+ assert.equal(noLanguage.acceptedForReview,false);
+ const duplicateCanonical=auditExternalCurriculumCandidate({units:[base,{...base,id:'unit-two'}]});
+ assert.equal(duplicateCanonical.acceptedForReview,false);
+ assert.ok(duplicateCanonical.duplicates.includes('en-CA/shared-topic'));
+});
