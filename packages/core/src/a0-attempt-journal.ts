@@ -14,6 +14,8 @@ export function appendA0JournalEvent(journal:A0Journal,lesson:A0LessonCandidate,
  if(lesson.targetLanguage!==journal.targetLanguage||!validId(event.eventId)||journal.events.length>=10000)return journal;
  if(journal.events.some(x=>x.eventId===event.eventId))return journal;
  if(!evaluateA0Choice(lesson,event))return journal;
+ // Once a lesson has been answered correctly, its completion is immutable.
+ if(journal.events.some(x=>x.lessonId===lesson.lessonId&&x.selectedOptionId===lesson.correctOptionId))return journal;
  const expected=journal.events.filter(x=>x.lessonId===lesson.lessonId).length+1;
  if(event.attemptNumber!==expected)return journal;
  return {...journal,revision:journal.revision+1,events:[...journal.events,{eventId:event.eventId,lessonId:event.lessonId,selectedOptionId:event.selectedOptionId,attemptNumber:event.attemptNumber}]};
