@@ -25,3 +25,13 @@ test('reject mismatched concepts and filter contrastive notes by ordered pair',(
  const notes=[{conceptId:'greeting',knownLanguage:'es',targetLanguage:'fr-CA',note:'Pronunciación nasal',editorialStatus:'candidate'},{conceptId:'greeting',knownLanguage:'de',targetLanguage:'fr-CA',note:'Not applicable',editorialStatus:'candidate'}];
  assert.deepEqual(composeCurriculumCandidate(concept,unit,support,notes).contrastiveNotes,['Pronunciación nasal']);
 });
+
+test('review flags alone cannot authorize release from candidate composer',()=>{
+ const concept={id:'concept.first-contact',level:'A0',goal:'Recognize a greeting',prerequisites:[],skills:['listening']};
+ const unit={conceptId:concept.id,targetLanguage:'fr-CA',dialogue:['Bonjour'],vocabulary:['bonjour'],editorialStatus:'reviewed',rightsCleared:true,audioReviewed:true};
+ const support={conceptId:concept.id,knownLanguage:'es',instructions:'Reconoce el saludo',editorialStatus:'reviewed'};
+ const note={conceptId:concept.id,knownLanguage:'es',targetLanguage:'fr-CA',note:'Revisada',editorialStatus:'reviewed'};
+ const composed=composeCurriculumCandidate(concept,unit,support,[note]);
+ assert.equal(composed.readyForPublicRelease,false);
+ assert.equal(composed.status,'candidate');
+});
