@@ -33,6 +33,7 @@ export function loadA0Journal(raw:string,targetLanguage:TargetLanguage,lessons:r
   const event=e as A0JournalEvent;
   const lesson=byId.get(event.lessonId);
   if(!validId(event.eventId)||ids.has(event.eventId)||!lesson||!evaluateA0Choice(lesson,event)||event.attemptNumber!==journal.events.filter(x=>x.lessonId===event.lessonId).length+1)return {kind:'invalid',reason:'Invalid event'};
+  if(journal.events.some(x=>x.lessonId===event.lessonId&&x.selectedOptionId===lesson.correctOptionId))return {kind:'invalid',reason:'Event after completion'};
   ids.add(event.eventId);journal.events.push({eventId:event.eventId,lessonId:event.lessonId,selectedOptionId:event.selectedOptionId,attemptNumber:event.attemptNumber});
  }
  if(obj.revision!==journal.events.length)return {kind:'invalid',reason:'Revision mismatch'};
