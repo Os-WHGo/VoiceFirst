@@ -49,3 +49,16 @@ test('reject invalid skills, prerequisites, and empty multilingual payloads',()=
  assert.equal(composeCurriculumCandidate(concept,unit,{...support,editorialStatus:'unknown'}),null);
  assert.deepEqual(composeCurriculumCandidate(concept,unit,support,[{conceptId:concept.id,knownLanguage:'de',targetLanguage:'it',note:' ',editorialStatus:'candidate'}]).contrastiveNotes,[]);
 });
+
+
+test('accept non-dialogue A0 recognition activities without inventing dialogue',()=>{
+ const concept={id:'concept.a0.sound',level:'A0',goal:'Recognize sounds',prerequisites:[],skills:['listening']};
+ const unit={conceptId:concept.id,targetLanguage:'fr-CA',dialogue:[],activities:['Select the sound you hear'],vocabulary:['bonjour'],editorialStatus:'candidate',rightsCleared:false,audioReviewed:false};
+ const support={conceptId:concept.id,knownLanguage:'es',instructions:'Identifica el sonido',editorialStatus:'candidate'};
+ const result=composeCurriculumCandidate(concept,unit,support);
+ assert.deepEqual(result.dialogue,[]);
+ assert.deepEqual(result.activities,['Select the sound you hear']);
+ assert.equal(result.readyForPublicRelease,false);
+ assert.equal(composeCurriculumCandidate(concept,{...unit,activities:[]},support),null);
+ assert.equal(composeCurriculumCandidate(concept,{...unit,activities:[' ']},support),null);
+});
