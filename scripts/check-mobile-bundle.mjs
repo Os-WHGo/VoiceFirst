@@ -24,10 +24,13 @@ try{
    process.exitCode=1;break;
   }
   const names=readdirSync(out,{recursive:true}).map(String);
-  if(!names.some(x=>/\.js$/.test(x))){
-   console.error('Metro produced no JavaScript bundle for '+platform);
+  const bundles=names.filter(x=>/\.(js|hbc|bundle)$/.test(x));
+  if(!bundles.length){
+   console.error('Metro produced no recognized JS/Hermes bundle for '+platform);
+   console.error('Output files: '+names.slice(0,60).join(', '));
+   console.error('Expo output: '+(run.stdout||'').slice(-2500));
    process.exitCode=1;break;
   }
-  console.log('Metro '+platform+' bundle exported successfully: '+names.filter(x=>/\\.(js|hbc|bundle)$/.test(x)).slice(0,5).join(', ')+' (not a native installable).');
+  console.log('Metro '+platform+' bundle exported successfully: '+bundles.slice(0,5).join(', ')+' (not a native installable).');
  }
 }finally{rmSync(temp,{recursive:true,force:true});}
