@@ -1,4 +1,3 @@
-
 name: Android standalone candidate (one-shot authorized)
 # Operator approval required. Builds a release-variant APK, never publishes.
 on:
