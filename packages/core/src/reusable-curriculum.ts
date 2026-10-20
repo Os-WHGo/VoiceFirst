@@ -43,10 +43,11 @@ export function composeCurriculumCandidate(
  if(unit.targetLanguage===support.knownLanguage||concept.id!==unit.conceptId||concept.id!==support.conceptId)return null;
  if(!concept.id.trim()||!concept.goal.trim()||!unit.dialogue.length||!unit.vocabulary.length||!support.instructions.trim())return null;
  const notes=pairNotes.filter(n=>n.conceptId===concept.id&&n.knownLanguage===support.knownLanguage&&n.targetLanguage===unit.targetLanguage);
- const readyForPublicRelease=unit.editorialStatus==='reviewed'&&support.editorialStatus==='reviewed'&&unit.rightsCleared&&unit.audioReviewed&&notes.every(n=>n.editorialStatus==='reviewed');
+ /** Candidate composition cannot authorize publication, even if incoming flags claim review. */
+ const readyForPublicRelease=false as const;
  return {conceptId:concept.id,level:concept.level,goal:concept.goal,skills:concept.skills,
   knownLanguage:support.knownLanguage,targetLanguage:unit.targetLanguage,
   dialogue:unit.dialogue,vocabulary:unit.vocabulary,instructions:support.instructions,
   contrastiveNotes:notes.map(n=>n.note),readyForPublicRelease,
-  status:readyForPublicRelease?'reviewed':'candidate' as CurriculumRelease};
+  status:'candidate' as const};
 }
