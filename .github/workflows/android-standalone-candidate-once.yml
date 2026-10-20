@@ -1,0 +1,92 @@
+name: Android standalone candidate (one-shot authorized)
+# Operator approval required. Builds a release-variant APK, never publishes.
+on:
+  push:
+    branches:
+      - codex/voicefirst-initial-source
+    paths:
+      - .github/workflows/android-standalone-candidate-once.yml
+permissions:
+  contents: read
+jobs:
+  standalone-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: npm ci --ignore-scripts
+      - run: npm run build:core
+      - name: Generate and validate native release wiring
+        run: node scripts/check-android-release-wiring.mjs
+      - name: Inspect release Gradle signing and bundling
+        working-directory: mobile/android
+        run: |
+          grep -n -A 14 'release {' app/build.gradle
+          echo 'Release build may require signing configuration. No production credentials are supplied.'
+      - name: Classify generated release signing before building
+        run: node scripts/inspect-android-release-signing.mjs
+      - name: Build release-variant candidate
+        working-directory: mobile/android
+        run: ./gradlew :app:assembleRelease --no-daemon
+      - name: Verify embedded JavaScript and checksum
+        run: |
+          set -eu
+          APK=mobile/android/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          unzip -l "$APK" > /tmp/voicefirst-release-apk-contents.txt
+          if ! grep -Eq 'assets/(index\.android\.bundle|.*\.hbc)' /tmp/voicefirst-release-apk-contents.txt; then
+            echo 'ERROR: No embedded JavaScript/Hermes asset; cannot label standalone.'
+            exit 1
+          fi
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" || { echo 'APK unsigned or signature invalid; not installable.'; exit 1; }
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
+          test -n "$AAPT"
+          "$AAPT" dump badging "$APK" > /tmp/voicefirst-apk-badging.txt
+          grep -Eq "^package: name='com\\.oswhgo\\.voicefirst'" /tmp/voicefirst-apk-badging.txt || { echo 'Incorrect APK application ID.'; exit 1; }
+          grep '^package:' /tmp/voicefirst-apk-badging.txt
+          if "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -Eq 'android:debuggable.*(0xffffffff|true)'; then
+            echo 'Release candidate manifest indicates debuggable=true; refusing artifact.'
+            exit 1
+          fi
+          # Reuse the same independently tested policy against actual APK tool output.
+          unzip -Z1 "$APK" > /tmp/voicefirst-apk-entries.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > /tmp/voicefirst-apk-signature.txt
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > /tmp/voicefirst-apk-manifest.txt
+          node scripts/verify-android-release-artifact.mjs \
+            /tmp/voicefirst-apk-entries.txt \
+            /tmp/voicefirst-apk-signature.txt \
+            /tmp/voicefirst-apk-badging.txt \
+            /tmp/voicefirst-apk-manifest.txt
+          sha256sum "$APK" > mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
+          echo 'JS asset present. Offline startup and signing/installability still require verification.'
+      - name: Write candidate limitations
+        run: |
+          cat > mobile/android/app/build/outputs/apk/release/README-CANDIDATE.txt <<'EOF'
+          VoiceFirst Android internal release candidate.
+          Generated Gradle release configuration currently references debug signing (verified in Expo native readiness CI on 2026-10-20).
+          This is a non-production signing configuration, not a Play Store signing identity.
+          Not production approved, not device validated.
+          CI verifies APK signature, application ID, embedded JS/Hermes and SHA-256.
+          Offline startup, microphone, SQLite persistence and accessibility still require physical-device tests.
+          Do not distribute publicly as a verified offline beta.
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voicefirst-android-release-candidate-unverified
+          path: |
+            mobile/android/app/build/outputs/apk/release/app-release.apk
+            mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
+            mobile/android/app/build/outputs/apk/release/README-CANDIDATE.txt
+          if-no-files-found: error
+          retention-days: 7
