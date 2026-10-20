@@ -35,3 +35,17 @@ test('review flags alone cannot authorize release from candidate composer',()=>{
  assert.equal(composed.readyForPublicRelease,false);
  assert.equal(composed.status,'candidate');
 });
+
+test('reject invalid skills, prerequisites, and empty multilingual payloads',()=>{
+ const concept={id:'concept.hello',level:'A0',goal:'Say hello',prerequisites:[],skills:['listening']};
+ const unit={conceptId:concept.id,targetLanguage:'it',dialogue:['Ciao'],vocabulary:['ciao'],editorialStatus:'candidate',rightsCleared:false,audioReviewed:false};
+ const support={conceptId:concept.id,knownLanguage:'de',instructions:'Begrüße jemanden',editorialStatus:'candidate'};
+ assert.equal(composeCurriculumCandidate({...concept,skills:[]},unit,support),null);
+ assert.equal(composeCurriculumCandidate({...concept,skills:['invented']},unit,support),null);
+ assert.equal(composeCurriculumCandidate({...concept,prerequisites:[concept.id]},unit,support),null);
+ assert.equal(composeCurriculumCandidate({...concept,prerequisites:['x','x']},unit,support),null);
+ assert.equal(composeCurriculumCandidate(concept,{...unit,dialogue:[' ']},support),null);
+ assert.equal(composeCurriculumCandidate(concept,{...unit,vocabulary:[' ']},support),null);
+ assert.equal(composeCurriculumCandidate(concept,unit,{...support,editorialStatus:'unknown'}),null);
+ assert.deepEqual(composeCurriculumCandidate(concept,unit,support,[{conceptId:concept.id,knownLanguage:'de',targetLanguage:'it',note:' ',editorialStatus:'candidate'}]).contrastiveNotes,[]);
+});
