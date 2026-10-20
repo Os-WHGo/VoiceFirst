@@ -34,6 +34,8 @@ jobs:
         run: |
           grep -n -A 14 'release {' app/build.gradle
           echo 'Release build may require signing configuration. No production credentials are supplied.'
+      - name: Classify generated release signing before building
+        run: node scripts/inspect-android-release-signing.mjs
       - name: Build release-variant candidate
         working-directory: mobile/android
         run: ./gradlew :app:assembleRelease --no-daemon
@@ -74,7 +76,9 @@ jobs:
         run: |
           cat > mobile/android/app/build/outputs/apk/release/README-CANDIDATE.txt <<'EOF'
           VoiceFirst Android internal release candidate.
-          Not Play Store signed, not production approved, not device validated.
+          Generated Gradle release configuration currently references debug signing (verified in Expo native readiness CI on 2026-10-20).
+          This is a non-production signing configuration, not a Play Store signing identity.
+          Not production approved, not device validated.
           CI verifies APK signature, application ID, embedded JS/Hermes and SHA-256.
           Offline startup, microphone, SQLite persistence and accessibility still require physical-device tests.
           Do not distribute publicly as a verified offline beta.
