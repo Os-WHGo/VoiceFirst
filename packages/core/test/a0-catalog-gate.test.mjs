@@ -63,3 +63,17 @@ test('catalog preserves explicit lesson prerequisite IDs over concept resolution
  assert.equal(result.kind,'candidate');
  assert.deepEqual(result.lessons[1].prerequisites,['first']);
 });
+
+test('catalog rejects self dependency expressed as concept ID',()=>{
+ const first=lesson('first',1,['concept.self']);first.concept_id='concept.self';
+ const result=loadA0CandidateCatalog(pack([first]));
+ assert.equal(result.kind,'blocked');
+ assert.ok(result.issues.some(x=>x.code==='SELF_PREREQUISITE'));
+});
+test('catalog rejects cycles expressed as concept IDs',()=>{
+ const first=lesson('first',1,['concept.second']);first.concept_id='concept.first';
+ const second=lesson('second',2,['concept.first']);second.concept_id='concept.second';
+ const result=loadA0CandidateCatalog(pack([first,second]));
+ assert.equal(result.kind,'blocked');
+ assert.ok(result.issues.some(x=>x.code==='CYCLIC_PREREQUISITE'));
+});
