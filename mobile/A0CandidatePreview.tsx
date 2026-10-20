@@ -21,6 +21,7 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const lesson=eligible.find(l=>l.lessonId===selected);
  useEffect(()=>{viewEpoch.current++;inFlight.current=false;setPending(false);setFeedback('');setLastSaved(null);setLastOutcome(null);},[target,selected,session.status]);
  const count=lesson?session.journal?.events.filter(e=>e.lessonId===lesson.lessonId).length??0:0;
+ const completed=!!lesson&&routes.some(r=>r.lessonId===lesson.lessonId&&r.completed);
  const context=lesson?.contextByKnownLanguage[nativeLanguage];
  const prompt=lesson?.promptByKnownLanguage[nativeLanguage];
  const answer=async(optionId:string)=>{
@@ -50,11 +51,12 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
    {lesson&&(!context||!prompt)?<Text style={styles.small}>Falta la ayuda en tu idioma. Esta actividad no puede mostrarse.</Text>:null}
    {lesson&&context&&prompt?<>
     <Text style={styles.text}>{context}</Text><Text style={styles.heading}>{prompt}</Text>
-    {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} accessibilityState={{disabled:pending||lastSaved!==null}} disabled={pending||lastSaved!==null} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
+    {completed?<Text style={styles.small}>Esta lección ya está completada. Puedes revisarla sin registrar nuevas respuestas.</Text>:null}
+    {lesson.options.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.text} accessibilityState={{disabled:pending||lastSaved!==null||completed}} disabled={pending||lastSaved!==null||completed} style={styles.option} onPress={()=>answer(option.id)}><Text style={styles.text}>{option.text}</Text></Pressable>)}
     {!!feedback&&<Text accessibilityLiveRegion="polite" style={styles.small}>{feedback}</Text>}
     {lastOutcome==='correct'?<Text accessibilityLiveRegion="polite" style={styles.small}>Respuesta correcta. Puedes continuar con la siguiente lección disponible.</Text>:null}
     {lastOutcome==='review'?<Text accessibilityLiveRegion="polite" style={styles.small}>Respuesta registrada. Revisa el contexto y vuelve a practicar esta lección.</Text>:null}
-    {lastSaved!==null&&lastOutcome==='review'?<Pressable accessibilityRole="button" style={styles.tab} onPress={()=>{setLastSaved(null);setLastOutcome(null);setFeedback('')}}><Text style={styles.text}>Intentar de nuevo</Text></Pressable>:null}
+    {lastSaved!==null&&lastOutcome==='review'&&!completed?<Pressable accessibilityRole="button" style={styles.tab} onPress={()=>{setLastSaved(null);setLastOutcome(null);setFeedback('')}}><Text style={styles.text}>Intentar de nuevo</Text></Pressable>:null}
    </>:null}
   </View>:null}
  </View>;
