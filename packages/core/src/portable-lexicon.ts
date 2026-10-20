@@ -5,6 +5,7 @@
 import {lexicalSeed} from './lexical-seed.js';
 import {lessonsFor} from './course.js';
 import {targetLanguages} from './types.js';
+import {a1EditorialDrafts} from './course-content-a1-drafts.js';
 
 export type LexiconUse='lesson'|'subtitle-hint'|'speech-hint';
 export type LexiconReview='draft'|'reviewed';
@@ -119,6 +120,28 @@ export function portableLexiconDraftsFromCourse():readonly PortableLexicalRecord
     licenseRef:'pending',allowedUses:[] as LexiconUse[],communityControlled:false}
   };
  }));
+}
+
+/** Semantic A1 phrase patterns from the new human-authored curriculum drafts.
+ * These are NOT dictionary translations, recorded audio or lesson releases.
+ * Every item remains rights-pending and cannot enter a production subtitle pack.
+ */
+export function portableLexiconDraftsFromA1Authoring():readonly PortableLexicalRecord[]{
+ return a1EditorialDrafts.flatMap(unit=>unit.lexemes.map(phrase=>({
+  id:['a1',unit.targetLanguage.toLowerCase(),unit.unitId,phrase.conceptId].join('-'),
+  locale:unit.targetLanguage,
+  script:'Latn',
+  kind:'phrase' as const,
+  form:phrase.form,
+  alternatives:[] as string[],
+  senseId:'concept-'+phrase.conceptId,
+  band:'A1' as const,
+  register:phrase.conceptId==='ask-repeat'?'polite' as const:
+   phrase.conceptId==='hello'&&unit.targetLanguage==='it'?'informal' as const:'neutral' as const,
+  review:{status:'draft' as const},
+  rights:{status:'pending' as const,rightsHolder:'VoiceFirst - verification pending',
+    licenseRef:'pending',allowedUses:[] as LexiconUse[],communityControlled:false}
+ })));
 }
 
 /** Safe, JSON-serializable cross-app export: only explicitly reviewed,
