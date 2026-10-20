@@ -141,3 +141,5 @@ export * from './a0-journal-compatibility.js';
 export * from './a0-catalog-update.js';
 
 export * from './a0-stored-catalog-review.js';
+
+export * from './a0-curriculum-inventory.js';
