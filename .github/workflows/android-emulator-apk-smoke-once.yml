@@ -76,10 +76,7 @@ jobs:
             test -s voicefirst-ui-online.xml
             test -s voicefirst-online.png
             test -s voicefirst-offline-pid.txt
-            if grep -q 'OFFLINE_PROCESS_NOT_RUNNING' voicefirst-offline-pid.txt; then
-              echo 'Offline process not running; inspect captured logcat and screenshot'
-              exit 1
-            fi
+            ! grep -q 'OFFLINE_PROCESS_NOT_RUNNING' voicefirst-offline-pid.txt
 
       - name: Upload diagnostics
         if: always()
