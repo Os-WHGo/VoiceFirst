@@ -66,16 +66,20 @@ jobs:
 
             adb shell am start -W -n com.oswhgo.voicefirst/.MainActivity
             sleep 15
-            adb shell pidof com.oswhgo.voicefirst
+            adb logcat -d -t 3000 > android-emulator-logcat.txt || true
+            adb shell pidof com.oswhgo.voicefirst > voicefirst-offline-pid.txt || echo 'OFFLINE_PROCESS_NOT_RUNNING' > voicefirst-offline-pid.txt
             adb shell uiautomator dump /sdcard/voicefirst-ui-offline.xml
             adb pull /sdcard/voicefirst-ui-offline.xml voicefirst-ui-offline.xml
             adb exec-out screencap -p > voicefirst-offline.png
             grep -q 'Aprende con tu voz' voicefirst-ui-offline.xml || echo 'Offline UI text not found: retain screenshot and hierarchy for diagnosis'
-            adb logcat -d -t 1000 > android-emulator-logcat.txt
+            adb logcat -d -t 3000 > android-emulator-logcat.txt || true
             test -s voicefirst-ui-online.xml
-            test -s voicefirst-ui-offline.xml
             test -s voicefirst-online.png
-            test -s voicefirst-offline.png
+            test -s voicefirst-offline-pid.txt
+            if grep -q 'OFFLINE_PROCESS_NOT_RUNNING' voicefirst-offline-pid.txt; then
+              echo 'Offline process not running; inspect captured logcat and screenshot'
+              exit 1
+            fi
 
       - name: Upload diagnostics
         if: always()
@@ -88,5 +92,6 @@ jobs:
             voicefirst-ui-offline.xml
             voicefirst-online.png
             voicefirst-offline.png
+            voicefirst-offline-pid.txt
           if-no-files-found: ignore
           retention-days: 7
