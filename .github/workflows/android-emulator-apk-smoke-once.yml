@@ -72,6 +72,11 @@ jobs:
             adb pull /sdcard/voicefirst-ui-offline.xml voicefirst-ui-offline.xml
             adb exec-out screencap -p > voicefirst-offline.png
             grep -q 'Aprende con tu voz' voicefirst-ui-offline.xml || echo 'Offline UI text not found: retain screenshot and hierarchy for diagnosis'
+            adb shell input swipe 500 1550 500 450 550
+            sleep 2
+            adb shell uiautomator dump /sdcard/voicefirst-ui-scroll.xml
+            adb pull /sdcard/voicefirst-ui-scroll.xml voicefirst-ui-scroll.xml
+            adb exec-out screencap -p > voicefirst-scrolled.png
             adb logcat -d -t 3000 > android-emulator-logcat.txt || true
             test -s voicefirst-ui-online.xml
             test -s voicefirst-online.png
@@ -90,5 +95,7 @@ jobs:
             voicefirst-online.png
             voicefirst-offline.png
             voicefirst-offline-pid.txt
+            voicefirst-ui-scroll.xml
+            voicefirst-scrolled.png
           if-no-files-found: ignore
           retention-days: 7
