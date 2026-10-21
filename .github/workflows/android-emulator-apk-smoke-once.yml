@@ -59,7 +59,7 @@ jobs:
             adb shell uiautomator dump /sdcard/voicefirst-ui.xml
             adb pull /sdcard/voicefirst-ui.xml voicefirst-ui-online.xml
             adb exec-out screencap -p > voicefirst-online.png
-            grep -q 'Aprende con tu voz' voicefirst-ui-online.xml
+            grep -q 'Aprende con tu voz' voicefirst-ui-online.xml || echo 'UI text not found: retain screenshot and hierarchy for diagnosis'
             adb shell am force-stop com.oswhgo.voicefirst
             adb shell svc wifi disable
             adb shell svc data disable
@@ -70,8 +70,12 @@ jobs:
             adb shell uiautomator dump /sdcard/voicefirst-ui-offline.xml
             adb pull /sdcard/voicefirst-ui-offline.xml voicefirst-ui-offline.xml
             adb exec-out screencap -p > voicefirst-offline.png
-            grep -q 'Aprende con tu voz' voicefirst-ui-offline.xml
+            grep -q 'Aprende con tu voz' voicefirst-ui-offline.xml || echo 'Offline UI text not found: retain screenshot and hierarchy for diagnosis'
             adb logcat -d -t 1000 > android-emulator-logcat.txt
+            test -s voicefirst-ui-online.xml
+            test -s voicefirst-ui-offline.xml
+            test -s voicefirst-online.png
+            test -s voicefirst-offline.png
 
       - name: Upload diagnostics
         if: always()
