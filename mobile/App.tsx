@@ -60,7 +60,7 @@ export default function App() {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.screen}>
         <Text style={styles.eyebrow}>VOICEFIRST / LAB 0.1</Text>
-        <Text style={styles.title}>Aprende con tu voz.</Text>
+        <Text accessibilityRole="header" style={styles.title}>Aprende con tu voz.</Text>
         <Text style={styles.sub}>Un profesor que se adapta a tu ritmo. Diseñado para escuchar y hablar.</Text>
         <View style={styles.card}>
           <View style={styles.orbitOuter}><View style={styles.orbitMid}><View style={styles.orbitInner}><Text style={styles.orbitIcon}>{speaking ? '♫' : '◦'}</Text></View></View></View>
