@@ -148,3 +148,5 @@ export * from './spaced-repetition.js';
 export * from './answer-patterns.js';
 export * from './answer-evaluation.js';
 export * from './skill-mastery.js';
+export * from './session-copy.js';
+export * from './learning-session.js';

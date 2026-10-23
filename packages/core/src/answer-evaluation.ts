@@ -269,14 +269,33 @@ export const answerFindingCopy:Readonly<Partial<Record<FindingCode,LocalizedText
  'negation-missing':L('Careful: without {expected} the meaning changes.','Attention : sans {expected}, le sens change.','Atención: sin {expected}, el sentido cambia.','Atenção: sem {expected}, o sentido muda.','Achtung: Ohne {expected} ändert sich die Bedeutung.','Attenzione: senza {expected} il senso cambia.'),
  incomplete:L('The answer seems incomplete. It continues with: {expected}.','La réponse semble incomplète. Elle continue avec : {expected}.','La respuesta parece incompleta. Continúa con: {expected}.','A resposta parece incompleta. Ela continua com: {expected}.','Die Antwort scheint unvollständig. Sie geht weiter mit: {expected}.','La risposta sembra incompleta. Continua con: {expected}.'),
 };
-/** Localized feedback in the learner's known language. Quotes follow the known language's convention. */
-export function answerFeedbackText(evaluation:AnswerEvaluation,knownLanguage:TargetLanguage,options:{maxDetails?:number}={}):string{
+/** Wording for stored corrections, which keep authored words only (never what the learner said). */
+export const answerFindingAuthoredOnlyCopy:Readonly<Partial<Record<FindingCode,LocalizedText>>>={
+ spelling:L('Check the spelling: {expected}.','Vérifie l’orthographe : {expected}.','Revisa la ortografía: {expected}.','Confira a ortografia: {expected}.','Prüfe die Schreibung: {expected}.','Controlla l’ortografia: {expected}.'),
+ 'word-substitution':L('This situation needs {expected}.','Cette situation demande {expected}.','Esta situación pide {expected}.','Esta situação pede {expected}.','Diese Situation braucht {expected}.','Questa situazione richiede {expected}.'),
+};
+/** Authored text in the quotation marks of the known language; a {name} slot is shown as an ellipsis. */
+export function quoteIn(language:TargetLanguage,text:string):string{
+ const [open,close]=rules[language].quote;
+ return open+text.split(answerSlot).join('…')+close;
+}
+/** Comparison tokens of an authored text, e.g. to check that stored feedback only holds authored words. */
+export function answerTokens(text:string,language:TargetLanguage):string[]{
+ return normalizeText(text,language,{speech:false}).tokens;
+}
+/** Localized feedback in the learner's known language. Details that would need the learner's own words
+ * are skipped when those words are not available (stored corrections never keep them).
+ */
+export function answerFeedbackText(evaluation:AnswerEvaluation,knownLanguage:TargetLanguage,options:{maxDetails?:number;omitHead?:boolean}={}):string{
  if(!targetLanguages.includes(knownLanguage))throw new Error('Unsupported language');
- const [open,close]=rules[knownLanguage].quote;
- const q=(s?:string)=>s===undefined?'':open+s+close;
+ const q=(s?:string)=>s===undefined?'':quoteIn(knownLanguage,s);
  const fill=(template:string,f:Partial<AnswerFinding>)=>template.replace('{expected}',q(f.expected)).replace('{received}',q(f.received)).replace('{closest}',q(evaluation.closestAnswer));
- const head=fill(answerOutcomeCopy[evaluation.outcome][knownLanguage],{});
- const details=evaluation.findings.map(f=>{const copy=answerFindingCopy[f.code];return copy?fill(copy[knownLanguage],f):null;})
-  .filter((x):x is string=>!!x).filter((x,i,all)=>all.indexOf(x)===i).slice(0,Math.max(0,options.maxDetails??2));
- return [head,...details].join(' ');
+ const head=options.omitHead?[]:[fill(answerOutcomeCopy[evaluation.outcome][knownLanguage],{})];
+ const details=evaluation.findings.map(f=>{
+  const full=answerFindingCopy[f.code]?.[knownLanguage];
+  const copy=full?.includes('{received}')&&f.received===undefined?answerFindingAuthoredOnlyCopy[f.code]?.[knownLanguage]??full:full;
+  if(!copy||(copy.includes('{received}')&&f.received===undefined)||(copy.includes('{expected}')&&f.expected===undefined))return null;
+  return fill(copy,f);
+ }).filter((x):x is string=>!!x).filter((x,i,all)=>all.indexOf(x)===i).slice(0,Math.max(0,options.maxDetails??2));
+ return [...head,...details].join(' ');
 }
