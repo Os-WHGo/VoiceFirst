@@ -25,10 +25,20 @@ capture() {
 }
 capture online
 adb shell am force-stop "$pkg"
-adb shell cmd connectivity airplane-mode enable
-adb shell svc wifi disable
-adb shell svc data disable
+if ! adb shell cmd connectivity airplane-mode enable; then
+  echo "::warning::airplane-mode command unavailable; disabling radios directly"
+fi
+if ! adb shell svc wifi disable; then
+  echo "::error::could not disable Wi-Fi"; failed=1
+fi
+if ! adb shell svc data disable; then
+  echo "::error::could not disable mobile data"; failed=1
+fi
 sleep 3
+adb shell dumpsys connectivity > voicefirst-offline-connectivity.txt || true
+if adb shell dumpsys connectivity | grep -Eq "NetworkAgentInfo.*(WIFI|CELLULAR).*VALIDATED"; then
+  echo "::error::validated Wi-Fi or cellular network still present"; failed=1
+fi
 if adb shell ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
   echo "::error::network still reachable; offline check invalid"; failed=1
 fi
