@@ -26,6 +26,20 @@ Los rangos reflejan la variación entre ejecuciones: la síntesis Piper no es de
 3. **Whisper tiny/base no sirve para calificar automáticamente** frases cortas en fr/es/pt/it (entre 7 y 14 de 36 respuestas correctas se habrían calificado como erróneas). Además, Whisper no entrega una confianza calibrada, así que la integración debe pasar `confidence:'unknown'` (lo que hace `classifyVoiceConfidence`), y con eso el evaluador nunca devuelve error.
 4. **Compuestos alemanes**: el ASR separa palabras («wieder holen», «Bus halte Stelle»). Implementado: en voz, la unión de palabras no es error del estudiante; al escribir sí se señala.
 
+## Endpointer propio de VoiceFirst con audio real
+
+`voice-pipeline.ts` (`EnergyVad` por estadística de mínimos + `Endpointer` con pre-roll de 200 ms, post-roll de 400 ms, voz mínima de 0,1 s y 1,2 s de silencio para terminar el turno) sustituyó a Silero en la misma prueba (modo `vfend`): **un único enunciado por respuesta en los 36 casos**, en limpio y con ruido de 10 dB.
+
+| Endpointing | ASR | Correctas | Confirmar | Falsos errores |
+|---|---|---|---|---|
+| Silero + roll | Canary | 23/24 | 0 | 1 |
+| **VoiceFirst** | Canary | **24/24** | 0 | **0** |
+| Silero + roll | Parakeet | 32/36 | 2 | 2 |
+| **VoiceFirst** | Parakeet | **33/36** | 3 | **0** |
+| VoiceFirst, ruido 10 dB | Parakeet | 28/36 | 6 | 2 |
+
+El VAD de energía es la alternativa sin dependencias; Silero sigue siendo el candidato para ruido no estacionario (conversaciones de fondo), que esta prueba no cubre.
+
 ## Comparación de motores
 
 | Motor | Licencia código | Plataformas / RN | Valoración |
