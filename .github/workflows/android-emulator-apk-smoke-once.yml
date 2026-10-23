@@ -60,6 +60,7 @@ jobs:
           name: voicefirst-android-emulator-smoke-diagnostics
           path: |
             android-emulator-logcat.txt
+            voicefirst-offline-connectivity.txt
             voicefirst-ui-online.xml
             voicefirst-ui-offline.xml
             voicefirst-online.png
