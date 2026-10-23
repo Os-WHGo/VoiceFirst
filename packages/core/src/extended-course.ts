@@ -25,11 +25,30 @@ const examples:Record<TargetLanguage,Record<Topic,readonly string[]>>={
  de:{emergency:['Ich brauche sofort Hilfe.','Bitte helfen Sie mir.'],allergy:['Ich habe eine Erdnussallergie.','Ich bin allergisch gegen Erdnüsse.'],payment:['Kann ich mit Karte bezahlen?','Akzeptieren Sie Karten?'],transport:['Wann kommt der nächste Bus?','Um wie viel Uhr kommt der nächste Bus?'],price:['Wie viel kostet das?','Was kostet das?'],hours:['Wann öffnen Sie?','Um wie viel Uhr machen Sie auf?'],work:['Wann beginnt meine Schicht?','Um wie viel Uhr fängt meine Schicht an?'],introduce:['Ich heiße Alex.','Mein Name ist Alex.'],water:['Könnte ich bitte Wasser bekommen?','Ich hätte gern Wasser, bitte.'],thanks:['Vielen Dank.','Danke schön.'],directions:['Wo ist die Bushaltestelle?','Könnten Sie mir sagen, wo die Bushaltestelle ist?'],clarify:['Könnten Sie das bitte wiederholen?','Können Sie das noch einmal sagen?']},
  it:{emergency:['Ho bisogno di aiuto subito.','Per favore, mi aiuti.'],allergy:['Sono allergico alle arachidi.','Ho un’allergia alle arachidi.'],payment:['Posso pagare con la carta?','Accettate le carte?'],transport:['Quando passa il prossimo autobus?','A che ora arriva il prossimo autobus?'],price:['Quanto costa questo?','Qual è il prezzo?'],hours:['A che ora aprite?','Qual è il vostro orario?'],work:['A che ora inizia il mio turno?','Quando comincia il mio turno?'],introduce:['Mi chiamo Alex.','Sono Alex.'],water:["Potrei avere dell’acqua, per favore?","Vorrei dell’acqua, per favore."],thanks:['Grazie mille.','La ringrazio molto.'],directions:["Dov’è la fermata dell’autobus?","Mi può dire dov’è la fermata dell’autobus?"],clarify:['Può ripetere, per favore?','Può dirlo di nuovo?']}
 };
+/** Correct answers accepted but not presented as models: gendered forms (the learner's own grammatical gender)
+ * and common regional words. Original, unreviewed editorial additions (2026-10-23). */
+const variants:Partial<Record<TargetLanguage,Partial<Record<Topic,readonly string[]>>>>={
+ 'en-CA':{allergy:["I'm allergic to peanuts."]},
+ es:{allergy:['Soy alérgica a los cacahuetes.','Soy alérgico al maní.','Soy alérgica al maní.','Tengo alergia al maní.','Soy alérgico a los cacahuates.','Soy alérgica a los cacahuates.','Tengo alergia a los cacahuates.']},
+ 'pt-BR':{allergy:['Sou alérgica a amendoim.'],thanks:['Muito obrigada.','Obrigado.','Obrigada.']},
+ it:{allergy:['Sono allergica alle arachidi.']},
+};
+/** Self-introduction accepts the learner's own name; see answer-patterns.ts (the name is never stored). */
+const patterns:Partial<Record<TargetLanguage,Partial<Record<Topic,readonly string[]>>>>={
+ 'en-CA':{introduce:['My name is {name}.','I am {name}.',"I'm {name}."]},
+ 'fr-CA':{introduce:['Je m’appelle {name}.','Moi, c’est {name}.','Je suis {name}.']},
+ es:{introduce:['Me llamo {name}.','Soy {name}.','Mi nombre es {name}.']},
+ 'pt-BR':{introduce:['Meu nome é {name}.','Eu sou {name}.','Eu me chamo {name}.','Me chamo {name}.']},
+ de:{introduce:['Ich heiße {name}.','Mein Name ist {name}.','Ich bin {name}.']},
+ it:{introduce:['Mi chiamo {name}.','Sono {name}.','Il mio nome è {name}.']},
+};
 const topics:readonly Topic[]=['water','thanks','directions','clarify','introduce','price','hours','work','emergency','allergy','payment','transport'];
 const stages:readonly CourseStage[]=['listen','repeat','recall','checkpoint'];
 export const extendedOfflineLessons:readonly OfflineLesson[]=targetLanguages.flatMap(language=>topics.map((topic,index)=>{
  const alternatives=examples[language][topic];
- const exercises:CourseExercise[]=stages.map((stage,n)=>({id:`${language}-${topic}-${stage}-${n+1}`,type:stage,utterance:alternatives[0]!,alternatives,meaning:goals[topic]}));
+ const acceptedVariants=variants[language]?.[topic],acceptedPatterns=patterns[language]?.[topic];
+ const exercises:CourseExercise[]=stages.map((stage,n)=>({id:`${language}-${topic}-${stage}-${n+1}`,type:stage,utterance:alternatives[0]!,alternatives,meaning:goals[topic],
+  ...(acceptedVariants?{acceptedVariants}:{}),...(acceptedPatterns?{acceptedPatterns}:{})}));
  return {id:`${language}-a1-${topic}`,language,band:'A1',goal:goals[topic],context:topic,exercises,
   prerequisite:index===0?`${language}-a1-help`:`${language}-a1-${topics[index-1]}`,focusTag:topic,attribution:'original' as const};
 }));

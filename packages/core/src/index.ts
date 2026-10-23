@@ -143,3 +143,7 @@ export * from './a0-catalog-update.js';
 export * from './a0-stored-catalog-review.js';
 
 export * from './a0-curriculum-inventory.js';
+export * from './local-day.js';
+export * from './spaced-repetition.js';
+export * from './answer-patterns.js';
+export * from './answer-evaluation.js';

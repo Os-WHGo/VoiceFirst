@@ -3,6 +3,7 @@
  */
 import { targetLanguages, type TargetLanguage } from './types.js';
 import { extendedOfflineLessons } from './extended-course.js';
+import { matchesAnswerPattern } from './answer-patterns.js';
 
 export type CourseStage = 'listen' | 'repeat' | 'recall' | 'checkpoint';
 export type RecognitionConfidence = 'high' | 'low' | 'unknown';
@@ -13,6 +14,10 @@ export interface CourseExercise {
   type: CourseStage;
   utterance: string;
   alternatives: readonly string[];
+  /** Further correct answers (e.g. gendered or regional forms) accepted but not presented as model examples. */
+  acceptedVariants?: readonly string[];
+  /** Answers with a personal-detail slot, e.g. "My name is {name}."; the slot content is never stored. */
+  acceptedPatterns?: readonly string[];
   /** Understanding/utterance, not acoustic pronunciation; a local ASR port may supply a transcript. */
   meaning: LocalizedText;
 }
@@ -79,16 +84,21 @@ export function normalizedUtterance(input:string, language:TargetLanguage): stri
 }
 export function checkUtterance(exercise:CourseExercise, spoken:string, language:TargetLanguage, confidence:RecognitionConfidence):Evaluation {
   if(confidence!=='high' || !spoken.trim())return {kind:'uncertain',hint:'Audio uncertain. Repeat when ready, or skip without penalty.'};
-  const normalized=normalizedUtterance(spoken,language);
-  const exact=exercise.alternatives.some(a=>normalizedUtterance(a,language)===normalized);
-  return exact ? {kind:'match',recognized:spoken} : {kind:'retry',hint:'Try the example again, or ask to hear it more slowly.'};
+  return matchesAuthoredAnswer(exercise,spoken,language) ? {kind:'match',recognized:spoken} : {kind:'retry',hint:'Try the example again, or ask to hear it more slowly.'};
+}
+/** Exact match (after normalization) against model answers, accepted variants or slot patterns of the exercise. */
+export function matchesAuthoredAnswer(exercise:CourseExercise, text:string, language:TargetLanguage):boolean {
+  const normalized=normalizedUtterance(text,language);
+  if(!normalized)return false;
+  if([...exercise.alternatives,...(exercise.acceptedVariants??[])].some(a=>normalizedUtterance(a,language)===normalized))return true;
+  return (exercise.acceptedPatterns??[]).some(p=>matchesAnswerPattern(p,text,t=>normalizedUtterance(t,language)));
 }
 /** Two independent successful recalls including a checkpoint, with unlimited time and no negative streaks. */
 export function recordCourseAttempt(progress:CourseProgress, exercise:CourseExercise, result:Evaluation, todayISO:string):CourseProgress {
   if(result.kind==='uncertain') return progress;
   const canonical=lessonsFor(progress.language).flatMap(lesson=>lesson.exercises).find(item=>item.id===exercise.id);
   if(!canonical)return progress;
-  if(result.kind==='match'&&!canonical.alternatives.some(reply=>normalizedUtterance(reply,progress.language)===normalizedUtterance(result.recognized,progress.language)))return progress;
+  if(result.kind==='match'&&!matchesAuthoredAnswer(canonical,result.recognized,progress.language))return progress;
   const stamp=Date.parse(`${todayISO}T12:00:00Z`);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(todayISO)||!Number.isFinite(stamp)||new Date(stamp).toISOString().slice(0,10)!==todayISO)throw new Error('Invalid course attempt date');
   const attempts={...progress.attempts,[exercise.id]:(progress.attempts[exercise.id]||0)+1};
