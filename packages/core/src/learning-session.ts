@@ -12,6 +12,7 @@ import {isLocalDay} from './local-day.js';
 import {languageNameIn,sessionText} from './session-copy.js';
 import {courseComprehensionActivities,seededOptionOrder,type ChoiceOption} from './choice-activities.js';
 import {applySessionResults,assessObjective,dueObjectiveReviews,validateActivityResult,type ActivityAchievement,type ActivityResult,type LearnerModel,type LearningActivityKind,type MasterySkill,type ResponseModality} from './skill-mastery.js';
+import {provisionalPedagogyPolicy,type PedagogyPolicy} from './pedagogy-policy.js';
 import {defaultSchedulerSettings,type SchedulerSettings} from './spaced-repetition.js';
 import {targetLanguages,type CefrBand,type LearnerPreferences,type TargetLanguage} from './types.js';
 
@@ -148,7 +149,6 @@ export type LearningSessionEvent=
  |{type:'pause'}|{type:'resume';day:string}|{type:'request-corrections'}|{type:'where-am-i'}|{type:'finish'};
 
 const idPattern=/^[\w.:-]{1,160}$/;
-const maxErrors=3;
 const display=(text:string)=>text.split(answerSlot).join('…');
 type Catalog=ReadonlyMap<string,SessionActivity>;
 const catalogOf=(activities:readonly SessionActivity[]):Catalog=>new Map(activities.map(a=>[a.id,a]));
@@ -164,6 +164,8 @@ export interface SessionPlanInput {
  /** Lessons already completed in the course progress; unlocks follow their prerequisites. */
  completedLessons:readonly string[];
  preferences:SessionPreferences;
+ /** Provisional unless ChatGPT approved another one; see pedagogy-policy.ts. */
+ policy?:PedagogyPolicy;
 }
 /** Due reviews first (most forgotten first), then the next unlocked lesson, then consolidation of recent practice. */
 export function planLearningSession(input:SessionPlanInput):LearningSessionState{
@@ -171,10 +173,11 @@ export function planLearningSession(input:SessionPlanInput):LearningSessionState
  if(!idPattern.test(sessionId)||!isLocalDay(today))throw new Error('Invalid session id or day');
  if(!targetLanguages.includes(target)||!targetLanguages.includes(known)||target===known||model.target!==target)throw new Error('Invalid language pair');
  const prefs=validateSessionPreferences(input.preferences);
+ const policy=input.policy??provisionalPedagogyPolicy;
  const pool=activities.filter(a=>a.key||a.kind==='listen'||(a.options&&a.correctOptionId));
  const reviews:QueueItem[]=[],fresh:QueueItem[]=[],extra:QueueItem[]=[];
  const used=new Set<string>();
- const reviewCap=Math.max(1,Math.floor(prefs.maxActivities*0.4));
+ const reviewCap=Math.max(1,Math.floor(prefs.maxActivities*policy.activity.reviewShare));
  for(const due of dueObjectiveReviews(model,today)){
   if(reviews.length>=reviewCap||used.has(due.objectiveId))continue;
   const own=pool.filter(a=>a.objectiveId===due.objectiveId&&a.kind!=='listen');
@@ -195,7 +198,7 @@ export function planLearningSession(input:SessionPlanInput):LearningSessionState
  for(const objectiveId of new Set(pool.map(a=>a.objectiveId))){
   if(reviews.length+fresh.length+extra.length>=prefs.maxActivities)break;
   if(used.has(objectiveId))continue;
-  const a=assessObjective(model,objectiveId,today);
+  const a=assessObjective(model,objectiveId,today,policy);
   const practicing=a['spoken-production'].state==='practicing'||a['spoken-interaction'].state==='practicing';
   const pick=pool.find(x=>x.objectiveId===objectiveId&&(x.kind==='recall'||x.kind==='dialogue-turn'));
   if(practicing&&pick){extra.push({activityId:pick.id,reason:'consolidation'});used.add(objectiveId);}
@@ -349,7 +352,8 @@ function orientation(state:LearningSessionState,catalog:Catalog):LearningSession
  const a=activityOf(catalog,state.current.activityId);
  return {kind:'message',code:'orientation',text:sessionText('orientation',k,{goal:a.goal[k],n:state.position+1,total:state.queue.length})};
 }
-export function stepSession(state:LearningSessionState,event:LearningSessionEvent,activities:readonly SessionActivity[]):LearningSessionStep{
+export function stepSession(state:LearningSessionState,event:LearningSessionEvent,activities:readonly SessionActivity[],policy:PedagogyPolicy=provisionalPedagogyPolicy):LearningSessionStep{
+ const maxErrors=policy.activity.maxErrors;
  const catalog=catalogOf(activities),k=state.known,outputs:LearningSessionOutput[]=[];
  const same=(code:Extract<LearningSessionOutput,{kind:'message'}>['code'],key:Parameters<typeof sessionText>[0]):LearningSessionStep=>({state,outputs:[{kind:'message',code,text:sessionText(key,k)}]});
  if(event.type==='where-am-i')return {state,outputs:[orientation(state,catalog)]};
@@ -430,7 +434,7 @@ export function stepSession(state:LearningSessionState,event:LearningSessionEven
    outputs.push(timing==='immediate'?{kind:'feedback',outcome:e.outcome,text:answerFeedbackText(e,k,{maxDetails})}:{kind:'feedback',outcome:e.outcome,text:sessionText('tryAgain',k)});
    const errors=errored.minorErrors+errored.meaningErrors;
    if(errors>=maxErrors)return finalize({...state,pendingCorrections:corrections,current:errored},catalog,'not-achieved',outputs);
-   const offerModel=errors===maxErrors-1&&!errored.modelShown&&(timing==='immediate'||timing==='after-activity');
+   const offerModel=errors===policy.activity.offerModelAfterErrors&&errors<maxErrors&&!errored.modelShown&&(timing==='immediate'||timing==='after-activity');
    if(offerModel)outputs.push(modelOutput(state,a));
    return {state:{...state,pendingCorrections:corrections,uncertainEvents:state.uncertainEvents,current:{...errored,modelShown:errored.modelShown||offerModel},revision:state.revision+1},outputs};
   }
@@ -505,10 +509,10 @@ export function courseProgressAfterSession(progress:CourseProgress,state:Learnin
  return p;
 }
 /** Apply a finished session once to the learner model and course progress. Re-applying is a no-op. */
-export function completeSession(state:LearningSessionState,model:LearnerModel,progress:CourseProgress,settings:SchedulerSettings=defaultSchedulerSettings):{model:LearnerModel;progress:CourseProgress;applied:boolean}{
+export function completeSession(state:LearningSessionState,model:LearnerModel,progress:CourseProgress,settings:SchedulerSettings=defaultSchedulerSettings,policy:PedagogyPolicy=provisionalPedagogyPolicy):{model:LearnerModel;progress:CourseProgress;applied:boolean}{
  if(state.status!=='finished')throw new Error('Session is not finished');
  if(model.appliedSessions.includes(state.sessionId))return {model,progress,applied:false};
- return {model:applySessionResults(model,state.sessionId,state.results,settings),progress:courseProgressAfterSession(progress,state),applied:true};
+ return {model:applySessionResults(model,state.sessionId,state.results,settings,policy),progress:courseProgressAfterSession(progress,state),applied:true};
 }
 
 const obj=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
@@ -521,7 +525,8 @@ function isAuthored(a:SessionActivity,text:unknown):text is string{
 }
 export function sessionToJSON(state:LearningSessionState):string{return JSON.stringify(state);}
 /** Strict restore. An interrupted active session comes back paused, so resuming starts with orientation. */
-export function sessionFromJSON(raw:string,activities:readonly SessionActivity[]):LearningSessionState|null{
+export function sessionFromJSON(raw:string,activities:readonly SessionActivity[],policy:PedagogyPolicy=provisionalPedagogyPolicy):LearningSessionState|null{
+ const maxErrors=policy.activity.maxErrors;
  if(typeof raw!=='string'||raw.length>300000)return null;
  let v:unknown;try{v=JSON.parse(raw);}catch{return null;}
  if(!obj(v)||v.version!==1||typeof v.sessionId!=='string'||!idPattern.test(v.sessionId))return null;
