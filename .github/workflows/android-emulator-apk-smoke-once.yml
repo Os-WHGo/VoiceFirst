@@ -21,6 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate emulator smoke script syntax
+        run: bash -n scripts/android-emulator-smoke.sh
+
       - name: Download existing internal APK
         uses: actions/download-artifact@v4
         with:
