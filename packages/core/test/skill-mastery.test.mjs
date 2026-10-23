@@ -72,7 +72,9 @@ test('due reviews are ordered by forgetting and sessions apply once',()=>{
  const due=dueObjectiveReviews(m,'2026-10-30');
  assert.equal(due.length,2);
  assert.ok(due[0].recallProbability<=due[1].recallProbability);
- assert.throws(()=>recordActivityResult(m,result('2026-09-01','independent')),/precedes/);
+ // An older result (a paused session finished later) is folded in at the latest day, never moving time backwards.
+ const late=recordActivityResult(m,result('2026-09-01','independent'));
+ assert.equal(rec(late).lastPracticedOn,'2026-10-01');assert.equal(rec(late).schedule.lastReviewedOn,'2026-10-01');assert.equal(rec(late).results,2);
 });
 test('level evidence never claims a CEFR level',()=>{
  let m=fold(newLearnerModel('es'),[result('2026-10-01','independent'),result('2026-10-03','independent'),result('2026-10-12','independent')]);

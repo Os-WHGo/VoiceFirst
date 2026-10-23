@@ -93,9 +93,10 @@ export function validateActivityResult(r:ActivityResult):ActivityResult{
  return r;
 }
 const addDay=(days:readonly string[],day:string)=>[...new Set([...days,day])].sort().slice(-keepDays);
-function updateRecord(previous:ObjectiveSkillRecord|undefined,objectiveId:string,skill:MasterySkill,r:ActivityResult,settings:SchedulerSettings):ObjectiveSkillRecord{
+function updateRecord(previous:ObjectiveSkillRecord|undefined,objectiveId:string,skill:MasterySkill,result:ActivityResult,settings:SchedulerSettings):ObjectiveSkillRecord{
+ // A session resumed after another one was applied can carry older days: fold them in at the latest known day.
+ const r=previous&&localDaysBetween(previous.lastPracticedOn,result.day)<0?{...result,day:previous.lastPracticedOn}:result;
  const base:ObjectiveSkillRecord=previous??{objectiveId,skill,results:0,independent:0,confirmed:0,assisted:0,notAchieved:0,minorErrors:0,meaningErrors:0,successDays:[],verifiedDays:[],maxRetrievalGapDays:0,lastAchievement:'no-evidence',lastPracticedOn:r.day,schedule:null};
- if(previous&&localDaysBetween(previous.lastPracticedOn,r.day)<0)throw new Error('Result precedes recorded practice');
  const success=r.achievement==='independent'||r.achievement==='learner-confirmed';
  const lastSuccess=base.successDays[base.successDays.length-1];
  const gap=success&&lastSuccess?localDaysBetween(lastSuccess,r.day):0;
