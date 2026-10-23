@@ -6,7 +6,7 @@ import {addLocalDays,isLocalDay,localDaysBetween} from './local-day.js';
 import {defaultSchedulerSettings,recallProbabilityOn,recallScheduleFromUnknown,scheduleRecall,type RecallGrade,type RecallSchedule,type SchedulerSettings} from './spaced-repetition.js';
 import {targetLanguages,type CefrBand,type TargetLanguage} from './types.js';
 
-export const masterySkills=['listening-comprehension','spoken-production','spoken-interaction','pronunciation','written-production'] as const;
+export const masterySkills=['listening-comprehension','reading-comprehension','spoken-production','spoken-interaction','pronunciation','written-production'] as const;
 export type MasterySkill=(typeof masterySkills)[number];
 export type LearningActivityKind='listen'|'repeat'|'recall'|'checkpoint'|'dialogue-turn'|'choice';
 export type ResponseModality='speech'|'typed'|'choice'|'none';
@@ -31,6 +31,8 @@ export interface ActivityResult {
  hints:number;
  modelShown:boolean;
  day:string;
+ /** Explicit skill when the activity defines it (e.g. written recognition is reading, not listening). */
+ skill?:MasterySkill;
 }
 export type MasteryState='not-started'|'introduced'|'practicing'|'consolidating'|'secure'|'needs-review';
 export interface ObjectiveSkillRecord {
@@ -90,6 +92,7 @@ const nonNegative=(n:unknown)=>Number.isSafeInteger(n)&&(n as number)>=0;
 export function validateActivityResult(r:ActivityResult):ActivityResult{
  if(!r||!idPattern.test(r.activityId)||!idPattern.test(r.objectiveId)||!kinds.includes(r.kind)||!modalities.includes(r.modality)||!achievements.includes(r.achievement)||!isLocalDay(r.day))throw new Error('Invalid activity result');
  if(![r.minorErrors,r.meaningErrors,r.replays,r.hints].every(nonNegative)||typeof r.modelShown!=='boolean')throw new Error('Invalid activity counters');
+ if(r.skill!==undefined&&!masterySkills.includes(r.skill))throw new Error('Invalid activity skill');
  return r;
 }
 const addDay=(days:readonly string[],day:string)=>[...new Set([...days,day])].sort().slice(-keepDays);
@@ -114,7 +117,7 @@ function updateRecord(previous:ObjectiveSkillRecord|undefined,objectiveId:string
 export function recordActivityResult(model:LearnerModel,result:ActivityResult,settings:SchedulerSettings=defaultSchedulerSettings):LearnerModel{
  const r=validateActivityResult(result);
  const exposures={...model.exposures,[r.objectiveId]:(model.exposures[r.objectiveId]??0)+1};
- const skill=evidenceSkill(r.kind,r.modality);
+ const skill=r.modality==='none'?null:r.skill??evidenceSkill(r.kind,r.modality);
  if(!skill||r.achievement==='no-evidence')return {...model,revision:model.revision+1,exposures};
  const key=recordKey(r.objectiveId,skill);
  return {...model,revision:model.revision+1,exposures,records:{...model.records,[key]:updateRecord(model.records[key],r.objectiveId,skill,r,settings)}};

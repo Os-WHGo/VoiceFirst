@@ -151,3 +151,4 @@ export * from './skill-mastery.js';
 export * from './session-copy.js';
 export * from './learning-session.js';
 export * from './content-validation.js';
+export * from './choice-activities.js';

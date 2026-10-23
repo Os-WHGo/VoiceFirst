@@ -10,7 +10,8 @@ import type {ExperiencePreferences} from './experience.js';
 import {dialoguesFor} from './guided-dialogues.js';
 import {isLocalDay} from './local-day.js';
 import {languageNameIn,sessionText} from './session-copy.js';
-import {applySessionResults,assessObjective,dueObjectiveReviews,validateActivityResult,type ActivityAchievement,type ActivityResult,type LearnerModel,type LearningActivityKind,type ResponseModality} from './skill-mastery.js';
+import {courseComprehensionActivities,seededOptionOrder,type ChoiceOption} from './choice-activities.js';
+import {applySessionResults,assessObjective,dueObjectiveReviews,validateActivityResult,type ActivityAchievement,type ActivityResult,type LearnerModel,type LearningActivityKind,type MasterySkill,type ResponseModality} from './skill-mastery.js';
 import {defaultSchedulerSettings,type SchedulerSettings} from './spaced-repetition.js';
 import {targetLanguages,type CefrBand,type LearnerPreferences,type TargetLanguage} from './types.js';
 
@@ -28,10 +29,27 @@ export interface SessionActivity {
  /** Authored model answer; never the learner's words. */
  model:string;
  key:AnswerKey|null;
+ /** Choice activities: options shown in the target language or, for meanings, in the known language. */
+ options?:readonly ChoiceOption[];
+ correctOptionId?:string;
+ optionLanguage?:'target'|'known';
+ /** Options that are also valid in some register or region: reviewed, never counted as errors. */
+ acceptableOptions?:readonly {optionId:string;note:LocalizedText}[];
+ /** Authored situation and instruction in each known language, when the activity provides its own. */
+ context?:LocalizedText;
+ instruction?:LocalizedText;
+ /** Skill the evidence belongs to when it is not implied by kind and modality. */
+ skill?:MasterySkill;
 }
-export function courseActivities(target:TargetLanguage):SessionActivity[]{
- return lessonsFor(target).flatMap(lesson=>lesson.exercises.map(e=>({id:e.id,objectiveId:lesson.id,lessonId:lesson.id,...(lesson.prerequisite?{prerequisite:lesson.prerequisite}:{}),
-  band:lesson.band,kind:e.type,goal:lesson.goal,meaning:e.meaning,model:e.utterance,key:e.type==='listen'?null:answerKeyForExercise(e,target)})));
+/** Course activities per lesson: listen, a listening-comprehension choice (optional), repeat, recall, checkpoint. */
+export function courseActivities(target:TargetLanguage,options:{comprehension?:boolean}={}):SessionActivity[]{
+ const comprehension=options.comprehension===false?new Map<string,SessionActivity>():new Map(courseComprehensionActivities(target).map(a=>[a.lessonId,a]));
+ return lessonsFor(target).flatMap(lesson=>lesson.exercises.flatMap(e=>{
+  const activity:SessionActivity={id:e.id,objectiveId:lesson.id,lessonId:lesson.id,...(lesson.prerequisite?{prerequisite:lesson.prerequisite}:{}),
+   band:lesson.band,kind:e.type,goal:lesson.goal,meaning:e.meaning,model:e.utterance,key:e.type==='listen'?null:answerKeyForExercise(e,target)};
+  const check=e.type==='listen'?comprehension.get(lesson.id):undefined;
+  return check?[activity,check]:[activity];
+ }));
 }
 export function dialogueActivities(target:TargetLanguage):SessionActivity[]{
  return dialoguesFor(target).flatMap(d=>d.turns.map(t=>({id:t.id,objectiveId:d.id,lessonId:d.id,band:d.level,kind:'dialogue-turn' as const,goal:d.label,meaning:t.support,cue:t.teacherCue,model:t.acceptedReplies[0]!,key:answerKeyForDialogueTurn(t,target)})));
@@ -77,7 +95,7 @@ export function sessionPreferencesFrom(experience:ExperiencePreferences,learner?
 
 export type QueueReason='review'|'new'|'consolidation'|'remediation';
 export interface QueueItem {activityId:string;reason:QueueReason}
-export interface CorrectionNote {activityId:string;outcome:AnswerOutcome;findings:readonly {code:FindingCode;expected?:string}[];closestAnswer?:string}
+export interface CorrectionNote {activityId:string;outcome:AnswerOutcome;findings:readonly {code:FindingCode;expected?:string}[];closestAnswer?:string;correctOptionId?:string}
 export interface CurrentActivity {
  activityId:string;
  attempts:number;
@@ -112,7 +130,7 @@ export interface LearningSessionState {
  revision:number;
 }
 export type LearningSessionOutput=
- |{kind:'prompt';activityId:string;activityKind:LearningActivityKind;instruction:string;step:{index:number;total:number};speech?:{text:string;language:TargetLanguage};responseWindow:ResponseWindow;acceptsAnswer:boolean}
+ |{kind:'prompt';activityId:string;activityKind:LearningActivityKind;instruction:string;step:{index:number;total:number};speech?:{text:string;language:TargetLanguage};responseWindow:ResponseWindow;acceptsAnswer:boolean;options?:readonly {id:string;text:string;language:TargetLanguage}[]}
  |{kind:'feedback';text:string;outcome:AnswerOutcome}
  |{kind:'confirm-request';text:string;closestAnswer:string}
  |{kind:'model';text:string;speech:{text:string;language:TargetLanguage}}
@@ -124,6 +142,7 @@ export type LearningSessionOutput=
 export interface LearningSessionStep {state:LearningSessionState;outputs:LearningSessionOutput[]}
 export type LearningSessionEvent=
  |{type:'answer';response:string;source:ResponseSource}
+ |{type:'choose';optionId:string}
  |{type:'continue'}|{type:'replay'}|{type:'slower'}|{type:'hint'}|{type:'show-model'}
  |{type:'confirm'}|{type:'reject'}|{type:'skip'}|{type:'timeout'}|{type:'more-time'}
  |{type:'pause'}|{type:'resume';day:string}|{type:'request-corrections'}|{type:'where-am-i'}|{type:'finish'};
@@ -152,14 +171,15 @@ export function planLearningSession(input:SessionPlanInput):LearningSessionState
  if(!idPattern.test(sessionId)||!isLocalDay(today))throw new Error('Invalid session id or day');
  if(!targetLanguages.includes(target)||!targetLanguages.includes(known)||target===known||model.target!==target)throw new Error('Invalid language pair');
  const prefs=validateSessionPreferences(input.preferences);
- const pool=activities.filter(a=>a.key||a.kind==='listen');
+ const pool=activities.filter(a=>a.key||a.kind==='listen'||(a.options&&a.correctOptionId));
  const reviews:QueueItem[]=[],fresh:QueueItem[]=[],extra:QueueItem[]=[];
  const used=new Set<string>();
  const reviewCap=Math.max(1,Math.floor(prefs.maxActivities*0.4));
  for(const due of dueObjectiveReviews(model,today)){
   if(reviews.length>=reviewCap||used.has(due.objectiveId))continue;
-  const own=pool.filter(a=>a.objectiveId===due.objectiveId&&a.key);
-  const pick=due.skill==='spoken-interaction'?own.find(a=>a.kind==='dialogue-turn'):own.find(a=>a.kind==='checkpoint')??own.find(a=>a.kind==='recall')??own[0];
+  const own=pool.filter(a=>a.objectiveId===due.objectiveId&&a.kind!=='listen');
+  const pick=due.skill==='spoken-interaction'?own.find(a=>a.kind==='dialogue-turn'):due.skill==='listening-comprehension'||due.skill==='reading-comprehension'?own.find(a=>a.kind==='choice'):
+   own.find(a=>a.kind==='checkpoint')??own.find(a=>a.kind==='recall')??own[0];
   if(pick){reviews.push({activityId:pick.id,reason:'review'});used.add(due.objectiveId);}
  }
  const lessons=[...new Set(pool.map(a=>a.lessonId))];
@@ -205,12 +225,13 @@ function instructionSteps(state:LearningSessionState,a:SessionActivity):string[]
   case 'repeat':return [sessionText('listenModel',k),sessionText('repeatNow',k),timing];
   case 'checkpoint':return [sessionText('situation',k,{goal:a.goal[k]}),sessionText('withoutModel',k),timing];
   case 'dialogue-turn':return [sessionText('listenPerson',k),sessionText('answerSituation',k),timing];
+  case 'choice':return a.instruction?[sessionText('situation',k,{goal:(a.context??a.goal)[k]}),a.instruction[k],timing]:[sessionText('listen',k),sessionText('chooseMeaning',k),timing];
   default:return [sessionText('meaning',k,{meaning:a.meaning[k]}),sessionText('sayIt',k,{language:languageNameIn[k][state.target]}),timing];
  }
 }
 function speechFor(state:LearningSessionState,a:SessionActivity){
  if(a.kind==='listen'||a.kind==='repeat')return {text:display(a.model),language:state.target};
- if(a.kind==='dialogue-turn'&&a.cue)return {text:a.cue,language:state.target};
+ if((a.kind==='dialogue-turn'||a.kind==='choice')&&a.cue)return {text:a.cue,language:state.target};
  return undefined;
 }
 function promptOutput(state:LearningSessionState,catalog:Catalog):LearningSessionOutput[]{
@@ -220,7 +241,14 @@ function promptOutput(state:LearningSessionState,catalog:Catalog):LearningSessio
  const index=oneStep?Math.min(state.current.instructionStep,steps.length-1):0;
  const speech=speechFor(state,a);
  return [{kind:'prompt',activityId:a.id,activityKind:a.kind,instruction:oneStep?steps[index]!:steps.join(' '),step:{index,total:oneStep?steps.length:1},
-  ...(speech?{speech}:{}),responseWindow:windowFor(state),acceptsAnswer:a.kind!=='listen'}];
+  ...(speech?{speech}:{}),responseWindow:windowFor(state),acceptsAnswer:a.kind!=='listen',...(a.options?{options:orderedOptions(state,a)}:{})}];
+}
+function optionText(state:LearningSessionState,o:ChoiceOption):{text:string;language:TargetLanguage}{
+ return typeof o.text==='string'?{text:o.text,language:state.target}:{text:o.text[state.known],language:state.known};
+}
+/** Per-session order: the right answer's position cannot be learned and survives pause and resume. */
+function orderedOptions(state:LearningSessionState,a:SessionActivity){
+ return seededOptionOrder(a.options??[],`${state.sessionId}:${a.id}`).map(o=>({id:o.id,...optionText(state,o)}));
 }
 /** Opening outputs: the session goal, then the first prompt. */
 export function sessionOpening(state:LearningSessionState,activities:readonly SessionActivity[]):LearningSessionOutput[]{
@@ -229,10 +257,13 @@ export function sessionOpening(state:LearningSessionState,activities:readonly Se
  const goals=[...new Set(state.queue.map(q=>activityOf(catalog,q.activityId).goal[k]))].join('; ');
  return [{kind:'message',code:'goal',text:sessionText('goal',k,{goals,total:state.queue.length})},...promptOutput(state,catalog)];
 }
-function correctionText(state:LearningSessionState,note:CorrectionNote):string{
+function correctionText(state:LearningSessionState,note:CorrectionNote,catalog:Catalog):string{
  const evaluation:AnswerEvaluation={outcome:note.outcome,findings:note.findings,...(note.closestAnswer?{closestAnswer:note.closestAnswer}:{}),countsAsSuccess:false,countsAsError:true,source:'typed',pronunciation:'not-assessed'};
  const detail=answerFeedbackText(evaluation,state.known,{maxDetails:state.preferences.lowStimulation?1:2,omitHead:true});
- return [note.closestAnswer?sessionText('oneAnswer',state.known,{answer:quoteIn(state.known,note.closestAnswer)}):'',detail].filter(Boolean).join(' ');
+ const correct=note.correctOptionId?catalog.get(note.activityId)?.options?.find(x=>x.id===note.correctOptionId):undefined;
+ const option=correct?optionText(state,correct).text:undefined;
+ const answer=option?quoteIn(state.known,option):note.closestAnswer?quoteIn(state.known,note.closestAnswer):'';
+ return [answer?sessionText('oneAnswer',state.known,{answer}):'',detail].filter(Boolean).join(' ');
 }
 function noteFrom(activityId:string,e:AnswerEvaluation):CorrectionNote{
  return {activityId,outcome:e.outcome,findings:e.findings.filter(f=>f.code!=='filler-removed').map(f=>({code:f.code,...(f.expected!==undefined?{expected:f.expected}:{})})),...(e.closestAnswer?{closestAnswer:e.closestAnswer}:{})};
@@ -246,11 +277,11 @@ function achievementOf(c:CurrentActivity,success:'evaluated'|'confirmed'):Activi
 function finalize(state:LearningSessionState,catalog:Catalog,achievement:ActivityAchievement,outputs:LearningSessionOutput[]):LearningSessionStep{
  const c=state.current!,a=activityOf(catalog,c.activityId),k=state.known;
  const result=validateActivityResult({activityId:a.id,objectiveId:a.objectiveId,kind:a.kind,modality:achievement==='no-evidence'&&a.kind==='listen'?'none':c.lastModality,achievement,
-  minorErrors:c.minorErrors,meaningErrors:c.meaningErrors,replays:c.replays,hints:c.hints,modelShown:c.modelShown,day:state.lastActiveOn});
+  minorErrors:c.minorErrors,meaningErrors:c.meaningErrors,replays:c.replays,hints:c.hints,modelShown:c.modelShown,day:state.lastActiveOn,...(a.skill?{skill:a.skill}:{})});
  let pending=state.pendingCorrections;
  if(state.preferences.correctionTiming==='after-activity'){
   const mine=pending.filter(n=>n.activityId===a.id);
-  if(mine.length)outputs.push({kind:'corrections',items:mine.map(n=>correctionText(state,n))});
+  if(mine.length)outputs.push({kind:'corrections',items:mine.map(n=>correctionText(state,n,catalog))});
   pending=pending.filter(n=>n.activityId!==a.id);
  }
  let queue=[...state.queue],remediated=state.remediated;
@@ -276,7 +307,7 @@ function finish(state:LearningSessionState,catalog:Catalog,outputs:LearningSessi
  const done:LearningSessionState={...state,status:'finished',current:null,revision:state.revision+1};
  outputs.push({kind:'summary',summary:summarizeSession(done,[...catalog.values()])});
  if(done.preferences.correctionTiming==='end-of-session'&&done.pendingCorrections.length){
-  outputs.push({kind:'corrections',items:done.pendingCorrections.map(n=>correctionText(done,n))});
+  outputs.push({kind:'corrections',items:done.pendingCorrections.map(n=>correctionText(done,n,catalog))});
   return {state:{...done,pendingCorrections:[]},outputs};
  }
  return {state:done,outputs};
@@ -286,7 +317,31 @@ function hintText(state:LearningSessionState,a:SessionActivity):string{
  return sessionText('hint',state.known,{start:`${words.slice(0,Math.max(1,Math.ceil(words.length/3))).join(' ')}…`});
 }
 function modelOutput(state:LearningSessionState,a:SessionActivity):LearningSessionOutput{
+ const correct=a.options?.find(o=>o.id===a.correctOptionId);
+ if(correct)return {kind:'model',text:sessionText('oneAnswer',state.known,{answer:quoteIn(state.known,optionText(state,correct).text)}),speech:{text:display(a.cue??a.model),language:state.target}};
  return {kind:'model',text:sessionText('model',state.known),speech:{text:display(a.model),language:state.target}};
+}
+/** A choice hint removes one wrong option instead of revealing the answer. */
+function choiceHint(state:LearningSessionState,a:SessionActivity):string{
+ const acceptable=new Set((a.acceptableOptions??[]).map(x=>x.optionId));
+ const wrong=orderedOptions(state,a).filter(o=>o.id!==a.correctOptionId&&!acceptable.has(o.id));
+ return sessionText('notThis',state.known,{option:quoteIn(state.known,wrong[wrong.length-1]?.text??'')});
+}
+function chooseOption(state:LearningSessionState,catalog:Catalog,a:SessionActivity,c:CurrentActivity,optionId:string,outputs:LearningSessionOutput[]):LearningSessionStep{
+ const k=state.known,timing=state.preferences.correctionTiming;
+ if(optionId===a.correctOptionId){
+  outputs.push({kind:'feedback',outcome:'correct',text:answerFeedbackText({outcome:'correct',findings:[],countsAsSuccess:true,countsAsError:false,source:'typed',pronunciation:'not-assessed'},k)});
+  return finalize({...state,current:c},catalog,achievementOf(c,'evaluated'),outputs);
+ }
+ const acceptable=a.acceptableOptions?.find(x=>x.optionId===optionId);
+ if(acceptable)return {state:{...state,current:c,revision:state.revision+1},outputs:[{kind:'feedback',outcome:'needs-review',text:acceptable.note[k]}]};
+ const errored={...c,meaningErrors:c.meaningErrors+1};
+ const wrongText=answerFeedbackText({outcome:'meaning-error',findings:[],countsAsSuccess:false,countsAsError:true,source:'typed',pronunciation:'not-assessed'},k);
+ const corrections=timing==='immediate'?state.pendingCorrections:[...state.pendingCorrections,{activityId:a.id,outcome:'meaning-error' as const,findings:[],correctOptionId:a.correctOptionId!}];
+ outputs.push({kind:'feedback',outcome:'meaning-error',text:timing==='immediate'?wrongText:sessionText('tryAgain',k)});
+ const next={...state,pendingCorrections:corrections,current:errored};
+ if(errored.meaningErrors>=Math.max(1,(a.options?.length??2)-1-(a.acceptableOptions?.length??0)))return finalize(next,catalog,'not-achieved',outputs);
+ return {state:{...next,revision:state.revision+1},outputs};
 }
 function orientation(state:LearningSessionState,catalog:Catalog):LearningSessionOutput{
  const k=state.known;
@@ -300,7 +355,7 @@ export function stepSession(state:LearningSessionState,event:LearningSessionEven
  if(event.type==='where-am-i')return {state,outputs:[orientation(state,catalog)]};
  if(event.type==='request-corrections'){
   if(!state.pendingCorrections.length)return same('no-corrections','noCorrections');
-  return {state:{...state,pendingCorrections:[],revision:state.revision+1},outputs:[{kind:'corrections',items:state.pendingCorrections.map(n=>correctionText(state,n))}]};
+  return {state:{...state,pendingCorrections:[],revision:state.revision+1},outputs:[{kind:'corrections',items:state.pendingCorrections.map(n=>correctionText(state,n,catalog))}]};
  }
  if(state.status==='finished'||!state.current)return {state,outputs:[orientation(state,catalog)]};
  if(event.type==='finish')return finish({...state,results:state.results},catalog,outputs);
@@ -326,6 +381,7 @@ export function stepSession(state:LearningSessionState,event:LearningSessionEven
    return {state:next,outputs:[{kind:'replay',...(speech?{speech}:{}),rate:event.type==='slower'?'slower':'normal',instruction:instructionSteps(state,a).join(' ')}]};
   }
   case 'hint':{
+   if(a.options&&c.hints===0)return {state:update({hints:1}),outputs:[{kind:'hint',text:choiceHint(state,a)}]};
    if(c.hints>=1)return {state:update({hints:c.hints+1,modelShown:true}),outputs:[modelOutput(state,a)]};
    return {state:update({hints:1}),outputs:[{kind:'hint',text:hintText(state,a)}]};
   }
@@ -339,7 +395,18 @@ export function stepSession(state:LearningSessionState,event:LearningSessionEven
    outputs.push({kind:'feedback',outcome:'correct',text:answerFeedbackText({outcome:'correct',findings:[],countsAsSuccess:true,countsAsError:false,source:'speech',pronunciation:'not-assessed'},k)});
    return finalize({...state,current:{...c,pendingConfirmation:null}},catalog,achievementOf(c,'confirmed'),outputs);
   }
+  case 'choose':{
+   if(!a.options?.some(o=>o.id===event.optionId))return {state,outputs:[]};
+   return chooseOption(state,catalog,a,{...c,attempts:c.attempts+1,lastModality:'choice'},event.optionId,outputs);
+  }
   case 'answer':{
+   if(a.options){
+    // A spoken or typed option counts as choosing it; anything else asks to choose.
+    const said=normalizedUtterance(event.response,state.target),saidKnown=normalizedUtterance(event.response,state.known);
+    const hit=a.options.find(o=>typeof o.text==='string'?normalizedUtterance(o.text,state.target)===said:normalizedUtterance(o.text[state.known],state.known)===saidKnown);
+    if(!hit||!said||(event.source.kind==='speech'&&event.source.confidence!=='high'))return {state,outputs:[{kind:'message',code:'not-heard',text:sessionText('chooseOne',k)}]};
+    return chooseOption(state,catalog,a,{...c,attempts:c.attempts+1,lastModality:event.source.kind==='speech'?'speech':'choice'},hit.id,outputs);
+   }
    if(a.kind==='listen'||!a.key)return finalize(state,catalog,'no-evidence',outputs);
    const modality:ResponseModality=event.source.kind==='speech'?'speech':event.source.kind;
    const e=evaluateAnswer(a.key,event.response,event.source);
@@ -489,6 +556,7 @@ export function sessionFromJSON(raw:string,activities:readonly SessionActivity[]
   if(!obj(n)||typeof n.activityId!=='string'||!catalog.has(n.activityId)||!outcomes.includes(n.outcome as AnswerOutcome)||!Array.isArray(n.findings))return null;
   const a=catalog.get(n.activityId)!;
   if(n.closestAnswer!==undefined&&!isAuthored(a,n.closestAnswer))return null;
+  if(n.correctOptionId!==undefined&&(typeof n.correctOptionId!=='string'||n.correctOptionId!==a.correctOptionId))return null;
   // Only authored words may be kept: an `expected` value must occur in an authored answer of the activity.
   const language=a.key?.language??(v.target as TargetLanguage);
   const authoredTexts=[a.model,...(a.key?.models??[]),...(a.key?.variants??[]),...(a.key?.patterns??[])];
@@ -499,7 +567,7 @@ export function sessionFromJSON(raw:string,activities:readonly SessionActivity[]
    if(f.expected!==undefined&&(typeof f.expected!=='string'||!(authoredTexts.includes(f.expected)||f.expected.split(' ').every(w=>authoredWords.has(w)))))return null;
    findings.push({code:f.code as FindingCode,...(typeof f.expected==='string'?{expected:f.expected}:{})});
   }
-  pendingCorrections.push({activityId:n.activityId,outcome:n.outcome as AnswerOutcome,findings,...(typeof n.closestAnswer==='string'?{closestAnswer:n.closestAnswer}:{})});
+  pendingCorrections.push({activityId:n.activityId,outcome:n.outcome as AnswerOutcome,findings,...(typeof n.closestAnswer==='string'?{closestAnswer:n.closestAnswer}:{}),...(typeof n.correctOptionId==='string'?{correctOptionId:n.correctOptionId}:{})});
  }
  if(!Array.isArray(v.remediated)||!v.remediated.every(id=>typeof id==='string'&&[...catalog.values()].some(a=>a.objectiveId===id)))return null;
  if(!count(v.uncertainEvents)||!count(v.pauses)||!count(v.revision))return null;

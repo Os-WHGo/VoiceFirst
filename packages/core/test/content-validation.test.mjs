@@ -17,7 +17,7 @@ test('the built-in course and dialogues validate in all six languages, but are n
   assert.deepEqual(v.publicationBlockers,['asr-not-validated','audio-not-verified','editorial-review-pending']);
   lessons+=v.lessons;activities+=v.activities;
  }
- assert.equal(lessons,108);assert.equal(activities,384);
+ assert.equal(lessons,108);assert.equal(activities,468,'384 authored activities plus 84 listening-comprehension checks');
 });
 test('integrity digest detects any content change and is key-order independent',()=>{
  const p=base();
@@ -93,7 +93,7 @@ test('choice activities need distinct options and a valid answer; review statuse
  const p=base();
  p.lessons[0].activities.push({id:'es-greet-choice-5',kind:'choice',prompt:{support:p.lessons[0].objective.goal},options:[{id:'a',text:'Hola'},{id:'b',text:'Adiós'}],correctOptionId:'c',responseModes:['choice']});
  assert.ok(codes(validateLessonPackage(reseal(p))).includes('CHOICE_ANSWER'));
- p.lessons[0].activities[4].correctOptionId='a';
+ p.lessons[0].activities.find(a=>a.id==='es-greet-choice-5').correctOptionId='a';
  assert.equal(validateLessonPackage(reseal(p)).structurallyValid,true);
  const reviewed=base();for(const l of reviewed.lessons)Object.assign(l,{editorialStatus:'final',audioStatus:'audio-verified',asrStatus:'asr-validated'});
  const v=validateLessonPackage(reseal(reviewed));
@@ -103,4 +103,13 @@ test('malformed input never throws',()=>{
  for(const input of [null,42,'x',[],{format:'voicefirst.lesson-package',schemaVersion:1,targetLanguage:'es',lessons:[null,{}]}]){
   const v=validateLessonPackage(input);assert.equal(v.structurallyValid,false);
  }
+});
+test('choice options may be localized meanings and must read differently in every known language',()=>{
+ const p=JSON.parse(JSON.stringify(lessonPackageFromCourse('pt-BR')));
+ const check=p.lessons[0].activities.find(a=>a.kind==='choice');
+ assert.equal(typeof check.options[0].text,'object');
+ check.options[1].text={...check.options[1].text,de:check.options[0].text.de};
+ assert.ok(codes(validateLessonPackage(reseal(p))).includes('DUPLICATE_OPTION'));
+ delete check.options[1].text.it;
+ assert.ok(codes(validateLessonPackage(reseal(p))).includes('CHOICE_OPTIONS'));
 });

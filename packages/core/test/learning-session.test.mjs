@@ -5,7 +5,7 @@ import {learningPairs,courseActivities,dialogueActivities,planLearningSession,se
 const today='2026-10-23';
 const typed={kind:'typed'},spoken={kind:'speech',confidence:'high'},unsure={kind:'speech',confidence:'low'};
 function start(target='en-CA',known='es',prefs={},extra={}){
- const activities=extra.activities??courseActivities(target);
+ const activities=extra.activities??courseActivities(target,{comprehension:false});
  const model=extra.model??newLearnerModel(target);
  const state=planLearningSession({sessionId:extra.id??'s-1',target,known,today,activities,model,completedLessons:extra.completed??[],preferences:{...defaultSessionPreferences,...prefs}});
  return {state,activities,model};
@@ -18,9 +18,9 @@ function run(ctx,events){
 const answer=(response,source=typed)=>({type:'answer',response,source});
 const texts=outputs=>outputs.flatMap(o=>[o.text,o.instruction,...(o.items??[]),...(o.summary?.statements??[])]).filter(Boolean);
 
-test('a new learner gets the first unlocked lesson with a stated goal',()=>{
- const ctx=start();
- assert.deepEqual(ctx.state.queue.map(q=>q.activityId),['en-CA-greet-listen-1','en-CA-greet-repeat-2','en-CA-greet-recall-3','en-CA-greet-checkpoint-4']);
+test('a new learner gets the first unlocked lesson with a stated goal and a comprehension check',()=>{
+ const ctx=start('en-CA','es',{},{activities:courseActivities('en-CA')});
+ assert.deepEqual(ctx.state.queue.map(q=>q.activityId),['en-CA-greet-listen-1','en-CA-a0-greeting-comprehension','en-CA-greet-repeat-2','en-CA-greet-recall-3','en-CA-greet-checkpoint-4']);
  const open=sessionOpening(ctx.state,ctx.activities);
  assert.equal(open[0].code,'goal');assert.match(open[0].text,/Saludar con naturalidad/);
  assert.equal(open[1].kind,'prompt');assert.deepEqual(open[1].speech,{text:'Hello!',language:'en-CA'});
@@ -187,11 +187,11 @@ test('dialogue turns are practised as spoken interaction',()=>{
 });
 test('all 30 directed pairs complete a session with localized, filled-in text',()=>{
  for(const [known,target] of learningPairs()){
-  const ctx=start(target,known,{correctionTiming:'after-activity'},{id:`pair-${known}-${target}`});
+  const ctx=start(target,known,{correctionTiming:'after-activity'},{id:`pair-${known}-${target}`,activities:courseActivities(target)});
   const outputs=[...sessionOpening(ctx.state,ctx.activities)];
   for(let guard=0;ctx.state.status!=='finished'&&guard<20;guard++){
    const a=ctx.activities.find(x=>x.id===ctx.state.current.activityId);
-   outputs.push(...run(ctx,[a.kind==='listen'?{type:'continue'}:answer(a.model,spoken)]));
+   outputs.push(...run(ctx,[a.kind==='listen'?{type:'continue'}:a.kind==='choice'?{type:'choose',optionId:a.correctOptionId}:answer(a.model,spoken)]));
   }
   assert.equal(ctx.state.status,'finished',`${known}->${target}`);
   const done=completeSession(ctx.state,ctx.model,newCourseProgress(target));
