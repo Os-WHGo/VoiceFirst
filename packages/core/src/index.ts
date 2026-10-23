@@ -147,3 +147,4 @@ export * from './local-day.js';
 export * from './spaced-repetition.js';
 export * from './answer-patterns.js';
 export * from './answer-evaluation.js';
+export * from './skill-mastery.js';
