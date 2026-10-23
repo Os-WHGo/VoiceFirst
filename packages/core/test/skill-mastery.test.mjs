@@ -15,7 +15,7 @@ test('evidence is attributed to the skill actually used',()=>{
  assert.equal(evidenceSkill('repeat','speech'),'pronunciation');
  assert.equal(evidenceSkill('repeat','typed'),null,'copying text is not evidence');
  assert.equal(evidenceSkill('listen','none'),null,'listening without a check is exposure only');
- assert.deepEqual(['independent','learner-confirmed','after-retry','assisted','not-achieved','no-evidence'].map(gradeForAchievement),[3,3,2,2,1,null]);
+ assert.deepEqual(['independent','learner-confirmed','after-retry','assisted','not-achieved','no-evidence'].map(a=>gradeForAchievement(a)),[3,3,2,2,1,null]);
 });
 test('completing a lesson in one day is practice, not mastery',()=>{
  const day='2026-10-23';

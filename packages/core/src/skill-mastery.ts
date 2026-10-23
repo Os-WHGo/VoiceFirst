@@ -4,6 +4,7 @@
  */
 import {addLocalDays,isLocalDay,localDaysBetween} from './local-day.js';
 import {defaultSchedulerSettings,recallProbabilityOn,recallScheduleFromUnknown,scheduleRecall,type RecallGrade,type RecallSchedule,type SchedulerSettings} from './spaced-repetition.js';
+import {provisionalPedagogyPolicy,type PedagogyPolicy} from './pedagogy-policy.js';
 import {targetLanguages,type CefrBand,type TargetLanguage} from './types.js';
 
 export const masterySkills=['listening-comprehension','reading-comprehension','spoken-production','spoken-interaction','pronunciation','written-production'] as const;
@@ -63,7 +64,8 @@ export interface LearnerModel {
  /** Sessions already folded into this model, so a resumed or replayed session is never counted twice. */
  appliedSessions:readonly string[];
 }
-export const masteryThresholds=Object.freeze({consolidatingDays:2,secureGapDays:7,secureRecall:0.85,reviewRecall:0.7});
+/** Provisional thresholds; see pedagogy-policy.ts (ChatGPT approves or replaces them). */
+export const masteryThresholds=provisionalPedagogyPolicy.mastery;
 const idPattern=/^[\w.:-]{1,160}$/;
 const keepDays=16,keepSessions=50;
 const achievements:readonly ActivityAchievement[]=['independent','learner-confirmed','after-retry','assisted','not-achieved','no-evidence'];
@@ -81,8 +83,10 @@ export function evidenceSkill(kind:LearningActivityKind,modality:ResponseModalit
  if(modality==='choice')return 'listening-comprehension';
  return kind==='dialogue-turn'?'spoken-interaction':'spoken-production';
 }
-export function gradeForAchievement(a:ActivityAchievement):RecallGrade|null{
- return a==='independent'||a==='learner-confirmed'?3:a==='after-retry'||a==='assisted'?2:a==='not-achieved'?1:null;
+/** Call with an explicit arrow when mapping: `.map(gradeForAchievement)` would pass the index as the policy. */
+export function gradeForAchievement(a:ActivityAchievement,policy:PedagogyPolicy=provisionalPedagogyPolicy):RecallGrade|null{
+ const g=policy.grades;
+ return a==='independent'?g.independent:a==='learner-confirmed'?g.learnerConfirmed:a==='after-retry'?g.afterRetry:a==='assisted'?g.assisted:a==='not-achieved'?g.notAchieved:null;
 }
 export function newLearnerModel(target:TargetLanguage):LearnerModel{
  if(!targetLanguages.includes(target))throw new Error('Unsupported target');
@@ -96,14 +100,14 @@ export function validateActivityResult(r:ActivityResult):ActivityResult{
  return r;
 }
 const addDay=(days:readonly string[],day:string)=>[...new Set([...days,day])].sort().slice(-keepDays);
-function updateRecord(previous:ObjectiveSkillRecord|undefined,objectiveId:string,skill:MasterySkill,result:ActivityResult,settings:SchedulerSettings):ObjectiveSkillRecord{
+function updateRecord(previous:ObjectiveSkillRecord|undefined,objectiveId:string,skill:MasterySkill,result:ActivityResult,settings:SchedulerSettings,policy:PedagogyPolicy):ObjectiveSkillRecord{
  // A session resumed after another one was applied can carry older days: fold them in at the latest known day.
  const r=previous&&localDaysBetween(previous.lastPracticedOn,result.day)<0?{...result,day:previous.lastPracticedOn}:result;
  const base:ObjectiveSkillRecord=previous??{objectiveId,skill,results:0,independent:0,confirmed:0,assisted:0,notAchieved:0,minorErrors:0,meaningErrors:0,successDays:[],verifiedDays:[],maxRetrievalGapDays:0,lastAchievement:'no-evidence',lastPracticedOn:r.day,schedule:null};
  const success=r.achievement==='independent'||r.achievement==='learner-confirmed';
  const lastSuccess=base.successDays[base.successDays.length-1];
  const gap=success&&lastSuccess?localDaysBetween(lastSuccess,r.day):0;
- const grade=skill==='pronunciation'?null:gradeForAchievement(r.achievement);
+ const grade=skill==='pronunciation'?null:gradeForAchievement(r.achievement,policy);
  return {...base,results:base.results+1,
   independent:base.independent+(r.achievement==='independent'?1:0),confirmed:base.confirmed+(r.achievement==='learner-confirmed'?1:0),
   assisted:base.assisted+(r.achievement==='assisted'||r.achievement==='after-retry'?1:0),notAchieved:base.notAchieved+(r.achievement==='not-achieved'?1:0),
@@ -114,20 +118,20 @@ function updateRecord(previous:ObjectiveSkillRecord|undefined,objectiveId:string
   schedule:grade?scheduleRecall(base.schedule,grade,r.day,settings):base.schedule};
 }
 /** Fold one activity result into the model. Results without evidence only count as exposure. */
-export function recordActivityResult(model:LearnerModel,result:ActivityResult,settings:SchedulerSettings=defaultSchedulerSettings):LearnerModel{
+export function recordActivityResult(model:LearnerModel,result:ActivityResult,settings:SchedulerSettings=defaultSchedulerSettings,policy:PedagogyPolicy=provisionalPedagogyPolicy):LearnerModel{
  const r=validateActivityResult(result);
  const exposures={...model.exposures,[r.objectiveId]:(model.exposures[r.objectiveId]??0)+1};
  const skill=r.modality==='none'?null:r.skill??evidenceSkill(r.kind,r.modality);
  if(!skill||r.achievement==='no-evidence')return {...model,revision:model.revision+1,exposures};
  const key=recordKey(r.objectiveId,skill);
- return {...model,revision:model.revision+1,exposures,records:{...model.records,[key]:updateRecord(model.records[key],r.objectiveId,skill,r,settings)}};
+ return {...model,revision:model.revision+1,exposures,records:{...model.records,[key]:updateRecord(model.records[key],r.objectiveId,skill,r,settings,policy)}};
 }
 /** Idempotent: a session id already applied is ignored. */
-export function applySessionResults(model:LearnerModel,sessionId:string,results:readonly ActivityResult[],settings:SchedulerSettings=defaultSchedulerSettings):LearnerModel{
+export function applySessionResults(model:LearnerModel,sessionId:string,results:readonly ActivityResult[],settings:SchedulerSettings=defaultSchedulerSettings,policy:PedagogyPolicy=provisionalPedagogyPolicy):LearnerModel{
  if(!idPattern.test(sessionId))throw new Error('Invalid session id');
  if(model.appliedSessions.includes(sessionId))return model;
  const ordered=[...results].sort((a,b)=>a.day.localeCompare(b.day));
- const folded=ordered.reduce((m,r)=>recordActivityResult(m,r,settings),model);
+ const folded=ordered.reduce((m,r)=>recordActivityResult(m,r,settings,policy),model);
  return {...folded,revision:model.revision+1,appliedSessions:[...model.appliedSessions,sessionId].slice(-keepSessions)};
 }
 export interface MasteryAssessment {
@@ -137,7 +141,7 @@ export interface MasteryAssessment {
  /** Why a state cannot rise further, when relevant. */
  capReason?:'acoustic-assessment-unavailable'|'needs-verified-success'|'needs-spaced-retrieval'|'needs-second-day';
 }
-export function assessRecord(record:ObjectiveSkillRecord|undefined,today:string):MasteryAssessment{
+export function assessRecord(record:ObjectiveSkillRecord|undefined,today:string,policy:PedagogyPolicy=provisionalPedagogyPolicy):MasteryAssessment{
  if(!isLocalDay(today))throw new Error('Invalid local day');
  if(!record||record.results===0)return {state:'not-started',recallProbability:null,dueOn:null};
  const recall=record.schedule?recallProbabilityOn(record.schedule,today):null;
@@ -145,15 +149,15 @@ export function assessRecord(record:ObjectiveSkillRecord|undefined,today:string)
  if(record.skill==='pronunciation')return {state:'practicing',recallProbability:null,dueOn:null,capReason:'acoustic-assessment-unavailable'};
  const successes=record.independent+record.confirmed+record.assisted;
  if(successes===0)return {state:'introduced',recallProbability:recall,dueOn};
- const t=masteryThresholds;
+ const t=policy.mastery;
  if(record.successDays.length<t.consolidatingDays)return {state:'practicing',recallProbability:recall,dueOn,capReason:'needs-second-day'};
  if(record.lastAchievement==='not-achieved'||(recall!==null&&recall<t.reviewRecall))return {state:'needs-review',recallProbability:recall,dueOn};
  if(record.maxRetrievalGapDays<t.secureGapDays)return {state:'consolidating',recallProbability:recall,dueOn,capReason:'needs-spaced-retrieval'};
  if(!record.verifiedDays.length)return {state:'consolidating',recallProbability:recall,dueOn,capReason:'needs-verified-success'};
  return {state:recall!==null&&recall>=t.secureRecall?'secure':'consolidating',recallProbability:recall,dueOn};
 }
-export function assessObjective(model:LearnerModel,objectiveId:string,today:string):Record<MasterySkill,MasteryAssessment>&{exposed:boolean}{
- const out=Object.fromEntries(masterySkills.map(s=>[s,assessRecord(model.records[recordKey(objectiveId,s)],today)])) as Record<MasterySkill,MasteryAssessment>;
+export function assessObjective(model:LearnerModel,objectiveId:string,today:string,policy:PedagogyPolicy=provisionalPedagogyPolicy):Record<MasterySkill,MasteryAssessment>&{exposed:boolean}{
+ const out=Object.fromEntries(masterySkills.map(s=>[s,assessRecord(model.records[recordKey(objectiveId,s)],today,policy)])) as Record<MasterySkill,MasteryAssessment>;
  return Object.assign(out,{exposed:(model.exposures[objectiveId]??0)>0});
 }
 export interface DueReview {objectiveId:string;skill:MasterySkill;dueOn:string;recallProbability:number}
@@ -174,11 +178,11 @@ export interface LevelEvidence {
  cefrClaim:null;
  note:'internal-indicative-evidence-only';
 }
-export function levelEvidence(model:LearnerModel,objectivesByBand:Readonly<Partial<Record<CefrBand,readonly string[]>>>,today:string):LevelEvidence[]{
+export function levelEvidence(model:LearnerModel,objectivesByBand:Readonly<Partial<Record<CefrBand,readonly string[]>>>,today:string,policy:PedagogyPolicy=provisionalPedagogyPolicy):LevelEvidence[]{
  return (Object.entries(objectivesByBand) as [CefrBand,readonly string[]][]).map(([band,ids])=>{
   let secure=0,practiced=0;
   for(const id of new Set(ids)){
-   const a=assessObjective(model,id,today);
+   const a=assessObjective(model,id,today,policy);
    if(a['spoken-production'].state==='secure'||a['spoken-interaction'].state==='secure')secure++;
    if(masterySkills.some(s=>a[s].state!=='not-started'))practiced++;
   }
@@ -217,7 +221,7 @@ export function learnerModelToJSON(model:LearnerModel):string{
  return JSON.stringify(model);
 }
 /** Earliest day a learner could reach `secure` for a record, given the spacing rule; for orientation only. */
-export function earliestSecureDay(record:ObjectiveSkillRecord):string|null{
+export function earliestSecureDay(record:ObjectiveSkillRecord,policy:PedagogyPolicy=provisionalPedagogyPolicy):string|null{
  const first=record.successDays[0];
- return first?addLocalDays(first,masteryThresholds.secureGapDays):null;
+ return first?addLocalDays(first,policy.mastery.secureGapDays):null;
 }
