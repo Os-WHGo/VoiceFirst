@@ -153,3 +153,4 @@ export * from './learning-session.js';
 export * from './content-validation.js';
 export * from './choice-activities.js';
 export * from './pedagogy-policy.js';
+export * from './voice-pipeline.js';

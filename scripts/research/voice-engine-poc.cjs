@@ -6,7 +6,8 @@
 //     silero_vad.onnx, sherpa-onnx-whisper-{tiny,base}, sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8,
 //     sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8, vits-piper-{en_US-amy-low,fr_FR-siwis-medium,es_ES-davefx-medium,
 //     pt_BR-faber-medium,de_DE-thorsten-medium,it_IT-paola-medium}
-//   node voice-engine-poc.cjs <path to packages/core/dist/index.js> <noiseSnrDb|-> vadroll <tiny|base|canary|parakeet> 0.1
+//   node voice-engine-poc.cjs <path to packages/core/dist/index.js> <noiseSnrDb|-> <vad|novad|vadroll|vfend> <tiny|base|canary|parakeet> 0.1
+//   (vfend = VoiceFirst EnergyVad + Endpointer from packages/core instead of Silero)
 // Results of 2026-10-23 are in docs/VOICE_ENGINE_RESEARCH_2026_10_23.md. Says nothing about phones.
 const sherpa = require('sherpa-onnx-node');
 const path = require('path');
@@ -50,13 +51,17 @@ function addNoise(x, snrDb) {
       const tail = new Float32Array(mode === 'vadtail' ? 4800 : 0);
       const roll = () => { const first = segments[0], last = segments[segments.length - 1];
         return pcm.slice(Math.max(0, first.start - 3200), Math.min(pcm.length, last.start + last.samples.length + 6400)); };
-      const speech = mode === 'vadroll' && segments.length ? roll() : mode === 'novad' || !segments.length ? pcm : Float32Array.from([...new Float32Array(mode === 'vadtail' ? 1600 : 0), ...segments.flatMap(s => Array.from(s.samples)), ...tail]);
+      const vf = () => { const e = new core.Endpointer(new core.EnergyVad(), core.defaultEndpointPolicy); const ev = [];
+        for (let i = 0; i < pcm.length; i += 777) ev.push(...e.push(pcm.subarray(i, i + 777))); ev.push(...e.finish());
+        const u = ev.filter(x => x.type === 'utterance'); vfCount = u.length; return u.length ? Float32Array.from(u.flatMap(x => Array.from(x.samples))) : pcm; };
+      let vfCount = -1;
+      const speech = mode === 'vfend' ? vf() : mode === 'vadroll' && segments.length ? roll() : mode === 'novad' || !segments.length ? pcm : Float32Array.from([...new Float32Array(mode === 'vadtail' ? 1600 : 0), ...segments.flatMap(s => Array.from(s.samples)), ...tail]);
       const t1 = Date.now();
       const stream = asr.createStream(); stream.acceptWaveform({sampleRate: 16000, samples: speech}); asr.decode(stream);
       const text = asr.getResult(stream).text.trim();
       const tAsr = Date.now() - t1;
       const evaluation = core.evaluateAnswer(core.answerKeyForExercise(ex, target), text, {kind: 'speech', confidence: 'high'});
-      results.push({target, lesson: lesson.id, said: ex.utterance, heard: text, outcome: evaluation.outcome, segments: segments.length,
+      results.push({target, lesson: lesson.id, said: ex.utterance, heard: text, outcome: evaluation.outcome, segments: mode === 'vfend' ? vfCount : segments.length,
         audioSec: +(audio.samples.length / audio.sampleRate).toFixed(2), ttsRtf: +(tTts / 1000 / (audio.samples.length / audio.sampleRate)).toFixed(3), asrRtf: +(tAsr / 1000 / (speech.length / 16000)).toFixed(3)});
     }
   }
