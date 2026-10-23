@@ -206,3 +206,15 @@ test('session preferences derive from stored experience preferences without diag
  assert.equal(sessionPreferencesFrom(defaultExperiencePreferences).responseWindow.mode,'untimed');
  assert.throws(()=>validateSessionPreferences({...defaultSessionPreferences,responseWindow:{mode:'timed',seconds:1}}),/window/);
 });
+test('a paused session completed after a later session never crashes or rewinds time',()=>{
+ const a=start('it','es',{},{id:'session-a'});
+ run(a,[{type:'continue'},answer('Ciao!',spoken),{type:'pause'}]);
+ const b=start('it','es',{},{id:'session-b'});
+ b.state={...b.state,startedOn:'2026-10-25',lastActiveOn:'2026-10-25'};
+ run(b,[{type:'continue'},answer('Ciao!',spoken),answer('Ciao!'),answer('Ciao!',spoken)]);
+ let model=completeSession(b.state,newLearnerModel('it'),newCourseProgress('it')).model;
+ run(a,[{type:'resume',day:'2026-10-23'},answer('Buongiorno!'),answer('Ciao!',spoken)]);
+ const done=completeSession(a.state,model,newCourseProgress('it'));
+ assert.equal(done.applied,true);
+ for(const r of Object.values(done.model.records))assert.ok(r.lastPracticedOn>='2026-10-25');
+});
