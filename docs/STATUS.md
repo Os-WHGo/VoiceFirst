@@ -237,3 +237,10 @@ No se ha generado ni instalado un IPA/APK; no hay audios originales producidos p
 - GitHub Actions para `168807b`: Core unit checks y Dependency lockfile review completados con éxito. Para `3826c7f`, al registrar esto, Core unit checks en cola y Dependency lockfile review en curso; no afirmar resultado final.
 - Pendientes: validación CI del último commit, revisión humana de contenido, audio y derechos, pruebas físicas, exposición UI restringida a herramientas editoriales, y completar 276 unidades curriculares aún no redactadas.
 - Investigación tecnológica: biblioteca MU consultada; para este adaptador puro se priorizó reutilizar TypeScript y el contrato editorial existentes sin introducir dependencias ni modelos nuevos.
+
+## 2026-10-23 · Motor pedagógico offline (Claude Code, rama `codex/voicefirst-claude-pedagogy`)
+- [x] Implementado y probado automáticamente en `packages/core`, sin dependencias nuevas ni red: evaluación determinista de respuestas (`answer-evaluation.ts`), repaso FSRS-6 por días (`spaced-repetition.ts`, idéntico bit a bit a ts-fsrs 5.4.2 en 24 000 pasos), modelo del estudiante por objetivo y habilidad con estados de dominio distintos de «completado» (`skill-mastery.ts`), sesión reanudable con adaptación, preferencias de corrección/tiempo/instrucciones y resumen fundamentado (`learning-session.ts`), y validador de paquetes de lecciones con SHA-256 (`content-validation.ts`).
+- [x] Corregido contenido: formas femeninas y regionales correctas que las microlecciones rechazaban (es, pt-BR, it) y nombre propio en la autopresentación de los seis idiomas; `checkUtterance` ya las acepta.
+- [x] `npm run check` 522/522; `npm run check:mobile` sin errores. Regresión de los 30 pares.
+- [ ] La UI móvil aún no usa la nueva sesión ni el evaluador (integración de ChatGPT). Sin pruebas físicas ni ASR real. Pronunciación acústica: pendiente, nunca inferida de texto. Copias en seis idiomas sin revisión nativa.
+- Detalle, alternativas descartadas y puntos de integración: `docs/PEDAGOGY_ENGINE_2026_10_23.md`.
