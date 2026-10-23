@@ -191,6 +191,12 @@ export function evaluateAnswer(key:AnswerKey,response:string,source:ResponseSour
   }
   if(match)break;
  }
+ // Speech recognizers choose word boundaries ("wieder holen", "Bus halte Stelle" for German compounds), not the learner.
+ if(!match&&speech){
+  const joined=said.folded.join('');
+  const c=candidates.find(x=>x.norm.folded.join('')===joined);
+  if(c)match={text:c.text,findings:[],variant:false};
+ }
  const uncertainSpeech=speech&&source.confidence!=='high';
  if(match){
   if(uncertainSpeech)return result('needs-confirmation',source,[{code:'asr-uncertain'}],{closestAnswer:match.text});
@@ -237,6 +243,9 @@ export function evaluateAnswer(key:AnswerKey,response:string,source:ResponseSour
    similarWords(fold(o.expected!),fold(o.received!))?{code:'spelling',expected:o.expected,received:o.received}:{code:'word-substitution',expected:o.expected,received:o.received});
   return result(findings.some(f=>f.code==='word-substitution')?'meaning-error':'minor-error',source,findings,{closestAnswer:closest});
  }
+ // Offline recognizers are least reliable on one- or two-word answers (PoC 2026-10-23: "Olá!" heard as "Hulk.",
+ // "Ciao!" as "So."), so a short spoken mismatch asks for confirmation instead of counting as an error.
+ if(speech&&size<=2&&said.tokens.length<=3)return result('needs-confirmation',source,[{code:'possible-recognition-error'}],{closestAnswer:closest});
  const similarity=1-ops.length/Math.max(size,said.tokens.length);
  return result('meaning-error',source,[{code:similarity>=0.5?'partial-match':'unrelated'}],{closestAnswer:closest});
 }

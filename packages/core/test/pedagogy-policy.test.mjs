@@ -33,8 +33,8 @@ test('activity retry limits follow the policy',()=>{
  let state=planLearningSession({sessionId:'p-1',target:'es',known:'en-CA',today:'2026-10-23',activities,model:newLearnerModel('es'),completedLessons:[],preferences:{...defaultSessionPreferences,correctionTiming:'immediate'},policy});
  const step=e=>{const r=stepSession(state,e,activities,policy);state=r.state;return r.outputs;};
  step({type:'continue'});step({type:'answer',response:'¡Hola!',source:{kind:'speech',confidence:'high'}});
- assert.ok(step({type:'answer',response:'Adiós',source:{kind:'speech',confidence:'high'}}).some(o=>o.kind==='model'),'model after the first error');
- step({type:'answer',response:'Gracias',source:{kind:'speech',confidence:'high'}});
+ assert.ok(step({type:'answer',response:'Adiós',source:{kind:'typed'}}).some(o=>o.kind==='model'),'model after the first error');
+ step({type:'answer',response:'Gracias',source:{kind:'typed'}});
  assert.equal(state.results.at(-1).achievement,'not-achieved','closed after two errors');
 });
 test('local day follows the learner time zone across midnight, DST and the date line',()=>{
