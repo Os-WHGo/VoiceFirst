@@ -80,20 +80,20 @@ test('end-of-session and on-request corrections are held back',()=>{
 test('after two errors a model is offered; after three, remediation steps back once',()=>{
  const ctx=start('es','en-CA',{correctionTiming:'immediate'});
  run(ctx,[{type:'continue'},answer('¡Hola!',spoken)]);
- const second=run(ctx,[answer('Adiós',spoken),answer('Gracias',spoken)]);
+ const second=run(ctx,[answer('Adiós'),answer('Gracias')]);
  assert.ok(second.some(o=>o.kind==='model'));
- const third=run(ctx,[answer('Perro',spoken)]);
+ const third=run(ctx,[answer('Perro')]);
  assert.ok(third.some(o=>o.code==='later'));assert.ok(third.some(o=>o.code==='step-back'));
  assert.equal(ctx.state.results.at(-1).achievement,'not-achieved');
  assert.deepEqual(ctx.state.queue.slice(3,5).map(q=>[q.activityId,q.reason]),[['es-greet-repeat-2','remediation'],['es-greet-recall-3','remediation']]);
- run(ctx,[answer('¡Hola!',spoken),answer('Perro',spoken),answer('Gato',spoken),answer('Casa',spoken)]);
+ run(ctx,[answer('¡Hola!',spoken),answer('Perro'),answer('Gato'),answer('Casa')]);
  assert.equal(ctx.state.remediated.length,1,'remediation happens at most once per objective');
  assert.equal(ctx.state.queue.filter(q=>q.reason==='remediation').length,2);
 });
 test('on-request mode does not push a model answer unasked',()=>{
  const ctx=start('es','en-CA',{correctionTiming:'on-request'});
  run(ctx,[{type:'continue'},answer('¡Hola!',spoken)]);
- assert.ok(!run(ctx,[answer('Adiós',spoken),answer('Gracias',spoken)]).some(o=>o.kind==='model'));
+ assert.ok(!run(ctx,[answer('Adiós'),answer('Gracias')]).some(o=>o.kind==='model'));
 });
 test('replays never lower a result; hints and models make it assisted',()=>{
  const ctx=start('it','pt-BR');

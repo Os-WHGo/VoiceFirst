@@ -121,3 +121,22 @@ test('evaluator rejects unsupported languages and empty keys',()=>{
  assert.throws(()=>evaluateAnswer({language:'ja',models:['はい']},'はい',typed),/Unsupported/);
  assert.throws(()=>evaluateAnswer({language:'es',models:[' ']},'hola',typed),/no authored/);
 });
+test('real offline ASR output: recognizer word boundaries are not learner errors (PoC 2026-10-23)',()=>{
+ // Transcripts produced by sherpa-onnx Whisper/Parakeet for correct synthetic speech in the voice-engine PoC.
+ assert.equal(evaluate('de','clarify','könnten Sie das bitte wieder holen?',spoken).outcome,'correct');
+ assert.equal(evaluate('de','directions','Wo ist die Bus halte Stelle?',spoken).outcome,'correct');
+ assert.equal(evaluate('de','directions','Wo ist die Bushalte stelle?',spoken).outcome,'correct');
+ const typedSplit=evaluate('de','clarify','Könnten Sie das bitte wieder holen?');
+ assert.notEqual(typedSplit.outcome,'correct','typed word boundaries remain the learner\'s');
+ // A cut-off tail never becomes an error when spoken.
+ assert.equal(evaluate('es','directions','¿Dónde está la parada de aut',spoken).outcome,'needs-confirmation');
+ // Short answers: recognizers drift to another language; ask instead of penalizing.
+ for(const [lang,topic,heard] of [['pt-BR','greet','Hulk.'],['it','greet','So.'],['en-CA','greet','the Love.'],['es','greet','Well then.']]){
+  const ex=lessonsFor(lang).flatMap(l=>l.exercises).find(e=>e.id===`${lang}-greet-recall-3`);
+  const r=evaluateAnswer(answerKeyForExercise(ex,lang),heard,spoken);
+  assert.equal(r.outcome,'needs-confirmation',`${lang}: ${heard}`);assert.equal(r.countsAsError,false);
+ }
+ assert.equal(evaluateAnswer({language:'es',models:['¡Hola!']},'Adiós',typed).outcome,'meaning-error','typed short answers are still checked');
+ // Without calibrated confidence (Whisper reports none), mismatches are never errors.
+ assert.equal(evaluate('fr-CA','directions','ou elle a redotobis',{kind:'speech',confidence:'unknown'}).outcome,'no-evidence');
+});
