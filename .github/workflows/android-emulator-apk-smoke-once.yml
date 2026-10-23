@@ -32,6 +32,18 @@ jobs:
           github-token: ${{ github.token }}
           path: candidate
 
+      - name: Verify candidate source provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          producer_sha=$(gh api repos/${{ github.repository }}/actions/runs/39514938027 --jq '.head_sha')
+          printf 'APK producer source SHA: %s\nCurrent checkout SHA: %s\n' "$producer_sha" "$GITHUB_SHA"
+          if [[ "$producer_sha" != "$GITHUB_SHA" ]]; then
+            echo '::error::Existing APK was built from a different source commit. Rebuild and test the matching APK; refusing stale binary validation.'
+            exit 1
+          fi
+
       - name: Verify APK checksum
         run: |
           set -eu
