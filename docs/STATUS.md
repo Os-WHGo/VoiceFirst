@@ -244,3 +244,4 @@ No se ha generado ni instalado un IPA/APK; no hay audios originales producidos p
 - [x] `npm run check` 522/522; `npm run check:mobile` sin errores. Regresión de los 30 pares.
 - [ ] La UI móvil aún no usa la nueva sesión ni el evaluador (integración de ChatGPT). Sin pruebas físicas ni ASR real. Pronunciación acústica: pendiente, nunca inferida de texto. Copias en seis idiomas sin revisión nativa.
 - Detalle, alternativas descartadas y puntos de integración: `docs/PEDAGOGY_ENGINE_2026_10_23.md`.
+- [x] Segundo macrobloque (misma rama): comprensión auditiva por elección en el curso (sin ASR, 30 pares), reconocimiento A0 dentro de la sesión, orden de opciones con semilla y auditoría del catálogo A0 real: patrón de posiciones 1,2,3,1,2,3 en los seis idiomas y dos ítems con dos respuestas válidas (fr-CA `Salut`, it `Ciao`), ambos mitigados en la sesión; la corrección del recurso queda propuesta. `npm run check` 531/531.

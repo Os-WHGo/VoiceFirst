@@ -15,6 +15,7 @@ Rama `codex/voicefirst-claude-pedagogy`, basada en `codex/voicefirst-initial-sou
 | `learning-session.ts` | Sesión reanudable: plan, adaptación, preferencias de corrección/tiempo/instrucciones, resumen fundamentado. |
 | `session-copy.ts` | Textos de la sesión en los seis idiomas conocidos (borradores originales sin revisión nativa). |
 | `content-validation.ts` | Formato `voicefirst.lesson-package` v1 y validador estructural con integridad SHA-256. |
+| `choice-activities.ts` | Actividades de elección: comprensión auditiva del curso y reconocimiento escrito A0, orden de opciones con semilla, opciones también válidas y auditoría. |
 | `local-day.ts` | Utilidades de fecha local `YYYY-MM-DD`. |
 | `course.ts`, `extended-course.ts` | Cambios compatibles: campos opcionales `acceptedVariants` / `acceptedPatterns` y contenido corregido. |
 
@@ -67,6 +68,23 @@ Asignación de calificaciones: logro independiente o confirmado → Good; tras r
 `validateLessonPackage` comprueba: formato y versión del esquema, `packageId`, versión semántica, idioma objetivo y variante permitida (`en-CA/en-US/en-GB`, `fr-CA/fr-FR`; resto solo su locale base hasta tener contenido regional validado), IDs únicos, banda A0–C2, objetivo con ayuda en los seis idiomas (aviso si ≥3 idiomas comparten texto idéntico), habilidades, prerrequisitos desconocidos o cíclicos, respuestas aceptadas no vacías y sin duplicados, modelo incluido entre las aceptadas, **cada respuesta autorizada aceptada por el evaluador al decirse en voz alta**, patrones `{name}` válidos, opciones de elección, audio local `audio/*.wav|m4a|ogg|opus` con SHA-256, **vía de respuesta no oral obligatoria**, límites de tiempo solo orientativos (≥10 s, aviso <20 s), **ninguna URL de ejecución** (solo atribución en `rights.source`) y digest SHA-256 sobre JSON canónico. `readyForPublication` es siempre `false`; `publicationBlockers` enumera revisión editorial, derechos, audio y ASR pendientes.
 
 `lessonPackageFromCourse` / `lessonPackageFromDialogues` exportan el contenido integrado: **108 lecciones y 384 actividades en seis idiomas validan sin incidencias**, con estados honestos (`draft`, `audio-missing`, `asr-unvalidated`).
+
+## Macrobloque 2 · Comprensión auditiva y auditoría de A0 (23-10-2026, misma rama)
+
+- **Comprensión auditiva sin ASR**: `courseActivities(target)` inserta tras cada «escuchar» una elección: se oye la frase y se elige lo que la persona quiere decir, con opciones en el idioma conocido (válido para los 30 pares). Los distractores son los significados de otras dos lecciones del mismo idioma; no se inventa contenido. La evidencia va a `listening-comprehension`. Para desactivarla: `courseActivities(target, {comprehension:false})`.
+- **Reconocimiento A0 en la sesión**: `a0ChoiceActivities(lessons)` convierte los 36 candidatos del catálogo A0 (`loadA0CandidateCatalog`) en actividades con su propio contexto e instrucción por idioma conocido; la evidencia va a la nueva habilidad `reading-comprehension`. Los prerrequisitos se respetan.
+- **Orden de opciones**: barajado determinista por sesión y actividad (`seededOptionOrder`), estable al pausar y reanudar.
+- **Pistas**: en una elección, la primera pista elimina una opción incorrecta; la segunda muestra la respuesta (cuenta como ayuda). Elegir diciendo o escribiendo el texto de la opción también funciona; el audio poco claro nunca elige.
+- **Cierre por adivinación**: la actividad se cierra como «por repasar» cuando las opciones restantes se podrían acertar por descarte.
+- **Opciones también válidas**: si un distractor cumple la misma función comunicativa (tabla de registro pequeña y sin revisión nativa, con saludos de mañana, tarde o cualquier hora diferenciados), elegirlo da `needs-review` con una nota y no cuenta como error.
+
+**Auditoría del catálogo A0 real (`auditChoiceItems`), defectos encontrados:**
+1. En los seis idiomas la respuesta correcta sigue el patrón de posiciones 1,2,3,1,2,3 a lo largo de la secuencia, de modo que se puede adivinar por posición. Queda mitigado en la sesión por el barajado; conviene corregirlo también en el recurso.
+2. El ítem *farewell* («You are leaving a shop») tiene dos respuestas válidas en fr-CA (`Salut` como distractor) y en it (`Ciao` como distractor). Mitigado: se aceptan como `needs-review`. **Propuesta para ChatGPT**, sin modificar el recurso candidato en esta rama: sustituir esos distractores por una expresión de otra función (por ejemplo `Oui` / `Sì`) en la próxima versión del catálogo.
+
+No hay falsos positivos (las combinaciones *Good morning* / *Good evening*, *Bonjour* / *Bonsoir*, etc. no se señalan). La exportación del curso como paquete incluye ahora 84 comprobaciones de comprensión: **108 lecciones y 468 actividades validan sin incidencias**.
+
+Pruebas tras este macrobloque: `npm run check` **531/531**; `npm run check:mobile` sin errores.
 
 ## Investigación y alternativas (protocolo MU)
 

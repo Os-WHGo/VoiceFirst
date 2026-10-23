@@ -5,6 +5,7 @@
  */
 import {evaluateAnswer,type AnswerKey} from './answer-evaluation.js';
 import {isAnswerPattern} from './answer-patterns.js';
+import {courseComprehensionActivities} from './choice-activities.js';
 import {lessonsFor,normalizedUtterance,type LocalizedText} from './course.js';
 import {dialoguesFor} from './guided-dialogues.js';
 import {englishVariants,frenchVariants} from './regional-variants.js';
@@ -22,7 +23,8 @@ export interface PackageActivity {
  accepted?:readonly string[];
  variants?:readonly string[];
  patterns?:readonly string[];
- options?:readonly {id:string;text:string}[];
+ /** Option text in the target language, or localized in each known language (e.g. meanings). */
+ options?:readonly {id:string;text:string|LocalizedText}[];
  correctOptionId?:string;
  responseModes:readonly PackageResponseMode[];
  audio?:{ref:string;sha256:string};
@@ -183,9 +185,12 @@ export function validateLessonPackage(input:unknown):PackageValidation{
    evidence=true;
    if(kind==='choice'){
     const options=activity.options;
-    if(!Array.isArray(options)||options.length<2||!options.every(o=>obj(o)&&typeof o.id==='string'&&text(o.text)))err('CHOICE_OPTIONS',`${ap}.options`);
+    const optionText=(o:unknown)=>obj(o)&&(text(o.text)||(obj(o.text)&&targetLanguages.every(k=>text((o.text as Record<string,unknown>)[k]))));
+    if(!Array.isArray(options)||options.length<2||!options.every(o=>obj(o)&&typeof o.id==='string'&&optionText(o)))err('CHOICE_OPTIONS',`${ap}.options`);
     else{
      if(new Set(options.map(o=>(o as {id:string}).id)).size!==options.length)err('DUPLICATE_ID',`${ap}.options`);
+     const shown=(o:Record<string,unknown>,k:TargetLanguage)=>typeof o.text==='string'?o.text:String((o.text as Record<string,unknown>)[k]);
+     if(targetLanguages.some(k=>new Set(options.map(o=>normalizedUtterance(shown(o as Record<string,unknown>,k),k))).size!==options.length))err('DUPLICATE_OPTION',`${ap}.options`,'two options read the same');
      if(!options.some(o=>(o as {id:string}).id===activity.correctOptionId))err('CHOICE_ANSWER',`${ap}.correctOptionId`);
     }
     continue;
@@ -224,11 +229,16 @@ function finalize(base:Omit<LessonPackage,'contentSha256'>):LessonPackage{
 const draftStatus={rights:{status:'original'} as PackageLesson['rights'],editorialStatus:'draft' as const,audioStatus:'audio-missing' as const,asrStatus:'asr-unvalidated' as const};
 /** The built-in micro-course as a package. Statuses are honest: draft, no recorded audio, ASR not validated. */
 export function lessonPackageFromCourse(target:TargetLanguage,version='0.1.0'):LessonPackage{
+ const checks=new Map(courseComprehensionActivities(target).map(a=>[a.lessonId,a]));
+ const comprehension=(id:string):PackageActivity[]=>{
+  const c=checks.get(id);
+  return c?[{id:c.id,kind:'choice',prompt:{target:c.cue!,support:c.meaning},options:c.options!.map(o=>({id:o.id,text:o.text})),correctOptionId:c.correctOptionId!,responseModes:['choice','speech']}]:[];
+ };
  const lessons:PackageLesson[]=lessonsFor(target).map(lesson=>({
   id:lesson.id,band:lesson.band,objective:{id:lesson.id,goal:lesson.goal},
-  skills:['spoken-production','pronunciation','written-production'],prerequisites:lesson.prerequisite?[lesson.prerequisite]:[],
-  activities:lesson.exercises.map(e=>({id:e.id,kind:e.type,prompt:{...(e.type==='listen'?{target:e.utterance}:{}),support:e.meaning},model:e.utterance,
-   ...(e.type==='listen'?{responseModes:[] as PackageResponseMode[]}:{accepted:e.alternatives,...(e.acceptedVariants?{variants:e.acceptedVariants}:{}),...(e.acceptedPatterns?{patterns:e.acceptedPatterns}:{}),responseModes:['speech','typed'] as PackageResponseMode[]})})),
+  skills:['listening-comprehension','spoken-production','pronunciation','written-production'],prerequisites:lesson.prerequisite?[lesson.prerequisite]:[],
+  activities:lesson.exercises.flatMap(e=>[{id:e.id,kind:e.type,prompt:{...(e.type==='listen'?{target:e.utterance}:{}),support:e.meaning},model:e.utterance,
+   ...(e.type==='listen'?{responseModes:[] as PackageResponseMode[]}:{accepted:e.alternatives,...(e.acceptedVariants?{variants:e.acceptedVariants}:{}),...(e.acceptedPatterns?{patterns:e.acceptedPatterns}:{}),responseModes:['speech','typed'] as PackageResponseMode[]})} as PackageActivity,...(e.type==='listen'?comprehension(lesson.id):[])]),
   ...draftStatus}));
  return finalize({format:lessonPackageFormat,schemaVersion:1,packageId:`voicefirst-course-${target.toLowerCase()}`,version,targetLanguage:target,variant:target,lessons});
 }
