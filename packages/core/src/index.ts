@@ -143,3 +143,16 @@ export * from './a0-catalog-update.js';
 export * from './a0-stored-catalog-review.js';
 
 export * from './a0-curriculum-inventory.js';
+export * from './local-day.js';
+export * from './spaced-repetition.js';
+export * from './answer-patterns.js';
+export * from './answer-evaluation.js';
+export * from './skill-mastery.js';
+export * from './session-copy.js';
+export * from './learning-session.js';
+export * from './content-validation.js';
+export * from './choice-activities.js';
+export * from './pedagogy-policy.js';
+export * from './voice-pipeline.js';
+export * from './speech-stack.js';
+export * from './speech-model-candidates.js';
