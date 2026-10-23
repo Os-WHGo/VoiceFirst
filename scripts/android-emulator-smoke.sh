@@ -12,10 +12,11 @@ capture() {
     echo "::error::$mode: launch failed"; failed=1
   fi
   sleep 15
-  if ! adb shell pidof "$pkg" > "voicefirst-$mode-pid.txt"; then
+  if ! adb shell pidof "$pkg" > "voicefirst-$mode-pid.txt" || ! grep -Eq "[0-9]+" "voicefirst-$mode-pid.txt"; then
     echo PROCESS_NOT_RUNNING > "voicefirst-$mode-pid.txt"
     echo "::error::$mode: process not running"; failed=1
   fi
+  adb logcat -d -t 3000 > "voicefirst-$mode-logcat.txt" || true
   adb shell uiautomator dump "/sdcard/voicefirst-ui-$mode.xml" || true
   adb pull "/sdcard/voicefirst-ui-$mode.xml" "voicefirst-ui-$mode.xml" || true
   adb exec-out screencap -p > "voicefirst-$mode.png" || true
