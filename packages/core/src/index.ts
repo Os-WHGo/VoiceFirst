@@ -154,3 +154,5 @@ export * from './content-validation.js';
 export * from './choice-activities.js';
 export * from './pedagogy-policy.js';
 export * from './voice-pipeline.js';
+export * from './speech-stack.js';
+export * from './speech-model-candidates.js';
