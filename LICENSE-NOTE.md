@@ -1,0 +1,2 @@
+# Estado de licencias
+Este primer bloque contiene únicamente código fuente original y dependencias declaradas. No incorpora código de terceros dentro del repositorio. Antes de publicar bajo una licencia de código abierto, seleccionar explícitamente una licencia para el código original y verificar las dependencias, los SDK, los modelos y los archivos de voz por separado. No se concede aquí una licencia final de distribución pública.

@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {execFileSync,spawnSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
+import {join} from 'node:path';
+import {authoredVoiceCues,cueFingerprint,inspectVoicePack,voicePackInventory} from '../dist/index.js';
+import {createHash} from 'node:crypto';
+const cue=authoredVoiceCues.find(x=>x.language==='en-CA');
+const hash=s=>createHash('sha256').update(s).digest('hex');
+const sound=()=>{const frames=16000/4,buffer=Buffer.alloc(44+frames*2);buffer.write('RIFF',0);buffer.writeUInt32LE(buffer.length-8,4);buffer.write('WAVEfmt ',8);buffer.writeUInt32LE(16,16);buffer.writeUInt16LE(1,20);buffer.writeUInt16LE(1,22);buffer.writeUInt32LE(16000,24);buffer.writeUInt32LE(32000,28);buffer.writeUInt16LE(2,32);buffer.writeUInt16LE(16,34);buffer.write('data',36);buffer.writeUInt32LE(frames*2,40);for(let i=0;i<frames;i++)buffer.writeInt16LE(Math.round(1600*Math.sin(2*Math.PI*320*i/16000)),44+2*i);return buffer;};
+const single=(over={})=>({schema:1,id:'voicefirst-en-CA-v1',language:'en-CA',locale:'en-CA',complete:false,recordings:[{cueId:cue.id,fingerprint:cueFingerprint(cue.text),language:'en-CA',locale:'en-CA',path:'clips/recording.wav',format:'wav',sha256:hash(sound()),bytes:sound().length,durationMs:250,license:'voicefirst-original',rightsOwner:'VoiceFirst Authors',rightsReference:'consent-record-1',reviewer:'QA Reviewer',...over}]});
+test('accepts partial packs only when recordings are authored and rights documented',()=>{const r=inspectVoicePack(single());assert.equal(r.valid,true);assert.ok(r.missingCueIds.length>0);assert.equal(voicePackInventory(single()).recorded,1);});
+test('rejects unsafe paths, missing rights, and changed curated text',()=>{for(const x of [{path:'../secret.wav'},{rightsReference:''},{fingerprint:'bad'},{sha256:'z'.repeat(64)},{license:'licensed-third-party'},{bytes:9*1024*1024},{durationMs:0}])assert.equal(inspectVoicePack(single(x)).valid,false);});
+test('cannot call a partial pack complete or include unknown/fake recordings',()=>{assert.equal(inspectVoicePack({...single(),complete:true}).valid,false);assert.equal(inspectVoicePack(single({cueId:'unknown-cue'})).valid,false);assert.equal(inspectVoicePack({...single(),recordings:[...single().recordings,...single().recordings]}).valid,false);});
+test('original WAV can be verified offline; changes and unauthorized copies are rejected',async t=>{
+  const dir=await mkdtemp(join(tmpdir(),'voicefirst-pack-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+  const src=join(dir,'sources'),out=join(dir,'pack');
+  execFileSync('node',['scripts/voice-pack.mjs','plan','en-CA',src],{stdio:'pipe'});
+  const sample=JSON.parse(await readFile(join(src,'rights.example.json'),'utf8'));
+  const target=sample.recordings.find(x=>x.cueId===cue.id);
+  target.rightsOwner='VoiceFirst Authors';target.rightsReference='signed-original-001';target.reviewer='QA Reviewer';
+  sample.recordings=[target];
+  await mkdir(join(src,'clips'),{recursive:true});await writeFile(join(src,target.file),sound());
+  await writeFile(join(src,'rights.json'),JSON.stringify(sample));
+  execFileSync('node',['scripts/voice-pack.mjs','build','en-CA',src,out],{stdio:'pipe'});
+  execFileSync('node',['scripts/voice-pack.mjs','verify',out],{stdio:'pipe'});
+  const m=JSON.parse(await readFile(join(out,'pack.json'),'utf8'));
+  assert.equal(m.recordings.length,1);assert.equal(m.complete,false);assert.equal(m.recordings[0].sha256,hash(sound()));
+  await writeFile(join(out,target.file),Buffer.alloc(44));
+  const broken=spawnSync('node',['scripts/voice-pack.mjs','verify',out],{encoding:'utf8'});
+  assert.notEqual(broken.status,0);
+});
+
+test('malformed manifest cannot crash the validator',()=>{for(const input of [null,{},[],{schema:1,recordings:[{cueId:cue.id}]},{...single(),recordings:[{cueId:cue.id}]}])assert.equal(inspectVoicePack(input).valid,false);});

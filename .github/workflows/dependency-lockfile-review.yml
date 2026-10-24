@@ -1,0 +1,48 @@
+# Reproducible npm dependency proof on Node 22.
+# This validates the reviewed, committed lockfile; no auto-commits or push token.
+name: Dependency lockfile review
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'mobile/package.json'
+      - 'packages/core/package.json'
+      - '.github/workflows/dependency-lockfile-review.yml'
+permissions:
+  contents: read
+jobs:
+  lockfile-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require tracked npm workspaces lockfile
+        run: |
+          test -s package-lock.json
+          git ls-files --error-unmatch package-lock.json
+      - name: Check lockfile v3 and workspace entries
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const lock=JSON.parse(fs.readFileSync("package-lock.json","utf8"));
+            if(lock.lockfileVersion!==3)throw Error("Expected npm lockfile v3");
+            for(const key of ["","mobile","packages/core"]){
+              if(!lock.packages?.[key])throw Error("Missing npm workspace entry: "+key);
+            }
+          '
+      - name: Install locked dependencies only
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate shared and mobile contracts
+        run: |
+          npm run check
+          npm run check:mobile
+          npm run check:expo-config
+      - name: Assert locked metadata was not modified
+        run: git diff --exit-code -- package-lock.json package.json mobile/package.json packages/core/package.json
+      - name: Publish exact reviewed lockfile checksum
+        run: sha256sum package-lock.json

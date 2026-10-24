@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "VoiceFirst (prototipo)",
+    "slug": "voicefirst-learning",
+    "scheme": "voicefirst",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.oswhgo.voicefirst"
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "package": "com.oswhgo.voicefirst"
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Permitir que VoiceFirst use el micrófono solo durante clases iniciadas por ti.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "VoiceFirst accede al micrófono solo cuando inicias una práctica hablada.",
+          "speechRecognitionPermission": "VoiceFirst usa reconocimiento de voz del dispositivo cuando está disponible."
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+dist/
+**/.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# Generated voice-clip authoring manifests (not published recordings)
+build/
+
+# Expo CNG output stays in CI working tree; source of truth is Expo config.
+mobile/android/
+mobile/ios/

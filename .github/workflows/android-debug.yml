@@ -1,0 +1,45 @@
+# Non-production Android debug build. No EAS, release signing, Store upload or paid account.
+# Public repository Actions runners are free on GitHub's public-project allowance.
+name: Android native debug APK
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: android-debug-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Use preinstalled Android SDK on ubuntu runner
+        run: |
+          test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}" || exit 1
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned npm dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Generate audited Android project
+        run: npm run check:android-prebuild
+      - name: Validate resolved Expo native modules
+        run: node scripts/check-android-autolinking.mjs
+      - name: Assemble unsigned-for-distribution, debug-signed Android APK
+        working-directory: mobile/android
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Upload internal debug candidate only
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicefirst-android-debug-${{ github.sha }}
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3
+          if-no-files-found: error

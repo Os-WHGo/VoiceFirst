@@ -1,0 +1,2286 @@
+{
+  "schema_version": "voicefirst.lesson-candidate.v0.2",
+  "scope": "A0 functional expression recognition, six sequential concepts, six target languages",
+  "known_languages": [
+    "en-CA",
+    "fr-CA",
+    "es",
+    "pt-BR",
+    "de",
+    "it"
+  ],
+  "target_languages": [
+    "en-CA",
+    "fr-CA",
+    "es",
+    "pt-BR",
+    "de",
+    "it"
+  ],
+  "directed_lesson_variants": 180,
+  "notes": [
+    "36 original recognition lessons, 180 directed known-target variants; not 36 complete units",
+    "Written recognition only: speaking, listening, mediation and audio need separate activities",
+    "A0 is an internal onboarding stage, not a formal CEFR band",
+    "Portuguese obrigado/obrigada and regional registers require human review",
+    "No TTS, ASR, audio, native review or publish clearance"
+  ],
+  "lessons": [
+    {
+      "lesson_id": "vf.a0.functional.01.en-CA",
+      "concept_id": "concept.a0.functional.morning",
+      "level": "A0",
+      "target_language": "en-CA",
+      "objective_key": "morning",
+      "sequence": 1,
+      "prerequisites": [],
+      "activity": {
+        "id": "vf.a0.functional.01.en-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet early in the morning.",
+          "fr-CA": "Deux personnes se rencontrent tôt le matin.",
+          "es": "Dos personas se encuentran temprano por la mañana.",
+          "pt-BR": "Duas pessoas se encontram de manhã cedo.",
+          "de": "Zwei Personen treffen sich früh am Morgen.",
+          "it": "Due persone si incontrano la mattina presto."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Good morning"
+          },
+          {
+            "id": "2",
+            "text": "Good evening"
+          },
+          {
+            "id": "3",
+            "text": "Goodbye"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.02.en-CA",
+      "concept_id": "concept.a0.functional.farewell",
+      "level": "A0",
+      "target_language": "en-CA",
+      "objective_key": "farewell",
+      "sequence": 2,
+      "prerequisites": [
+        "concept.a0.functional.morning"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.02.en-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You are leaving a shop.",
+          "fr-CA": "Vous quittez un magasin.",
+          "es": "Sales de una tienda.",
+          "pt-BR": "Você está saindo de uma loja.",
+          "de": "Du verlässt ein Geschäft.",
+          "it": "Stai uscendo da un negozio."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Hello"
+          },
+          {
+            "id": "2",
+            "text": "Goodbye"
+          },
+          {
+            "id": "3",
+            "text": "Thank you"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.03.en-CA",
+      "concept_id": "concept.a0.functional.gratitude",
+      "level": "A0",
+      "target_language": "en-CA",
+      "objective_key": "gratitude",
+      "sequence": 3,
+      "prerequisites": [
+        "concept.a0.functional.farewell"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.03.en-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Someone helps you carry a bag.",
+          "fr-CA": "Quelqu’un vous aide à porter un sac.",
+          "es": "Alguien te ayuda a llevar una bolsa.",
+          "pt-BR": "Alguém ajuda você a carregar uma sacola.",
+          "de": "Jemand hilft dir, eine Tasche zu tragen.",
+          "it": "Qualcuno ti aiuta a portare una borsa."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Please"
+          },
+          {
+            "id": "2",
+            "text": "No"
+          },
+          {
+            "id": "3",
+            "text": "Thank you"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.04.en-CA",
+      "concept_id": "concept.a0.functional.affirmative",
+      "level": "A0",
+      "target_language": "en-CA",
+      "objective_key": "affirmative",
+      "sequence": 4,
+      "prerequisites": [
+        "concept.a0.functional.gratitude"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.04.en-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You agree with a simple question.",
+          "fr-CA": "Vous répondez oui à une question simple.",
+          "es": "Respondes afirmativamente a una pregunta sencilla.",
+          "pt-BR": "Você responde sim a uma pergunta simples.",
+          "de": "Du beantwortest eine einfache Frage mit Ja.",
+          "it": "Rispondi sì a una domanda semplice."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Yes"
+          },
+          {
+            "id": "2",
+            "text": "No"
+          },
+          {
+            "id": "3",
+            "text": "Please"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.05.en-CA",
+      "concept_id": "concept.a0.functional.polite_request",
+      "level": "A0",
+      "target_language": "en-CA",
+      "objective_key": "polite_request",
+      "sequence": 5,
+      "prerequisites": [
+        "concept.a0.functional.affirmative"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.05.en-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You want to ask politely.",
+          "fr-CA": "Vous souhaitez demander quelque chose poliment.",
+          "es": "Quieres pedir algo con cortesía.",
+          "pt-BR": "Você quer fazer um pedido com educação.",
+          "de": "Du möchtest höflich um etwas bitten.",
+          "it": "Vuoi chiedere qualcosa con cortesia."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Thank you"
+          },
+          {
+            "id": "2",
+            "text": "Please"
+          },
+          {
+            "id": "3",
+            "text": "Goodbye"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.06.en-CA",
+      "concept_id": "concept.a0.functional.evening",
+      "level": "A0",
+      "target_language": "en-CA",
+      "objective_key": "evening",
+      "sequence": 6,
+      "prerequisites": [
+        "concept.a0.functional.polite_request"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.06.en-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet in the evening.",
+          "fr-CA": "Deux personnes se rencontrent le soir.",
+          "es": "Dos personas se encuentran por la tarde-noche.",
+          "pt-BR": "Duas pessoas se encontram à noite.",
+          "de": "Zwei Personen treffen sich am Abend.",
+          "it": "Due persone si incontrano di sera."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Good morning"
+          },
+          {
+            "id": "2",
+            "text": "Goodbye"
+          },
+          {
+            "id": "3",
+            "text": "Good evening"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.01.fr-CA",
+      "concept_id": "concept.a0.functional.morning",
+      "level": "A0",
+      "target_language": "fr-CA",
+      "objective_key": "morning",
+      "sequence": 1,
+      "prerequisites": [],
+      "activity": {
+        "id": "vf.a0.functional.01.fr-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet early in the morning.",
+          "fr-CA": "Deux personnes se rencontrent tôt le matin.",
+          "es": "Dos personas se encuentran temprano por la mañana.",
+          "pt-BR": "Duas pessoas se encontram de manhã cedo.",
+          "de": "Zwei Personen treffen sich früh am Morgen.",
+          "it": "Due persone si incontrano la mattina presto."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Bonjour"
+          },
+          {
+            "id": "2",
+            "text": "Bonsoir"
+          },
+          {
+            "id": "3",
+            "text": "Au revoir"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.02.fr-CA",
+      "concept_id": "concept.a0.functional.farewell",
+      "level": "A0",
+      "target_language": "fr-CA",
+      "objective_key": "farewell",
+      "sequence": 2,
+      "prerequisites": [
+        "concept.a0.functional.morning"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.02.fr-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You are leaving a shop.",
+          "fr-CA": "Vous quittez un magasin.",
+          "es": "Sales de una tienda.",
+          "pt-BR": "Você está saindo de uma loja.",
+          "de": "Du verlässt ein Geschäft.",
+          "it": "Stai uscendo da un negozio."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Salut"
+          },
+          {
+            "id": "2",
+            "text": "Au revoir"
+          },
+          {
+            "id": "3",
+            "text": "Merci"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.03.fr-CA",
+      "concept_id": "concept.a0.functional.gratitude",
+      "level": "A0",
+      "target_language": "fr-CA",
+      "objective_key": "gratitude",
+      "sequence": 3,
+      "prerequisites": [
+        "concept.a0.functional.farewell"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.03.fr-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Someone helps you carry a bag.",
+          "fr-CA": "Quelqu’un vous aide à porter un sac.",
+          "es": "Alguien te ayuda a llevar una bolsa.",
+          "pt-BR": "Alguém ajuda você a carregar uma sacola.",
+          "de": "Jemand hilft dir, eine Tasche zu tragen.",
+          "it": "Qualcuno ti aiuta a portare una borsa."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "S'il vous plaît"
+          },
+          {
+            "id": "2",
+            "text": "Non"
+          },
+          {
+            "id": "3",
+            "text": "Merci"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.04.fr-CA",
+      "concept_id": "concept.a0.functional.affirmative",
+      "level": "A0",
+      "target_language": "fr-CA",
+      "objective_key": "affirmative",
+      "sequence": 4,
+      "prerequisites": [
+        "concept.a0.functional.gratitude"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.04.fr-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You agree with a simple question.",
+          "fr-CA": "Vous répondez oui à une question simple.",
+          "es": "Respondes afirmativamente a una pregunta sencilla.",
+          "pt-BR": "Você responde sim a uma pergunta simples.",
+          "de": "Du beantwortest eine einfache Frage mit Ja.",
+          "it": "Rispondi sì a una domanda semplice."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Oui"
+          },
+          {
+            "id": "2",
+            "text": "Non"
+          },
+          {
+            "id": "3",
+            "text": "S'il vous plaît"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.05.fr-CA",
+      "concept_id": "concept.a0.functional.polite_request",
+      "level": "A0",
+      "target_language": "fr-CA",
+      "objective_key": "polite_request",
+      "sequence": 5,
+      "prerequisites": [
+        "concept.a0.functional.affirmative"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.05.fr-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You want to ask politely.",
+          "fr-CA": "Vous souhaitez demander quelque chose poliment.",
+          "es": "Quieres pedir algo con cortesía.",
+          "pt-BR": "Você quer fazer um pedido com educação.",
+          "de": "Du möchtest höflich um etwas bitten.",
+          "it": "Vuoi chiedere qualcosa con cortesia."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Merci"
+          },
+          {
+            "id": "2",
+            "text": "S'il vous plaît"
+          },
+          {
+            "id": "3",
+            "text": "Au revoir"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.06.fr-CA",
+      "concept_id": "concept.a0.functional.evening",
+      "level": "A0",
+      "target_language": "fr-CA",
+      "objective_key": "evening",
+      "sequence": 6,
+      "prerequisites": [
+        "concept.a0.functional.polite_request"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.06.fr-CA.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet in the evening.",
+          "fr-CA": "Deux personnes se rencontrent le soir.",
+          "es": "Dos personas se encuentran por la tarde-noche.",
+          "pt-BR": "Duas pessoas se encontram à noite.",
+          "de": "Zwei Personen treffen sich am Abend.",
+          "it": "Due persone si incontrano di sera."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Bonjour"
+          },
+          {
+            "id": "2",
+            "text": "Au revoir"
+          },
+          {
+            "id": "3",
+            "text": "Bonsoir"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.01.es",
+      "concept_id": "concept.a0.functional.morning",
+      "level": "A0",
+      "target_language": "es",
+      "objective_key": "morning",
+      "sequence": 1,
+      "prerequisites": [],
+      "activity": {
+        "id": "vf.a0.functional.01.es.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet early in the morning.",
+          "fr-CA": "Deux personnes se rencontrent tôt le matin.",
+          "es": "Dos personas se encuentran temprano por la mañana.",
+          "pt-BR": "Duas pessoas se encontram de manhã cedo.",
+          "de": "Zwei Personen treffen sich früh am Morgen.",
+          "it": "Due persone si incontrano la mattina presto."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Buenos días"
+          },
+          {
+            "id": "2",
+            "text": "Buenas noches"
+          },
+          {
+            "id": "3",
+            "text": "Adiós"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.02.es",
+      "concept_id": "concept.a0.functional.farewell",
+      "level": "A0",
+      "target_language": "es",
+      "objective_key": "farewell",
+      "sequence": 2,
+      "prerequisites": [
+        "concept.a0.functional.morning"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.02.es.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You are leaving a shop.",
+          "fr-CA": "Vous quittez un magasin.",
+          "es": "Sales de una tienda.",
+          "pt-BR": "Você está saindo de uma loja.",
+          "de": "Du verlässt ein Geschäft.",
+          "it": "Stai uscendo da un negozio."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Hola"
+          },
+          {
+            "id": "2",
+            "text": "Adiós"
+          },
+          {
+            "id": "3",
+            "text": "Gracias"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.03.es",
+      "concept_id": "concept.a0.functional.gratitude",
+      "level": "A0",
+      "target_language": "es",
+      "objective_key": "gratitude",
+      "sequence": 3,
+      "prerequisites": [
+        "concept.a0.functional.farewell"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.03.es.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Someone helps you carry a bag.",
+          "fr-CA": "Quelqu’un vous aide à porter un sac.",
+          "es": "Alguien te ayuda a llevar una bolsa.",
+          "pt-BR": "Alguém ajuda você a carregar uma sacola.",
+          "de": "Jemand hilft dir, eine Tasche zu tragen.",
+          "it": "Qualcuno ti aiuta a portare una borsa."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Por favor"
+          },
+          {
+            "id": "2",
+            "text": "No"
+          },
+          {
+            "id": "3",
+            "text": "Gracias"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.04.es",
+      "concept_id": "concept.a0.functional.affirmative",
+      "level": "A0",
+      "target_language": "es",
+      "objective_key": "affirmative",
+      "sequence": 4,
+      "prerequisites": [
+        "concept.a0.functional.gratitude"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.04.es.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You agree with a simple question.",
+          "fr-CA": "Vous répondez oui à une question simple.",
+          "es": "Respondes afirmativamente a una pregunta sencilla.",
+          "pt-BR": "Você responde sim a uma pergunta simples.",
+          "de": "Du beantwortest eine einfache Frage mit Ja.",
+          "it": "Rispondi sì a una domanda semplice."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Sí"
+          },
+          {
+            "id": "2",
+            "text": "No"
+          },
+          {
+            "id": "3",
+            "text": "Por favor"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.05.es",
+      "concept_id": "concept.a0.functional.polite_request",
+      "level": "A0",
+      "target_language": "es",
+      "objective_key": "polite_request",
+      "sequence": 5,
+      "prerequisites": [
+        "concept.a0.functional.affirmative"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.05.es.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You want to ask politely.",
+          "fr-CA": "Vous souhaitez demander quelque chose poliment.",
+          "es": "Quieres pedir algo con cortesía.",
+          "pt-BR": "Você quer fazer um pedido com educação.",
+          "de": "Du möchtest höflich um etwas bitten.",
+          "it": "Vuoi chiedere qualcosa con cortesia."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Gracias"
+          },
+          {
+            "id": "2",
+            "text": "Por favor"
+          },
+          {
+            "id": "3",
+            "text": "Adiós"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.06.es",
+      "concept_id": "concept.a0.functional.evening",
+      "level": "A0",
+      "target_language": "es",
+      "objective_key": "evening",
+      "sequence": 6,
+      "prerequisites": [
+        "concept.a0.functional.polite_request"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.06.es.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet in the evening.",
+          "fr-CA": "Deux personnes se rencontrent le soir.",
+          "es": "Dos personas se encuentran por la tarde-noche.",
+          "pt-BR": "Duas pessoas se encontram à noite.",
+          "de": "Zwei Personen treffen sich am Abend.",
+          "it": "Due persone si incontrano di sera."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Buenos días"
+          },
+          {
+            "id": "2",
+            "text": "Adiós"
+          },
+          {
+            "id": "3",
+            "text": "Buenas noches"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.01.pt-BR",
+      "concept_id": "concept.a0.functional.morning",
+      "level": "A0",
+      "target_language": "pt-BR",
+      "objective_key": "morning",
+      "sequence": 1,
+      "prerequisites": [],
+      "activity": {
+        "id": "vf.a0.functional.01.pt-BR.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet early in the morning.",
+          "fr-CA": "Deux personnes se rencontrent tôt le matin.",
+          "es": "Dos personas se encuentran temprano por la mañana.",
+          "pt-BR": "Duas pessoas se encontram de manhã cedo.",
+          "de": "Zwei Personen treffen sich früh am Morgen.",
+          "it": "Due persone si incontrano la mattina presto."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Bom dia"
+          },
+          {
+            "id": "2",
+            "text": "Boa noite"
+          },
+          {
+            "id": "3",
+            "text": "Tchau"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.02.pt-BR",
+      "concept_id": "concept.a0.functional.farewell",
+      "level": "A0",
+      "target_language": "pt-BR",
+      "objective_key": "farewell",
+      "sequence": 2,
+      "prerequisites": [
+        "concept.a0.functional.morning"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.02.pt-BR.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You are leaving a shop.",
+          "fr-CA": "Vous quittez un magasin.",
+          "es": "Sales de una tienda.",
+          "pt-BR": "Você está saindo de uma loja.",
+          "de": "Du verlässt ein Geschäft.",
+          "it": "Stai uscendo da un negozio."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Olá"
+          },
+          {
+            "id": "2",
+            "text": "Tchau"
+          },
+          {
+            "id": "3",
+            "text": "Obrigado"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.03.pt-BR",
+      "concept_id": "concept.a0.functional.gratitude",
+      "level": "A0",
+      "target_language": "pt-BR",
+      "objective_key": "gratitude",
+      "sequence": 3,
+      "prerequisites": [
+        "concept.a0.functional.farewell"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.03.pt-BR.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Someone helps you carry a bag.",
+          "fr-CA": "Quelqu’un vous aide à porter un sac.",
+          "es": "Alguien te ayuda a llevar una bolsa.",
+          "pt-BR": "Alguém ajuda você a carregar uma sacola.",
+          "de": "Jemand hilft dir, eine Tasche zu tragen.",
+          "it": "Qualcuno ti aiuta a portare una borsa."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Por favor"
+          },
+          {
+            "id": "2",
+            "text": "Não"
+          },
+          {
+            "id": "3",
+            "text": "Obrigado"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.04.pt-BR",
+      "concept_id": "concept.a0.functional.affirmative",
+      "level": "A0",
+      "target_language": "pt-BR",
+      "objective_key": "affirmative",
+      "sequence": 4,
+      "prerequisites": [
+        "concept.a0.functional.gratitude"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.04.pt-BR.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You agree with a simple question.",
+          "fr-CA": "Vous répondez oui à une question simple.",
+          "es": "Respondes afirmativamente a una pregunta sencilla.",
+          "pt-BR": "Você responde sim a uma pergunta simples.",
+          "de": "Du beantwortest eine einfache Frage mit Ja.",
+          "it": "Rispondi sì a una domanda semplice."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Sim"
+          },
+          {
+            "id": "2",
+            "text": "Não"
+          },
+          {
+            "id": "3",
+            "text": "Por favor"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.05.pt-BR",
+      "concept_id": "concept.a0.functional.polite_request",
+      "level": "A0",
+      "target_language": "pt-BR",
+      "objective_key": "polite_request",
+      "sequence": 5,
+      "prerequisites": [
+        "concept.a0.functional.affirmative"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.05.pt-BR.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You want to ask politely.",
+          "fr-CA": "Vous souhaitez demander quelque chose poliment.",
+          "es": "Quieres pedir algo con cortesía.",
+          "pt-BR": "Você quer fazer um pedido com educação.",
+          "de": "Du möchtest höflich um etwas bitten.",
+          "it": "Vuoi chiedere qualcosa con cortesia."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Obrigado"
+          },
+          {
+            "id": "2",
+            "text": "Por favor"
+          },
+          {
+            "id": "3",
+            "text": "Tchau"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.06.pt-BR",
+      "concept_id": "concept.a0.functional.evening",
+      "level": "A0",
+      "target_language": "pt-BR",
+      "objective_key": "evening",
+      "sequence": 6,
+      "prerequisites": [
+        "concept.a0.functional.polite_request"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.06.pt-BR.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet in the evening.",
+          "fr-CA": "Deux personnes se rencontrent le soir.",
+          "es": "Dos personas se encuentran por la tarde-noche.",
+          "pt-BR": "Duas pessoas se encontram à noite.",
+          "de": "Zwei Personen treffen sich am Abend.",
+          "it": "Due persone si incontrano di sera."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Bom dia"
+          },
+          {
+            "id": "2",
+            "text": "Tchau"
+          },
+          {
+            "id": "3",
+            "text": "Boa noite"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.01.de",
+      "concept_id": "concept.a0.functional.morning",
+      "level": "A0",
+      "target_language": "de",
+      "objective_key": "morning",
+      "sequence": 1,
+      "prerequisites": [],
+      "activity": {
+        "id": "vf.a0.functional.01.de.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet early in the morning.",
+          "fr-CA": "Deux personnes se rencontrent tôt le matin.",
+          "es": "Dos personas se encuentran temprano por la mañana.",
+          "pt-BR": "Duas pessoas se encontram de manhã cedo.",
+          "de": "Zwei Personen treffen sich früh am Morgen.",
+          "it": "Due persone si incontrano la mattina presto."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Guten Morgen"
+          },
+          {
+            "id": "2",
+            "text": "Guten Abend"
+          },
+          {
+            "id": "3",
+            "text": "Auf Wiedersehen"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.02.de",
+      "concept_id": "concept.a0.functional.farewell",
+      "level": "A0",
+      "target_language": "de",
+      "objective_key": "farewell",
+      "sequence": 2,
+      "prerequisites": [
+        "concept.a0.functional.morning"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.02.de.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You are leaving a shop.",
+          "fr-CA": "Vous quittez un magasin.",
+          "es": "Sales de una tienda.",
+          "pt-BR": "Você está saindo de uma loja.",
+          "de": "Du verlässt ein Geschäft.",
+          "it": "Stai uscendo da un negozio."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Hallo"
+          },
+          {
+            "id": "2",
+            "text": "Auf Wiedersehen"
+          },
+          {
+            "id": "3",
+            "text": "Danke"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.03.de",
+      "concept_id": "concept.a0.functional.gratitude",
+      "level": "A0",
+      "target_language": "de",
+      "objective_key": "gratitude",
+      "sequence": 3,
+      "prerequisites": [
+        "concept.a0.functional.farewell"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.03.de.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Someone helps you carry a bag.",
+          "fr-CA": "Quelqu’un vous aide à porter un sac.",
+          "es": "Alguien te ayuda a llevar una bolsa.",
+          "pt-BR": "Alguém ajuda você a carregar uma sacola.",
+          "de": "Jemand hilft dir, eine Tasche zu tragen.",
+          "it": "Qualcuno ti aiuta a portare una borsa."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Bitte"
+          },
+          {
+            "id": "2",
+            "text": "Nein"
+          },
+          {
+            "id": "3",
+            "text": "Danke"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.04.de",
+      "concept_id": "concept.a0.functional.affirmative",
+      "level": "A0",
+      "target_language": "de",
+      "objective_key": "affirmative",
+      "sequence": 4,
+      "prerequisites": [
+        "concept.a0.functional.gratitude"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.04.de.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You agree with a simple question.",
+          "fr-CA": "Vous répondez oui à une question simple.",
+          "es": "Respondes afirmativamente a una pregunta sencilla.",
+          "pt-BR": "Você responde sim a uma pergunta simples.",
+          "de": "Du beantwortest eine einfache Frage mit Ja.",
+          "it": "Rispondi sì a una domanda semplice."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Ja"
+          },
+          {
+            "id": "2",
+            "text": "Nein"
+          },
+          {
+            "id": "3",
+            "text": "Bitte"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.05.de",
+      "concept_id": "concept.a0.functional.polite_request",
+      "level": "A0",
+      "target_language": "de",
+      "objective_key": "polite_request",
+      "sequence": 5,
+      "prerequisites": [
+        "concept.a0.functional.affirmative"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.05.de.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You want to ask politely.",
+          "fr-CA": "Vous souhaitez demander quelque chose poliment.",
+          "es": "Quieres pedir algo con cortesía.",
+          "pt-BR": "Você quer fazer um pedido com educação.",
+          "de": "Du möchtest höflich um etwas bitten.",
+          "it": "Vuoi chiedere qualcosa con cortesia."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Danke"
+          },
+          {
+            "id": "2",
+            "text": "Bitte"
+          },
+          {
+            "id": "3",
+            "text": "Auf Wiedersehen"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.06.de",
+      "concept_id": "concept.a0.functional.evening",
+      "level": "A0",
+      "target_language": "de",
+      "objective_key": "evening",
+      "sequence": 6,
+      "prerequisites": [
+        "concept.a0.functional.polite_request"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.06.de.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet in the evening.",
+          "fr-CA": "Deux personnes se rencontrent le soir.",
+          "es": "Dos personas se encuentran por la tarde-noche.",
+          "pt-BR": "Duas pessoas se encontram à noite.",
+          "de": "Zwei Personen treffen sich am Abend.",
+          "it": "Due persone si incontrano di sera."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Guten Morgen"
+          },
+          {
+            "id": "2",
+            "text": "Auf Wiedersehen"
+          },
+          {
+            "id": "3",
+            "text": "Guten Abend"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.01.it",
+      "concept_id": "concept.a0.functional.morning",
+      "level": "A0",
+      "target_language": "it",
+      "objective_key": "morning",
+      "sequence": 1,
+      "prerequisites": [],
+      "activity": {
+        "id": "vf.a0.functional.01.it.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet early in the morning.",
+          "fr-CA": "Deux personnes se rencontrent tôt le matin.",
+          "es": "Dos personas se encuentran temprano por la mañana.",
+          "pt-BR": "Duas pessoas se encontram de manhã cedo.",
+          "de": "Zwei Personen treffen sich früh am Morgen.",
+          "it": "Due persone si incontrano la mattina presto."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Buongiorno"
+          },
+          {
+            "id": "2",
+            "text": "Buonasera"
+          },
+          {
+            "id": "3",
+            "text": "Arrivederci"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.02.it",
+      "concept_id": "concept.a0.functional.farewell",
+      "level": "A0",
+      "target_language": "it",
+      "objective_key": "farewell",
+      "sequence": 2,
+      "prerequisites": [
+        "concept.a0.functional.morning"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.02.it.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You are leaving a shop.",
+          "fr-CA": "Vous quittez un magasin.",
+          "es": "Sales de una tienda.",
+          "pt-BR": "Você está saindo de uma loja.",
+          "de": "Du verlässt ein Geschäft.",
+          "it": "Stai uscendo da un negozio."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Ciao"
+          },
+          {
+            "id": "2",
+            "text": "Arrivederci"
+          },
+          {
+            "id": "3",
+            "text": "Grazie"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.03.it",
+      "concept_id": "concept.a0.functional.gratitude",
+      "level": "A0",
+      "target_language": "it",
+      "objective_key": "gratitude",
+      "sequence": 3,
+      "prerequisites": [
+        "concept.a0.functional.farewell"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.03.it.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Someone helps you carry a bag.",
+          "fr-CA": "Quelqu’un vous aide à porter un sac.",
+          "es": "Alguien te ayuda a llevar una bolsa.",
+          "pt-BR": "Alguém ajuda você a carregar uma sacola.",
+          "de": "Jemand hilft dir, eine Tasche zu tragen.",
+          "it": "Qualcuno ti aiuta a portare una borsa."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Per favore"
+          },
+          {
+            "id": "2",
+            "text": "No"
+          },
+          {
+            "id": "3",
+            "text": "Grazie"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.04.it",
+      "concept_id": "concept.a0.functional.affirmative",
+      "level": "A0",
+      "target_language": "it",
+      "objective_key": "affirmative",
+      "sequence": 4,
+      "prerequisites": [
+        "concept.a0.functional.gratitude"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.04.it.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You agree with a simple question.",
+          "fr-CA": "Vous répondez oui à une question simple.",
+          "es": "Respondes afirmativamente a una pregunta sencilla.",
+          "pt-BR": "Você responde sim a uma pergunta simples.",
+          "de": "Du beantwortest eine einfache Frage mit Ja.",
+          "it": "Rispondi sì a una domanda semplice."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Sì"
+          },
+          {
+            "id": "2",
+            "text": "No"
+          },
+          {
+            "id": "3",
+            "text": "Per favore"
+          }
+        ],
+        "correct_option_ids": [
+          "1"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.05.it",
+      "concept_id": "concept.a0.functional.polite_request",
+      "level": "A0",
+      "target_language": "it",
+      "objective_key": "polite_request",
+      "sequence": 5,
+      "prerequisites": [
+        "concept.a0.functional.affirmative"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.05.it.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "You want to ask politely.",
+          "fr-CA": "Vous souhaitez demander quelque chose poliment.",
+          "es": "Quieres pedir algo con cortesía.",
+          "pt-BR": "Você quer fazer um pedido com educação.",
+          "de": "Du möchtest höflich um etwas bitten.",
+          "it": "Vuoi chiedere qualcosa con cortesia."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Grazie"
+          },
+          {
+            "id": "2",
+            "text": "Per favore"
+          },
+          {
+            "id": "3",
+            "text": "Arrivederci"
+          }
+        ],
+        "correct_option_ids": [
+          "2"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    },
+    {
+      "lesson_id": "vf.a0.functional.06.it",
+      "concept_id": "concept.a0.functional.evening",
+      "level": "A0",
+      "target_language": "it",
+      "objective_key": "evening",
+      "sequence": 6,
+      "prerequisites": [
+        "concept.a0.functional.polite_request"
+      ],
+      "activity": {
+        "id": "vf.a0.functional.06.it.recognize",
+        "type": "single_choice",
+        "skill": "reading",
+        "context_by_known_language": {
+          "en-CA": "Two people meet in the evening.",
+          "fr-CA": "Deux personnes se rencontrent le soir.",
+          "es": "Dos personas se encuentran por la tarde-noche.",
+          "pt-BR": "Duas pessoas se encontram à noite.",
+          "de": "Zwei Personen treffen sich am Abend.",
+          "it": "Due persone si incontrano di sera."
+        },
+        "prompt_by_known_language": {
+          "en-CA": "Choose the most appropriate expression for the situation.",
+          "fr-CA": "Choisissez l’expression la plus adaptée à la situation.",
+          "es": "Elige la expresión más adecuada para la situación.",
+          "pt-BR": "Escolha a expressão mais adequada para a situação.",
+          "de": "Wähle den passendsten Ausdruck für die Situation.",
+          "it": "Scegli l’espressione più adatta alla situazione."
+        },
+        "options": [
+          {
+            "id": "1",
+            "text": "Buongiorno"
+          },
+          {
+            "id": "2",
+            "text": "Arrivederci"
+          },
+          {
+            "id": "3",
+            "text": "Buonasera"
+          }
+        ],
+        "correct_option_ids": [
+          "3"
+        ],
+        "assessment": {
+          "scoring": "exact_match",
+          "max_points": 1,
+          "retry_allowed": true,
+          "mastery_rule": "correct_on_first_attempt",
+          "feedback_code_correct": "correct",
+          "feedback_code_incorrect": "review_context"
+        },
+        "audio_required": false,
+        "text_fallback": true
+      },
+      "editorial_status": "candidate",
+      "human_review_required": true,
+      "publishable": false,
+      "source": "VoiceFirst original A0 candidate; independent language review pending"
+    }
+  ]
+}
