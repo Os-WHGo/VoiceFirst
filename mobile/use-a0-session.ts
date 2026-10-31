@@ -8,28 +8,33 @@ export function useA0Session(target:TargetLanguage,lessons:readonly A0LessonCand
  const [error,setError]=useState('');
  const queue=useRef(Promise.resolve());
  const current=useRef<A0Journal|null>(null);
+ const raw=useRef<string|null>(null);
+ const failed=useRef(false);
  const epoch=useRef(0);
  useEffect(()=>{
   const session=++epoch.current;
-  current.current=null;setJournal(null);setStatus('loading');setError('');
+  current.current=null;raw.current=null;failed.current=false;setJournal(null);setStatus('loading');setError('');
   // Preserve write ordering across target switches. A previous write must not mutate a new session.
   void queue.current.catch(()=>undefined).then(()=>restoreA0Session(a0DeviceStorage,target,lessons)).then(result=>{
    if(epoch.current!==session)return;
    if(result.kind!=='ok'){setError('El historial A0 no puede leerse. No se sobrescribirá.');setStatus('blocked');return;}
-   current.current=result.journal;setJournal(result.journal);setStatus('ready');
+   current.current=result.journal;raw.current=result.raw;setJournal(result.journal);setStatus('ready');
   }).catch(()=>{if(epoch.current===session){setError('No se pudo acceder al almacenamiento A0.');setStatus('blocked');}});
   return()=>{epoch.current++;current.current=null;};
  },[target,lessons]);
  const submit=useCallback((lesson:A0LessonCandidate,event:A0JournalEvent)=>{
-  if(status!=='ready'||!current.current||lesson.targetLanguage!==target)return Promise.resolve(false);
+  if(status!=='ready'||failed.current||!current.current||lesson.targetLanguage!==target)return Promise.resolve(false);
   const session=epoch.current;
   // Queue each event in order; do not write into a different language after switching.
   let committed=false;
   const operation=queue.current.catch(()=>undefined).then(async()=>{
-   if(epoch.current!==session||!current.current)return;
+   if(epoch.current!==session||failed.current||!current.current)return;
    const before=current.current;
-   const saved=await commitA0Attempt(a0DeviceStorage,before,lesson,event);
+   let saved:A0Journal;
+   try{saved=await commitA0Attempt(a0DeviceStorage,before,lesson,event,raw.current);}
+   catch(error){if(epoch.current===session)failed.current=true;throw error;}
    if(epoch.current!==session)return;
+   if(saved!==before)raw.current=JSON.stringify(saved);
    current.current=saved;setJournal(saved);committed=saved.revision===before.revision+1;
   });
   queue.current=operation.then(()=>undefined,()=>undefined);

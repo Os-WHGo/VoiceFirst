@@ -13,7 +13,8 @@ function hooks(){
   createElement:(type,props,...children)=>({type,props:{...props,children}}),Fragment:'Fragment',
   useState(initial){const id=cursor++;if(!(id in slots))slots[id]=typeof initial==='function'?initial():initial;return [slots[id],v=>{slots[id]=typeof v==='function'?v(slots[id]):v;}];},
   useRef(initial){const id=cursor++;return slots[id]??(slots[id]={current:initial});},
-  useMemo(fn){const id=cursor++;return slots[id]??(slots[id]=fn());},
+  useMemo(fn,deps){const id=cursor++,old=slots[id];if(!old||!deps||deps.some((v,i)=>v!==old.deps?.[i]))slots[id]={deps,value:fn()};return slots[id].value;},
+  useCallback(fn,deps){return react.useMemo(()=>fn,deps);},
   useEffect(fn,deps){const id=cursor++,old=slots[id];if(!old||!deps||deps.some((v,i)=>v!==old.deps?.[i])){const entry={deps,cleanup:old?.cleanup};slots[id]=entry;effects.push(()=>{entry.cleanup?.();entry.cleanup=fn();return entry.cleanup;});}},
  };
  return {react:{__esModule:true,default:react,...react},render(fn){cursor=0;return fn();},mount(){return effects.splice(0).map(fn=>fn());}};
@@ -55,6 +56,39 @@ test('actual hook keeps last committed snapshot and blocks writes after storage 
  render();h.mount();await tick();await render().transition('start');
  assert.equal(render().blocked,true);assert.equal(render().value.session,null);
  await render().transition('start');assert.equal(saves,1);
+});
+const a0Lesson={lessonId:'a0.fr.1',conceptId:'a0.greeting',targetLanguage:'fr-CA',sequence:1,prerequisites:[],skill:'reading',contextByKnownLanguage:{},promptByKnownLanguage:{},options:[{id:'a',text:'Bonjour'},{id:'b',text:'Bonsoir'}],correctOptionId:'a',publishable:false,humanReviewRequired:true};
+const a0Lessons=[a0Lesson];
+function a0HookHarness(port){
+ const h=hooks();
+ const api=compile('../../../mobile/use-a0-session.ts',{react:h.react,'@voicefirst/core':core,'./a0-device-storage':{a0DeviceStorage:port}});
+ return {render:()=>h.render(()=>api.useA0Session('fr-CA',a0Lessons)),mount:()=>h.mount()};
+}
+test('A0 hook stops already queued writes after a storage failure, including stale submit closures',async()=>{
+ let writes=0;
+ const port={read:async()=>null,write:async()=>assert.fail('blind write'),compareAndWrite:async()=>{writes++;throw Error('disk full');}};
+ const h=a0HookHarness(port);h.render();h.mount();await tick();
+ const ready=h.render();assert.equal(ready.status,'ready');
+ const first=ready.submit(a0Lesson,{eventId:'first',lessonId:a0Lesson.lessonId,selectedOptionId:'b',attemptNumber:1});
+ const queued=ready.submit(a0Lesson,{eventId:'queued',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:2});
+ assert.equal(await first,false);assert.equal(await queued,false);
+ assert.equal(writes,1);assert.equal(h.render().status,'blocked');assert.equal(h.render().journal.revision,0);
+ assert.equal(await ready.submit(a0Lesson,{eventId:'stale',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:1}),false);
+ assert.equal(writes,1);
+});
+test('A0 hook passes exact snapshots across concurrent instances and recovers only by a new read',async()=>{
+ let raw=null;
+ const port={read:async()=>raw,write:async()=>assert.fail('blind write'),compareAndWrite:async(_key,expected,next)=>{if(expected!==raw)return false;raw=next;return true;}};
+ const first=a0HookHarness(port),second=a0HookHarness(port);
+ first.render();second.render();first.mount();second.mount();await tick();
+ assert.equal(await first.render().submit(a0Lesson,{eventId:'first',lessonId:a0Lesson.lessonId,selectedOptionId:'b',attemptNumber:1}),true);
+ const saved=raw;
+ assert.equal(await second.render().submit(a0Lesson,{eventId:'other',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:1}),false);
+ assert.equal(second.render().status,'blocked');assert.equal(raw,saved);
+ const reopened=a0HookHarness(port);reopened.render();reopened.mount();await tick();
+ assert.equal(reopened.render().journal.revision,1);
+ assert.equal(await reopened.render().submit(a0Lesson,{eventId:'reopened',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:2}),true);
+ assert.equal(JSON.parse(raw).events.length,2);
 });
 function elements(node){
  if(node===null||node===undefined||typeof node==='boolean')return [];
