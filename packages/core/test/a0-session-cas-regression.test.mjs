@@ -34,7 +34,7 @@ test('A0 rejects stale snapshot without writing',async()=>{
  const initial=await restoreA0Session(port,'fr-CA',[lesson]);
  assert.equal(initial.kind,'ok');
  const saved=await commitA0Attempt(port,initial.journal,lesson,event('first'),initial.raw);
- await assert.rejects(commitA0Attempt(port,saved,lesson,event('second'),initial.raw),/A0_SNAPSHOT_MISMATCH/);
+ await assert.rejects(commitA0Attempt(port,initial.journal,lesson,event('second'),initial.raw),/A0_STORAGE_CONFLICT/);
  const restored=await restoreA0Session(port,'fr-CA',[lesson]);
  assert.equal(restored.kind,'ok');assert.equal(restored.journal.events.length,1);
 });
