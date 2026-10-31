@@ -1,9 +1,9 @@
 /** Mobile integration of the existing authored course and Claude's pure session engine.
  * Foreground, explicit playback/capture, no cloud fallback or acoustic grading.
  */
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {AppState,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
-import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,pronunciationReadingFor,readingAidCopy,sessionOpening,summarizeSession,voiceCueById,voiceLocales,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
+import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
 import {useLearningSession} from './use-learning-session';
 import {useOnDeviceAnswer} from './use-on-device-answer';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
@@ -19,6 +19,14 @@ const labels:Record<TargetLanguage,readonly string[]>={
 };
 const commandLabel:Record<TargetLanguage,string>={es:'Comando de voz', 'en-CA':'Voice command','fr-CA':'Commande vocale','pt-BR':'Comando de voz',de:'Sprachbefehl',it:'Comando vocale'};
 const modelActions:Record<TargetLanguage,readonly [string,string]>={es:['Preparar modelo local (Android)','Comprobar modelo local'],'en-CA':['Prepare local model (Android)','Check local model'],'fr-CA':['Préparer le modèle local (Android)','Vérifier le modèle local'],'pt-BR':['Preparar modelo local (Android)','Verificar modelo local'],de:['Lokales Modell vorbereiten (Android)','Lokales Modell prüfen'],it:['Prepara modello locale (Android)','Verifica modello locale']};
+const guideCopy:Record<TargetLanguage,{enable:string;disable:string;notice:string;speaking:string;listening:string;unavailable:string}>={
+ es:{enable:'Activar guía de voz',disable:'Detener guía de voz',notice:'La guía lee la sesión y puede activar el micrófono al terminar de hablar. Solo funciona con la app abierta. Confirma las respuestas inciertas en pantalla.',speaking:'El tutor está hablando',listening:'Micrófono activo',unavailable:'La voz no está disponible. Puedes continuar por texto o volver a activar la guía.'},
+ 'en-CA':{enable:'Enable voice guide',disable:'Stop voice guide',notice:'The guide reads the session and may start the microphone after speaking. It works only while the app is open. Confirm uncertain answers on screen.',speaking:'The tutor is speaking',listening:'Microphone active',unavailable:'Voice is unavailable. Continue with text or enable the guide again.'},
+ 'fr-CA':{enable:'Activer le guide vocal',disable:'Arrêter le guide vocal',notice:'Le guide lit la séance et peut activer le micro après avoir parlé. L’application doit rester ouverte. Confirmez les réponses incertaines à l’écran.',speaking:'Le tuteur parle',listening:'Micro actif',unavailable:'La voix est indisponible. Continuez par écrit ou réactivez le guide.'},
+ 'pt-BR':{enable:'Ativar guia de voz',disable:'Parar guia de voz',notice:'O guia lê a sessão e pode ativar o microfone depois de falar. O aplicativo deve permanecer aberto. Confirme respostas incertas na tela.',speaking:'O tutor está falando',listening:'Microfone ativo',unavailable:'Voz indisponível. Continue por texto ou ative o guia novamente.'},
+ de:{enable:'Sprachführung aktivieren',disable:'Sprachführung stoppen',notice:'Die Führung liest die Sitzung vor und kann danach das Mikrofon aktivieren. Die App muss geöffnet bleiben. Unsichere Antworten am Bildschirm bestätigen.',speaking:'Der Tutor spricht',listening:'Mikrofon aktiv',unavailable:'Sprache nicht verfügbar. Per Text fortfahren oder die Führung erneut aktivieren.'},
+ it:{enable:'Attiva guida vocale',disable:'Ferma guida vocale',notice:'La guida legge la sessione e può attivare il microfono dopo aver parlato. L’app deve restare aperta. Conferma le risposte incerte sullo schermo.',speaking:'Il tutor sta parlando',listening:'Microfono attivo',unavailable:'Voce non disponibile. Continua per iscritto o riattiva la guida.'},
+};
 export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,rate=0.88,experience=defaultExperiencePreferences}:{nativeLanguage:TargetLanguage;target:TargetLanguage;guideLocale?:string|null;rate?:number;experience?:ExperiencePreferences}){
  const runtime=useLearningSession(target,nativeLanguage,experience);
  const session=runtime.value?.session;
@@ -29,16 +37,22 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const [heardActivity,setHeardActivity]=useState<string|null>(null);
  const [showLibrary,setShowLibrary]=useState(false);
  const [pendingCommand,setPendingCommand]=useState<{command:VoiceCommand;text:string}|null>(null);
+ const [guided,setGuided]=useState(false),[narrating,setNarrating]=useState(false);
+ const guidedRef=useRef(false);guidedRef.current=guided;
+ const narrator=useMemo(()=>new SessionNarrator({play:playCuratedVoice,stop:stopCuratedVoice}),[]);
  const epoch=useRef(0),live=useRef(true);
  const requestedNarration=useRef(false);
  const ready=!!session&&session.status==='active'&&!runtime.busy&&!runtime.blocked&&foreground;
  const activity=runtime.activities.find(a=>a.id===session?.current?.activityId);
- const current=useRef({ready,id:activity?.id,revision:session?.revision});current.current={ready,id:activity?.id,revision:session?.revision};
+ const current=useRef({ready,id:activity?.id,revision:session?.revision,kind:activity?.kind});current.current={ready,id:activity?.id,revision:session?.revision,kind:activity?.kind};
  const mic=useOnDeviceAnswer(target,(result,id)=>{
   const now=current.current;
   if(!now.ready||id!==`${now.id}:${now.revision}`)return;
   setAnswer(result.text);setSpeechAnswer(true);
   // Native confidence is uncalibrated: submit explicitly as uncertain speech.
+  if(guidedRef.current&&now.kind!=='choice'){
+   void runtime.transition({type:'answer',response:result.text,source:{kind:'speech',confidence:'unknown'}});
+  }
  });
  const commandState=useRef({enabled:false,id:''});
  commandState.current={enabled:!!session&&!runtime.busy&&!runtime.blocked&&foreground,id:`${session?.sessionId}:${session?.revision}:command`};
@@ -47,15 +61,16 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   const command=parseVoiceCommand(result.text);
   if(command&&['STOP','PAUSE','RESUME','REPEAT','SLOWER','HELP','NEXT','SUMMARY'].includes(command.type))setPendingCommand({command,text:result.text});
  });
- const stop=()=>{epoch.current++;mic.stop();commandMic.stop();void stopCuratedVoice();};
+ const stop=()=>{epoch.current++;narrator.cancel();mic.stop();commandMic.stop();setNarrating(false);};
+ const halt=()=>{guidedRef.current=false;setGuided(false);stop();};
  useEffect(()=>{
   live.current=true;
   const sub=AppState.addEventListener('change',state=>{
    const active=state==='active';setForeground(active);
-   if(!active){epoch.current++;mic.stop();commandMic.stop();setPendingCommand(null);void stopCuratedVoice();}
+   if(!active){epoch.current++;guidedRef.current=false;setGuided(false);setNarrating(false);narrator.cancel();mic.stop();commandMic.stop();setPendingCommand(null);}
   });
-  return()=>{live.current=false;epoch.current++;mic.stop();commandMic.stop();void stopCuratedVoice();sub.remove();};
- },[mic.stop,commandMic.stop]);
+  return()=>{live.current=false;epoch.current++;guidedRef.current=false;narrator.cancel();mic.stop();commandMic.stop();sub.remove();};
+ },[mic.stop,commandMic.stop,narrator]);
  useEffect(()=>{stop();setAnswer('');setSpeechAnswer(false);setShowReading(false);setHeardActivity(null);setPendingCommand(null);},[activity?.id,session?.sessionId,nativeLanguage]);
  // A just-committed transition can finish after the app moved to the background.
  useEffect(()=>{if(!foreground&&!runtime.busy&&session?.status==='active')void runtime.transition({type:'pause'});},[foreground,runtime.busy,session?.revision]);
@@ -70,30 +85,54 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const narration=speech&&'speech' in speech?speech.speech:prompt?.kind==='prompt'?prompt.speech:undefined;
  const play=(text:string,language:TargetLanguage,slow=false)=>{
   if(!foreground||runtime.blocked||runtime.busy)return;
-  stop();setAudioIssue('');const token=epoch.current;
-  const authored=activity?voiceCueById(`lesson/${activity.lessonId}/${activity.id}`):undefined;
-  const cue=authored?.text===text&&authored.language===language?authored:{id:`session/${language}/instruction`,text,language,locale:voiceLocales[language],kind:'dialogue-help' as const,source:'voicefirst-original' as const};
-  void playCuratedVoice(cue,slow?Math.max(0.65,rate-0.15):rate,()=>{
+  halt();setAudioIssue('');setNarrating(true);const token=epoch.current;
+  void narrator.run([{text,language,purpose:'target-cue',slower:slow}],rate,()=>{
    if(live.current&&token===epoch.current&&activity?.kind==='choice'&&text===activity.cue&&language===target)setHeardActivity(activity.id);
-  },message=>{if(live.current&&token===epoch.current)setAudioIssue(message);});
+  }).then(result=>{
+   if(!live.current||token!==epoch.current)return;
+   setNarrating(false);if(result.kind==='failed')setAudioIssue(guideCopy[known].unavailable);
+  });
  };
  const reading=activity&&guideLocale&&(activity.kind==='listen'||activity.kind==='repeat')?pronunciationReadingFor(activity.model,target,known,guideLocale):null;
  useEffect(()=>{
-  if(!requestedNarration.current||runtime.busy)return;
+  if(runtime.busy||!session)return;
+  const automatic=guidedRef.current;
+  if(!automatic&&!requestedNarration.current)return;
   requestedNarration.current=false;
-  if(runtime.blocked||!foreground)return;
-  const output=runtime.outputs.find(o=>o.kind==='replay'||o.kind==='hint'||o.kind==='model');
-  if(output?.kind==='replay'){
-   if(output.speech)play(output.speech.text,output.speech.language,output.rate==='slower');
-   else play(output.instruction,known,output.rate==='slower');
-  }else if(output?.kind==='hint')play(output.text,known);
-  else if(output?.kind==='model')play(output.speech.text,output.speech.language);
- },[runtime.outputs,runtime.busy]);
+  if(runtime.blocked||!foreground||session.status==='paused')return;
+  const outputs=runtime.outputs.length?runtime.outputs:sessionOpening(session,runtime.activities);
+  const lines=sessionNarration(outputs,session.known,target);
+  if(!lines.length)return;
+  const token=++epoch.current,revision=session.revision;
+  mic.stop();commandMic.stop();setAudioIssue('');setNarrating(true);
+  void narrator.run(lines,rate,line=>{
+   if(!live.current||token!==epoch.current)return;
+   if(line.purpose==='target-cue'&&line.activityId===activity?.id&&activity?.kind==='choice'&&line.text===activity.cue&&line.language===target)setHeardActivity(activity.id);
+  }).then(result=>{
+   if(!live.current||token!==epoch.current)return;
+   setNarrating(false);
+   if(result.kind==='failed'){
+    guidedRef.current=false;setGuided(false);setAudioIssue(guideCopy[session.known].unavailable);return;
+   }
+   if(result.kind!=='completed'||!automatic||!guidedRef.current||!current.current.ready||current.current.revision!==revision||session.current?.pendingConfirmation)return;
+   const nextPrompt=outputs.find(o=>o.kind==='prompt');
+   if(!nextPrompt||nextPrompt.kind!=='prompt')return;
+   // One explicit foreground turn. An uncertain result is proposed, never auto-graded.
+   if(nextPrompt.activityKind==='listen'){
+    if(commandMic.available)void commandMic.start(commandState.current.id);
+   }else if(nextPrompt.activityKind!=='choice'&&mic.available)void mic.start(`${activity?.id}:${revision}`);
+  });
+ },[runtime.outputs,runtime.busy,guided]);
  const action=(label:string,fn:()=>void,disabled=runtime.busy||runtime.blocked||!foreground)=><Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} style={[s.button,disabled&&s.disabled]} onPress={fn}><Text style={s.text}>{label}</Text></Pressable>;
  return <View style={s.wrap}>
   <Text style={s.title}>{c[0]}</Text>
   {!runtime.value&&!runtime.blocked&&<Text style={s.text}>{c[20]}</Text>}
   {runtime.blocked&&<Text accessibilityRole="alert" style={s.warning}>{c[19]}</Text>}
+  {runtime.value&&<>
+   {action(guided?guideCopy[known].disable:guideCopy[known].enable,()=>{if(guided){halt();return;}stop();guidedRef.current=true;setGuided(true);})}
+   <Text style={s.note}>{guideCopy[known].notice}</Text>
+  </>}
+  <Text accessibilityLiveRegion="polite" style={s.text}>{mic.listening||commandMic.listening?guideCopy[known].listening:narrating?guideCopy[known].speaking:''}</Text>
   {runtime.value&&<Text style={s.text}>{c[24]}: {runtime.value.progress.completed.length} / {new Set(runtime.activities.map(a=>a.lessonId)).size} · {c[25]}: {dueObjectiveReviews(runtime.value.model,deviceLocalDay()).length}</Text>}
   {session&&session.known!==nativeLanguage&&session.status!=='finished'&&<Text style={s.warning}>{c[27]}: {session.known}</Text>}
   {runtime.value&&(!session||session.status==='finished')&&action(c[1]!,()=>{stop();void runtime.transition('start');})}
@@ -138,7 +177,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   </>}
   <View accessibilityLiveRegion="polite">{messages.map((text,i)=><Text style={s.text} key={i}>{text}</Text>)}</View>
   {session&&summary&&<>{session.status==='finished'&&summary.statements.map((text,i)=><Text style={s.text} key={i}>{text}</Text>)}{action(c[18]!,()=>play(summary.statements.join(' '),session.known))}</>}
-  <View style={s.row}>{action(c[8]!,stop,false)}</View>
+  <View style={s.row}>{action(c[8]!,halt,false)}</View>
   {mic.canDownload&&<View style={s.row}>{action(modelActions[known][0],()=>{stop();void mic.downloadModel();})}{action(modelActions[known][1],()=>void mic.checkModel())}</View>}
   {!!mic.issue&&<Text style={s.warning}>{mic.issue}</Text>}
   {!!audioIssue&&<Text style={s.warning}>{audioIssue}</Text>}
