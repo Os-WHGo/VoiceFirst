@@ -5,6 +5,12 @@
 > Detalles, pruebas y límites: [INTEGRATION_2026_10_31.md](INTEGRATION_2026_10_31.md).
 > Las secciones históricas de este documento no describen por sí solas el HEAD actual.
 
+> Continuación tras recibir el dossier PDF: guía de voz voluntaria conectada al
+> recorrido, cola de narración cancelable y captura por turnos en primer plano.
+> Diario A0 móvil con CAS y recuperación de evidencias por habilidad corregida.
+> Véanse `VOICE_GUIDE_AND_HANDOFF_2026_10_31.md` y
+> `A0_DURABILITY_AND_SKILL_RECOVERY_2026_10_31.md`. No es voz de fondo validada.
+
 ## Desarrollado como código
 - [x] Proyecto independiente y UI VoiceFirst con órbita sonora, seis idiomas y 30 pares dirigidos.
 - [x] Comandos reconocidos a partir de transcripciones en seis lenguas, máquina de sesión, preferencias cognitivas individuales no clínicas, repaso SRS básico.

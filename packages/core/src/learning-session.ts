@@ -552,8 +552,10 @@ export function sessionFromJSON(raw:string,activities:readonly SessionActivity[]
  if(!Array.isArray(v.results)||v.results.length>200)return null;
  const results:ActivityResult[]=[];
  for(const r of v.results){
-  try{const x=validateActivityResult(r as ActivityResult);const a=catalog.get(x.activityId);if(!a||a.objectiveId!==x.objectiveId||a.kind!==x.kind||x.day<(v.startedOn as string)||x.day>(v.lastActiveOn as string))return null;
-   results.push({activityId:x.activityId,objectiveId:x.objectiveId,kind:x.kind,modality:x.modality,achievement:x.achievement,minorErrors:x.minorErrors,meaningErrors:x.meaningErrors,replays:x.replays,hints:x.hints,modelShown:x.modelShown,day:x.day});}catch{return null;}
+  try{const x=validateActivityResult(r as ActivityResult);const a=catalog.get(x.activityId);if(!a||a.objectiveId!==x.objectiveId||a.kind!==x.kind||x.day<(v.startedOn as string)||x.day>(v.lastActiveOn as string)||x.skill!==undefined&&x.skill!==a.skill)return null;
+   // Skill belongs to the authored activity, not the generic "choice" modality.
+   // Older restored snapshots may have omitted it: recover only from this exact catalog.
+   results.push({activityId:x.activityId,objectiveId:x.objectiveId,kind:x.kind,modality:x.modality,achievement:x.achievement,minorErrors:x.minorErrors,meaningErrors:x.meaningErrors,replays:x.replays,hints:x.hints,modelShown:x.modelShown,day:x.day,...(a.skill?{skill:a.skill}:{})});}catch{return null;}
  }
  if(!Array.isArray(v.pendingCorrections)||v.pendingCorrections.length>200)return null;
  const pendingCorrections:CorrectionNote[]=[];
