@@ -101,7 +101,13 @@ La auditoría npm sigue bloqueada (11 paquetes afectados); véase
 La exportación Metro genera bundles Hermes para Android e iOS. La introspección
 iOS verifica las declaraciones de privacidad; el prebuild Android verifica
 applicationId y permiso. Ninguna de estas operaciones produce una beta instalable.
-El intento Gradle nativo y los avisos npm se registran por separado con su resultado.
+El intento Gradle nativo con el proxy de sesión completó 28 tareas y falló al
+configurar `:app`: **SDK location not found**. No hay Android SDK configurado;
+no se generó APK. No se aceptaron licencias SDK automáticamente. Un intento
+anterior coincidió por error con `npm ci`, invalidó ambos procesos y fue
+descartado; después se reinstalaron dependencias y se repitió secuencialmente.
+En Linux no está disponible Xcode, por lo que no se compiló IPA.
+Los avisos npm se registran por separado con su resultado.
 
 ## Alcance pendiente
 
