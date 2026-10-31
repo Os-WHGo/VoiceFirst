@@ -34,6 +34,13 @@ const patterns: ReadonlyArray<{ words: readonly string[]; action: VoiceCommand }
   { words: ['explica en italiano', 'explain in italian', 'spiega in italiano'], action: { type: 'EXPLAIN_IN', language: 'it' } },
   { words: ['comece minha aula', 'inizia la lezione', 'lektion beginnen'], action: { type: 'START' } },
   { words: ['repita por favor', 'wiederholen bitte', 'ripeti per favore'], action: { type: 'REPEAT' } },
+  { words: ['pausar aula', 'pausa na aula', 'lektion pausieren', 'pause machen', 'pausa lezione', 'metti in pausa'], action: { type: 'PAUSE' } },
+  { words: ['continuar aula', 'retomar aula', 'lektion fortsetzen', 'weiterlernen', 'riprendi la lezione', 'continua la lezione'], action: { type: 'RESUME' } },
+  { words: ['terminar aula', 'encerrar aula', 'lektion beenden', 'lezione finita', 'termina la lezione'], action: { type: 'STOP' } },
+  { words: ['mais devagar', 'fale mais devagar', 'langsamer bitte', 'sprich langsamer', 'piu lentamente', 'parla piu lentamente'], action: { type: 'SLOWER' } },
+  { words: ['uma dica', 'me de uma dica', 'gib mir einen hinweis', 'ein hinweis bitte', 'dammi un indizio', 'un suggerimento'], action: { type: 'HELP' } },
+  { words: ['proximo exercicio', 'nachste ubung', 'prossimo esercizio'], action: { type: 'NEXT' } },
+  { words: ['o que aprendi', 'resumo da aula', 'was habe ich gelernt', 'zusammenfassung', 'cosa ho imparato', 'riepilogo'], action: { type: 'SUMMARY' } },
 
 ];
 const index = new Map(patterns.flatMap(({ words, action }) => words.map((w): [string, VoiceCommand] => [clean(w), action])));

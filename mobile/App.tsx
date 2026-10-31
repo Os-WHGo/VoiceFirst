@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, SafeAreaView, StatusBar, StyleSheet, View, Text, Pressable, AppState } from 'react-native';
 import * as Speech from 'expo-speech';
 import { VoicePractice } from './VoicePractice';
-import { OfflineCourse } from './OfflineCourse';
+import { LearningSessionCourse as OfflineCourse } from './LearningSessionCourse';
 import { A0CandidatePreview } from './A0CandidatePreview';
 import { A0TextOrientation } from './A0TextOrientation';
 import {readA0CatalogSource} from './a0-catalog-source';

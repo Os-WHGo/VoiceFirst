@@ -1,5 +1,10 @@
 # VoiceFirst · Bloque técnico 01
 
+Estado actual de integración (31-10-2026): sesiones móviles sobre el curso autorado
+A0/A1 existente, evaluación responsable, FSRS y recuperación local. Véase
+[informe de integración](docs/INTEGRATION_2026_10_31.md) para alcance, verificación
+y pendientes. No es todavía una beta completa ni un currículo A0–C2 validado.
+
 **Proyecto nuevo e independiente.** Prototipo de una aplicación *audio-first* para aprender seis idiomas entre sí, construida para usuarios con preferencias de atención configurables. Este paquete no incluye código de WHGo, Wivra ni otros repositorios.
 
 ## Incluye

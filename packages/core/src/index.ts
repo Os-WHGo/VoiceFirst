@@ -156,3 +156,4 @@ export * from './pedagogy-policy.js';
 export * from './voice-pipeline.js';
 export * from './speech-stack.js';
 export * from './speech-model-candidates.js';
+export * from './learning-checkpoint.js';

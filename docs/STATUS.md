@@ -1,5 +1,10 @@
 # Estado técnico · 16 de octubre de 2026, bloque 03
 
+> Actualización 31-10-2026: integrado el motor pedagógico de Claude y conectado
+> a la app con checkpoint atómico, evaluación conservadora, repaso y recuperación.
+> Detalles, pruebas y límites: [INTEGRATION_2026_10_31.md](INTEGRATION_2026_10_31.md).
+> Las secciones históricas de este documento no describen por sí solas el HEAD actual.
+
 ## Desarrollado como código
 - [x] Proyecto independiente y UI VoiceFirst con órbita sonora, seis idiomas y 30 pares dirigidos.
 - [x] Comandos reconocidos a partir de transcripciones en seis lenguas, máquina de sesión, preferencias cognitivas individuales no clínicas, repaso SRS básico.
