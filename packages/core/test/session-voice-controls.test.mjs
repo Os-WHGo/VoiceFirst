@@ -43,3 +43,33 @@ test('fast playback is bounded to existing safe engine rates',()=>{
  assert.equal(fasterSessionPlaybackRate(0.65),0.75);
  assert.equal(fasterSessionPlaybackRate(Number.NaN),1.1);
 });
+
+test('explicit full-phrase confirmation and rejection work in all six known languages',()=>{
+ const utterances=[
+  ['confirmar mi respuesta','rechazar mi respuesta'],
+  ['confirm my answer','reject my answer'],
+  ['confirmer ma réponse','refuser ma réponse'],
+  ['confirmar minha resposta','rejeitar minha resposta'],
+  ['Antwort bestätigen','Antwort ablehnen'],
+  ['conferma la mia risposta','rifiuta la mia risposta'],
+ ];
+ for(const [accept,reject] of utterances){
+  assert.deepEqual(parseVoiceCommand(accept),{type:'CONFIRM_ANSWER'},accept);
+  assert.deepEqual(parseVoiceCommand(reject),{type:'REJECT_ANSWER'},reject);
+  assert.deepEqual(resolveSessionVoiceCommand(parseVoiceCommand(accept),'active','2026-10-31',true),
+    {kind:'event',event:{type:'confirm'}},accept);
+  assert.deepEqual(resolveSessionVoiceCommand(parseVoiceCommand(reject),'active','2026-10-31',true),
+    {kind:'event',event:{type:'reject'}},reject);
+ }
+});
+test('confirmation commands are inapplicable without a matching pending answer or while paused',()=>{
+ for(const type of ['CONFIRM_ANSWER','REJECT_ANSWER']){
+  for(const [status,pending] of [['active',false],['paused',true],['finished',true],['finished',false]]){
+   assert.deepEqual(resolveSessionVoiceCommand({type},status,'2026-10-31',pending),
+    {kind:'unsupported'},type+' '+status+' '+pending);
+  }
+ }
+ for(const phrase of ['yes','sí','no','I said confirm my answer','she said rechazar mi respuesta']){
+  assert.equal(parseVoiceCommand(phrase),null,phrase);
+ }
+});
