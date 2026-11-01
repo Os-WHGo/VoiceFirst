@@ -120,7 +120,17 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   if(!automatic&&!requestedNarration.current)return;
   requestedNarration.current=false;
   if(runtime.blocked||!foreground||session.status==='paused')return;
-  const outputs=runtime.outputs.length?runtime.outputs:sessionOpening(session,runtime.activities);
+  const originalOutputs=runtime.outputs.length?runtime.outputs:sessionOpening(session,runtime.activities);
+  // Failed answers, hints, replay and explicit rejection must leave a listening
+  // opportunity. Previously these output-only transitions could strand the guide.
+  const repeatRequested=session.status==='active'&&!session.current?.pendingConfirmation&&originalOutputs.some(o=>
+   o.kind==='replay'||o.kind==='hint'||o.kind==='model'||
+   o.kind==='feedback'&&o.outcome!=='correct'||
+   o.kind==='message'&&o.code==='not-heard');
+  const followUp=repeatRequested?sessionOpening(session,runtime.activities).find(o=>o.kind==='prompt'):undefined;
+  // After rejection, restate the original prompt before listening again.
+  const restate=originalOutputs.some(o=>o.kind==='message'&&o.code==='not-heard');
+  const outputs=restate&&followUp?[...originalOutputs,followUp]:originalOutputs;
   const lines=sessionNarration(outputs,session.known,target);
   if(session.current?.pendingConfirmation)lines.push({
    text:answerConfirmationCopy[session.known],language:session.known,purpose:'instruction'
@@ -144,7 +154,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
     if(commandMic.available)void commandMic.start(commandState.current.id);
     return;
    }
-   const nextPrompt=outputs.find(o=>o.kind==='prompt');
+   const nextPrompt=outputs.find(o=>o.kind==='prompt')??followUp;
    if(!nextPrompt||nextPrompt.kind!=='prompt')return;
    // One explicit foreground turn. An uncertain result is proposed, never auto-graded.
    if(nextPrompt.activityKind==='listen'){
