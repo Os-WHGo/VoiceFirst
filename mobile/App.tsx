@@ -97,7 +97,7 @@ export default function App() {
         <RegionalComparisons key={'regional-'+target} target={target} rate={rate} onPrimaryChange={onPrimaryRegion}/>
         <VoicePackImporter target={target}/>
         <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
-        {level==='A0' && <A0TextOrientation key={'orientation-'+target} target={target} nativeLanguage={nativeLanguage} />}
+        {level==='A0' && <A0TextOrientation key={'orientation-'+target} target={target} nativeLanguage={nativeLanguage} rate={rate} />}
         {level==='A0' && a0Catalog.kind==='blocked' && <Text style={styles.note}>Catálogo A0 bloqueado por validación. No se cargaron ejercicios.</Text>}
         {level==='A0' && a0Catalog.kind==='candidate' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={pendingA0Lessons} />}
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} guideLocale={guideLocale} rate={rate} experience={experience} />
