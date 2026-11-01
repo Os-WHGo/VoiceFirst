@@ -19,13 +19,13 @@ const explanations:Record<TargetLanguage,string>={
  'de':'Hör dir die ersten Wörter mit einer verfügbaren Gerätestimme an. Offline-Audio hängt von installierten Stimmen ab; keine Aussprachebewertung.',
  'it':'Ascolta le prime parole con una voce del dispositivo, se disponibile. L’audio offline dipende dalle voci installate; nessuna valutazione della pronuncia.'
 };
-const labels:Record<TargetLanguage,{heading:string;disclaimer:string;show:string;hide:string;listen:string;stop:string;unavailable:string}>={
- 'en-CA':{heading:'A0 · First contact · Listening preview',disclaimer:'Draft material. No score or progress is recorded.',show:'Show words',hide:'Hide words',listen:'Listen to',stop:'Stop audio',unavailable:'The device voice is unavailable. Read the word or try again later.'},
- 'fr-CA':{heading:'A0 · Premier contact · Aperçu audio',disclaimer:'Contenu provisoire. Aucun score ni progrès enregistré.',show:'Voir les mots',hide:'Masquer les mots',listen:'Écouter',stop:'Arrêter le son',unavailable:'La voix du téléphone n’est pas disponible. Vous pouvez lire le mot.'},
- es:{heading:'A0 · Primer contacto · Escucha',disclaimer:'Material en revisión. No se registra puntuación ni progreso.',show:'Ver palabras',hide:'Ocultar palabras',listen:'Escuchar',stop:'Detener audio',unavailable:'No hay una voz compatible disponible. Puedes leer la palabra y volver a intentarlo.'},
- 'pt-BR':{heading:'A0 · Primeiro contato · Escuta',disclaimer:'Material em revisão. Nenhuma pontuação ou progresso é registrado.',show:'Ver palavras',hide:'Ocultar palavras',listen:'Ouvir',stop:'Parar áudio',unavailable:'A voz do dispositivo não está disponível. Você pode ler a palavra.'},
- de:{heading:'A0 · Erster Kontakt · Hörbeispiele',disclaimer:'Entwurf. Keine Punkte oder Fortschritte werden gespeichert.',show:'Wörter anzeigen',hide:'Wörter ausblenden',listen:'Anhören',stop:'Audio stoppen',unavailable:'Keine passende Gerätestimme verfügbar. Du kannst das Wort lesen.'},
- it:{heading:'A0 · Primo contatto · Ascolto',disclaimer:'Materiale in revisione. Nessun punteggio o progresso viene registrato.',show:'Mostra parole',hide:'Nascondi parole',listen:'Ascolta',stop:'Ferma audio',unavailable:'Nessuna voce compatibile disponibile. Puoi leggere la parola.'}
+const labels:Record<TargetLanguage,{heading:string;disclaimer:string;show:string;hide:string;listen:string;listenAll:string;stop:string;unavailable:string}>={
+ 'en-CA':{heading:'A0 · First contact · Listening preview',disclaimer:'Draft material. No score or progress is recorded.',show:'Show words',hide:'Hide words',listen:'Listen to',listenAll:'Listen all words',stop:'Stop audio',unavailable:'The device voice is unavailable. Read the word or try again later.'},
+ 'fr-CA':{heading:'A0 · Premier contact · Aperçu audio',disclaimer:'Contenu provisoire. Aucun score ni progrès enregistré.',show:'Voir les mots',hide:'Masquer les mots',listen:'Écouter',listenAll:'Écouter tous les mots',stop:'Arrêter le son',unavailable:'La voix du téléphone n’est pas disponible. Vous pouvez lire le mot.'},
+ es:{heading:'A0 · Primer contacto · Escucha',disclaimer:'Material en revisión. No se registra puntuación ni progreso.',show:'Ver palabras',hide:'Ocultar palabras',listen:'Escuchar',listenAll:'Escuchar todas las palabras',stop:'Detener audio',unavailable:'No hay una voz compatible disponible. Puedes leer la palabra y volver a intentarlo.'},
+ 'pt-BR':{heading:'A0 · Primeiro contato · Escuta',disclaimer:'Material em revisão. Nenhuma pontuação ou progresso é registrado.',show:'Ver palavras',hide:'Ocultar palavras',listen:'Ouvir',listenAll:'Ouvir todas as palavras',stop:'Parar áudio',unavailable:'A voz do dispositivo não está disponível. Você pode ler a palavra.'},
+ de:{heading:'A0 · Erster Kontakt · Hörbeispiele',disclaimer:'Entwurf. Keine Punkte oder Fortschritte werden gespeichert.',show:'Wörter anzeigen',hide:'Wörter ausblenden',listen:'Anhören',listenAll:'Alle Wörter anhören',stop:'Audio stoppen',unavailable:'Keine passende Gerätestimme verfügbar. Du kannst das Wort lesen.'},
+ it:{heading:'A0 · Primo contatto · Ascolto',disclaimer:'Materiale in revisione. Nessun punteggio o progresso viene registrato.',show:'Mostra parole',hide:'Nascondi parole',listen:'Ascolta',listenAll:'Ascolta tutte le parole',stop:'Ferma audio',unavailable:'Nessuna voce compatibile disponibile. Puoi leggere la parola.'}
 };
 export function A0TextOrientation({target,nativeLanguage,rate=0.88}:{target:TargetLanguage;nativeLanguage:TargetLanguage;rate?:number}){
  const [visible,setVisible]=useState(false);
@@ -71,12 +71,31 @@ export function A0TextOrientation({target,nativeLanguage,rate=0.88}:{target:Targ
    if(result.kind==='failed')setAudioIssue(ui.unavailable);
   });
  };
+ const listenAll=()=>{
+  if(!visible||!foreground)return;
+  if(playing===-1){stop();return;}
+  stop();
+  setAudioIssue('');
+  const token=epoch.current;
+  setPlaying(-1);
+  void narrator.run(examples[target].map(entry=>({
+   text:entry.word,language:target,purpose:'target-cue' as const
+  })),rate).then(result=>{
+   if(!live.current||token!==epoch.current)return;
+   setPlaying(null);
+   if(result.kind==='failed')setAudioIssue(ui.unavailable);
+  });
+ };
  return <View style={styles.card}>
   <Text style={styles.heading}>{ui.heading}</Text>
   <Text style={styles.note}>{ui.disclaimer}</Text>
   <Text style={styles.note}>{explanations[nativeLanguage]}</Text>
   <Pressable accessibilityRole="button" accessibilityState={{expanded:visible}} style={styles.action}
    onPress={()=>{if(visible)stop();setAudioIssue('');setVisible(v=>!v);}}><Text style={styles.text}>{visible?ui.hide:ui.show}</Text></Pressable>
+  {visible&&<Pressable accessibilityRole="button" accessibilityState={{disabled:!foreground}}
+   disabled={!foreground} style={styles.action} onPress={listenAll}>
+   <Text style={styles.text}>{playing===-1?ui.stop:ui.listenAll}</Text>
+  </Pressable>}
   {visible?examples[target].map((entry,i)=><View key={entry.word}>
    <Text style={styles.word}>{entry.word}</Text>
    {nativeLanguage!==target&&entry.translations[nativeLanguage]?<Text style={styles.note}>{entry.translations[nativeLanguage]}</Text>:null}
