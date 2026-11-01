@@ -44,7 +44,9 @@ const patterns: ReadonlyArray<{ words: readonly string[]; action: VoiceCommand }
   { words: ['apenas ouvir', 'so escutar', 'nur zuhoren', 'nur horen', 'solo ascoltare', 'voglio solo ascoltare'], action: { type: 'ONLY_LISTEN' } },
   { words: ['mais rapido', 'fale mais rapido', 'schneller bitte', 'sprich schneller', 'piu veloce', 'parla piu veloce'], action: { type: 'FASTER' } },
   { words: ['comece de novo', 'noch einmal', 'ancora una volta'], action: { type: 'REPEAT' } },
-  { words: ['explica em portugues', 'erklar es auf deutsch', 'spiegami in italiano'], action: { type: 'EXPLAIN_IN', language: 'pt-BR' } },
+  { words: ['explica em portugues'], action: { type: 'EXPLAIN_IN', language: 'pt-BR' } },
+  { words: ['erklar es auf deutsch'], action: { type: 'EXPLAIN_IN', language: 'de' } },
+  { words: ['spiegami in italiano'], action: { type: 'EXPLAIN_IN', language: 'it' } },
 
 ];
 const index = new Map(patterns.flatMap(({ words, action }) => words.map((w): [string, VoiceCommand] => [clean(w), action])));
