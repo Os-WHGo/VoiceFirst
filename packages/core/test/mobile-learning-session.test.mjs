@@ -223,6 +223,60 @@ test('missing command-language ASR model has visible actionable offline recovery
  assert.deepEqual(h.answerStarts,[]);
  assert.deepEqual(h.commandStarts,[]);
 });
+async function reachVoiceChoice(h){
+ let tree=await h.flush();
+ h.press(tree,'Activar guía de voz');
+ await h.flush();await h.drain();
+ assert.equal(h.commandStarts.length,1,'first listening stage opens command microphone');
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ await h.flush();await h.drain();
+ assert.equal(h.runtime.value.session.current.activityId,'en-CA-a0-greeting-comprehension');
+ assert.equal(h.commandStarts.length,2,'choice starts a new known-language command turn');
+ const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
+ const activity=h.runtime.activities.find(a=>a.id===prompt.activityId);
+ const selectedIndex=prompt.options.findIndex(o=>o.id===activity.correctOptionId);
+ assert.ok(selectedIndex>=0);
+ const spoken=['Elijo la primera opción','Elijo la segunda opción','Elijo la tercera opción'][selectedIndex];
+ const before=h.runtime.value.session.results.length;
+ h.callbacks.get('es')({text:spoken,confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();
+ assert.equal(h.runtime.value.session.results.length,before,'proposing a choice must not score it');
+ assert.equal(h.events.at(-1).type,'skip','original explicit skip only');
+ assert.ok(textOf(tree).includes(core.voiceChoiceConfirmation('es',selectedIndex,prompt.options[selectedIndex].text)));
+ await h.drain();
+ assert.equal(h.commandStarts.length,3,'confirmation must be a new, separate recognition turn');
+ return {before,prompt,selectedIndex};
+}
+test('hands-free course comprehension lets learner propose numbered answer and confirm by voice',async()=>{
+ const h=voiceHarness(),{before,prompt,selectedIndex}=await reachVoiceChoice(h);
+ h.callbacks.get('es')({text:'confirmar mi respuesta',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.at(-1).type,'choose');
+ assert.equal(h.events.at(-1).optionId,prompt.options[selectedIndex].id);
+ assert.equal(h.runtime.value.session.results.length,before+1,'only explicit confirmation submits evidence');
+ const tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('hands-free comprehension rejects the proposed option and listens for a new selection',async()=>{
+ const h=voiceHarness(),{before}=await reachVoiceChoice(h);
+ h.callbacks.get('es')({text:'rechazar mi respuesta',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.runtime.value.session.results.length,before,'rejection does not score an answer');
+ await h.drain();
+ assert.equal(h.commandStarts.length,4,'a new listening turn follows spoken rejection');
+ const tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('bare yes/no and incidental option words cannot select or confirm a comprehension answer',async()=>{
+ const h=voiceHarness(),{before}=await reachVoiceChoice(h);
+ const n=h.events.length;
+ h.callbacks.get('es')({text:'sí',confidence:'high'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.length,n);
+ assert.equal(h.runtime.value.session.results.length,before);
+ const tree=await h.flush();
+ h.press(tree,'Confirmar respuesta propuesta');
+ assert.equal(h.events.at(-1).type,'choose','visual fallback remains available');
+});
 test('guided mobile session narrates before capture, waits for choices and never auto-confirms ASR',async()=>{
  const h=voiceHarness();let tree=await h.flush();
  assert.equal(h.audio.length,0,'guide is opt-in');
@@ -237,7 +291,7 @@ test('guided mobile session narrates before capture, waits for choices and never
  const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
  const activity=h.runtime.activities.find(a=>a.id===prompt.activityId);
  const option=prompt.options.find(o=>o.id===activity.correctOptionId);
- tree=await h.flush();h.press(tree,option.text);await h.flush();
+ tree=await h.flush();h.press(tree,`${core.voiceChoiceLabel('es',prompt.options.indexOf(option))}: ${option.text}`);await h.flush();
  assert.equal(h.answerStarts.length,0,'target microphone must wait for narration');
  await h.drain();assert.equal(h.answerStarts.length,1);
  const before=h.runtime.value.session.results.length;
@@ -291,7 +345,7 @@ async function reachPendingVoiceAnswer(h){
  const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
  const activity=h.runtime.activities.find(a=>a.id===prompt.activityId);
  const correct=prompt.options.find(o=>o.id===activity.correctOptionId);
- tree=await h.flush();h.press(tree,correct.text);
+ tree=await h.flush();h.press(tree,`${core.voiceChoiceLabel('es',prompt.options.indexOf(correct))}: ${correct.text}`);
  await h.flush();await h.drain();
  assert.equal(h.answerStarts.length,1);
  const before=h.runtime.value.session.results.length;
@@ -300,7 +354,7 @@ async function reachPendingVoiceAnswer(h){
  assert.equal(h.runtime.value.session.results.length,before,'first ASR result is only a proposal');
  assert.equal(h.runtime.value.session.current.pendingConfirmation,'Hello!');
  await h.drain();
- assert.equal(h.commandStarts.length,2,'a separate command turn follows the spoken proposal');
+ assert.equal(h.commandStarts.length,3,'guided choice and later answer confirmation use separate command turns');
  return before;
 }
 test('guided learner can explicitly confirm a proposed answer by voice, without screen taps',async()=>{
@@ -350,7 +404,7 @@ test('stopping a guided utterance cannot unlock comprehension via a late callbac
  late.done();await tick();tree=await h.flush();
  const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
  const option=prompt.options[0];
- const button=elements(tree).find(e=>e.type==='Pressable'&&textOf(e)===option.text);
+ const button=elements(tree).find(e=>e.type==='Pressable'&&textOf(e)===`${core.voiceChoiceLabel('es',0)}: ${option.text}`);
  assert.equal(button.props.disabled,true);assert.equal(h.answerStarts.length,0);
 });
 test('actual course UI requires completed listening before a comprehension choice and preserves uncertain ASR source',async()=>{
@@ -370,7 +424,7 @@ test('actual course UI requires completed listening before a comprehension choic
  const render=()=>h.render(()=>api.LearningSessionCourse({target:'en-CA',nativeLanguage:'es'}));
  let tree=render();
  const button=(tree,label)=>elements(tree).find(e=>e.type==='Pressable'&&textOf(e)===label);
- const option=runtime.outputs.find(o=>o.kind==='prompt').options[0].text;
+ const option=`${core.voiceChoiceLabel('es',0)}: ${runtime.outputs.find(o=>o.kind==='prompt').options[0].text}`;
  assert.equal(button(tree,option).props.disabled,true,'no listening evidence before playback');
  button(tree,'Repetir').props.onPress();assert.equal(typeof onDone,'function');onDone();await tick();
  tree=render();assert.equal(button(tree,option).props.disabled,false);
