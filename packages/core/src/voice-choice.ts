@@ -5,14 +5,6 @@
  */
 import type {TargetLanguage} from './types.js';
 
-const ordinal:Readonly<Record<TargetLanguage,readonly string[]>>={
- 'en-CA':['first','second','third','fourth'],
- 'fr-CA':['première','deuxième','troisième','quatrième'],
- es:['primera','segunda','tercera','cuarta'],
- 'pt-BR':['primeira','segunda','terceira','quarta'],
- de:['erste','zweite','dritte','vierte'],
- it:['prima','seconda','terza','quarta'],
-};
 const fullPhrases:Readonly<Record<TargetLanguage,readonly string[]>>={
  'en-CA':['I choose the first option','I choose the second option','I choose the third option','I choose the fourth option'],
  'fr-CA':['Je choisis la première option','Je choisis la deuxième option','Je choisis la troisième option','Je choisis la quatrième option'],
