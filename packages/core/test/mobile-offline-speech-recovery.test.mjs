@@ -19,7 +19,7 @@ function hooks(){
  return {react,render:fn=>{cursor=0;return fn();},mount:()=>effects.splice(0).forEach(fn=>fn())};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function setup({installed=true,allowed=true,routeSupport=false,android=false}={}){
+function setup({installed=true,allowed=true,routeSupport=false,android=false,immediateRouteChange=false}={}){
  const h=hooks(),listeners=new Map(),final=[],partial=[],starts=[],downloads=[];let permissionCount=0,abortCount=0,permissionGranted=allowed,modelInstalled=installed;
  let routeListener=null,routeSubscriptions=0;
  const appState={currentState:'active',addEventListener(){return {remove(){}};}};
@@ -44,7 +44,13 @@ function setup({installed=true,allowed=true,routeSupport=false,android=false}={}
   '@voicefirst/core':core,'expo-speech-recognition':{ExpoSpeechRecognitionModule:native},
   './native-input-route':{
    readNativeInputSnapshot:async()=>routeSupport?routeSnapshot():null,
-   observeNativeInputChanges:callback=>{routeListener=callback;routeSubscriptions++;return ()=>{if(routeListener===callback)routeListener=null;};}
+   observeNativeInputChanges:callback=>{
+    routeListener=callback;routeSubscriptions++;
+    if(immediateRouteChange)callback(android
+      ?{...routeSnapshot(),connectedInputs:[{id:'phone',kind:'built-in'}],observedAtEpochMs:1780000100100}
+      :{...routeSnapshot(),activeInputId:'headset',observedAtEpochMs:1780000100100});
+    return ()=>{if(routeListener===callback)routeListener=null;};
+   }
   }
  };
  new Function('require','module','exports',code)(name=>{assert.ok(name in imports,'unknown import '+name);return imports[name];},module,module.exports);
@@ -240,4 +246,21 @@ test('native observer unavailable never prevents basic phone microphone learning
  h.emit('result',{isFinal:true,results:[{transcript:'Hello',confidence:0.8}]});
  assert.equal(h.final.length,1);
  h.emit('end');
+});
+
+test('route change delivered synchronously while subscribing leaves no orphaned listener',async()=>{
+ for(const android of [false,true]){
+  const h=setup({routeSupport:true,immediateRouteChange:true,android});
+  await h.flush();await h.flush();
+  assert.equal(await h.render().start('answer-a'),true);
+  h.emit('audiostart',{timestamp:1780000100000});
+  await tick();
+  assert.equal(h.aborts(),1,'interrupting notification must abort native recognition');
+  assert.equal(h.hasRouteWatcher(),false,'synchronous listener must be unsubscribed');
+  assert.deepEqual(h.final,[],'no interrupted answer can be scored');
+  assert.equal(await h.render().start('answer-b'),false,'wait for native terminal end');
+  h.emit('end');
+  assert.equal(await h.render().start('answer-b'),true);
+  h.emit('end');
+ }
 });
