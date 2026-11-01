@@ -264,3 +264,24 @@ test('route change delivered synchronously while subscribing leaves no orphaned 
   h.emit('end');
  }
 });
+
+test('route changes after audioend cannot cancel a captured answer awaiting transcription',async()=>{
+ for(const android of [false,true]){
+  const h=setup({routeSupport:true,android});
+  await h.flush();await h.flush();
+  assert.equal(await h.render().start('already-captured'),true);
+  h.emit('audiostart',{timestamp:1780000100000});
+  await tick();
+  assert.equal(h.hasRouteWatcher(),true,'observe route only while capturing');
+  h.emit('audioend',{timestamp:1780000100100});
+  assert.equal(h.hasRouteWatcher(),false,'detach observer once capture stops');
+  assert.equal(h.render().capturePhase,'processing');
+  assert.equal(h.aborts(),0);
+  h.emit('result',{isFinal:true,results:[{transcript:'Bonjour',confidence:0.93}]});
+  assert.deepEqual(h.final,[{id:'already-captured',r:{text:'Bonjour',confidence:'high'}}]);
+  assert.equal(await h.render().start('next'),false,'terminal native end still required');
+  h.emit('end');
+  assert.equal(await h.render().start('next'),true);
+  h.emit('end');
+ }
+});

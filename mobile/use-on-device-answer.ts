@@ -183,7 +183,9 @@ export function useOnDeviceAnswer(language:TargetLanguage,
      stop();setIssue('Se detectó una discontinuidad del audio. No se ha registrado respuesta; puedes volver a intentarlo.');
      return;
     }
-    // A result may still arrive AFTER audioend. Only 'end' frees the gate.
+    // Capture is over; route changes during local transcription must not
+    // discard already captured speech. Native 'end' still owns the gate.
+    releaseRouteWatch();
     setListening(false);setCapturePhase('processing');
    }),
    native.addListener('nomatch',()=>{

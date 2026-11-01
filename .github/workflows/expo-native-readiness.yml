@@ -67,6 +67,7 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/voicefirst-apk-signature.txt"
           "$AAPT" dump badging "$APK" > "$RUNNER_TEMP/voicefirst-apk-badging.txt"
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > "$RUNNER_TEMP/voicefirst-apk-manifest.txt"
+          grep -Fq "android.permission.RECORD_AUDIO" "$RUNNER_TEMP/voicefirst-apk-manifest.txt"
           node scripts/verify-android-release-artifact.mjs \
             "$RUNNER_TEMP/voicefirst-apk-entries.txt" \
             "$RUNNER_TEMP/voicefirst-apk-signature.txt" \
@@ -137,6 +138,21 @@ jobs:
             -maxdepth 1 -name '*.app' -type d | head -n 1)
           test -n "$APP"
           test -f "$APP/Info.plist"
+          python3 - "$APP/Info.plist" <<'PY'
+          import plistlib
+          import sys
+          with open(sys.argv[1], 'rb') as source:
+              info = plistlib.load(source)
+          for key in ('NSMicrophoneUsageDescription', 'NSSpeechRecognitionUsageDescription'):
+              value = info.get(key)
+              if not isinstance(value, str) or len(value.strip()) < 20:
+                  raise SystemExit('Missing or inadequate packaged iOS privacy text: ' + key)
+          if 'audio' in info.get('UIBackgroundModes', []):
+              raise SystemExit('Background audio unexpectedly enabled in the packaged iOS app')
+          if info.get('CFBundleIdentifier') != 'com.oswhgo.voicefirst':
+              raise SystemExit('Unexpected packaged iOS bundle identifier')
+          print('Packaged simulator Info.plist checked: permissions, foreground audio and bundle identifier.')
+          PY
           echo 'Simulator .app built and validated locally. Not an installable iPhone IPA or a hardware test.'
   mobile-js-bundle:
     runs-on: ubuntu-latest
