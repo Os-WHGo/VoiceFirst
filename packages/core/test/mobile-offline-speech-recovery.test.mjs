@@ -1,0 +1,103 @@
+/** Simulated React hooks and native speech events.
+ * This never tests a real microphone, permissions, or hardware audio routing.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+import * as core from '../dist/index.js';
+
+function hooks(){
+ const slots=[],effects=[];let cursor=0;
+ const react={
+  useState(initial){const id=cursor++;if(!(id in slots))slots[id]=typeof initial==='function'?initial():initial;return [slots[id],value=>{slots[id]=typeof value==='function'?value(slots[id]):value;}];},
+  useRef(initial){const id=cursor++;return slots[id]??(slots[id]={current:initial});},
+  useMemo(fn,deps){const id=cursor++,old=slots[id];if(!old||!deps||deps.some((v,i)=>v!==old.deps?.[i]))slots[id]={deps,value:fn()};return slots[id].value;},
+  useCallback(fn,deps){return react.useMemo(()=>fn,deps);},
+  useEffect(fn,deps){const id=cursor++,old=slots[id];if(!old||!deps||deps.some((v,i)=>v!==old.deps?.[i])){const entry={deps,cleanup:old?.cleanup};slots[id]=entry;effects.push(()=>{entry.cleanup?.();entry.cleanup=fn();});}}
+ };
+ return {react,render:fn=>{cursor=0;return fn();},mount:()=>effects.splice(0).forEach(fn=>fn())};
+}
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
+function setup({installed=true,allowed=true}={}){
+ const h=hooks(),listeners=new Map(),final=[],partial=[],starts=[],downloads=[];let permissionCount=0,abortCount=0,permissionGranted=allowed,modelInstalled=installed;
+ const appState={currentState:'active',addEventListener(){return {remove(){}};}};
+ const native={
+  isRecognitionAvailable:()=>true,supportsOnDeviceRecognition:()=>true,
+  requestMicrophonePermissionsAsync:async()=>{permissionCount++;return {granted:permissionGranted};},
+  addListener(name,callback){listeners.set(name,callback);return {remove(){listeners.delete(name);}};},
+  start(opts){starts.push(opts);},abort(){abortCount++;},
+  getSupportedLocales:async()=>({locales:['en-CA'],installedLocales:modelInstalled?['en-CA']:[]}),
+  androidTriggerOfflineModelDownload:async options=>{downloads.push(options.locale);return {status:'download_scheduled'};}
+ };
+ const script=readFileSync(new URL('../../../mobile/use-on-device-answer.ts',import.meta.url),'utf8');
+ const code=ts.transpileModule(script,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText;
+ const module={exports:{}};
+ const imports={
+  react:h.react,'react-native':{AppState:appState,Platform:{OS:'android'}},
+  '@voicefirst/core':core,'expo-speech-recognition':{ExpoSpeechRecognitionModule:native}
+ };
+ new Function('require','module','exports',code)(name=>{assert.ok(name in imports,'unknown import '+name);return imports[name];},module,module.exports);
+ const render=()=>h.render(()=>module.exports.useOnDeviceAnswer('en-CA',(r,id)=>final.push({r,id}),(value,id)=>partial.push({value,id})));
+ const flush=async()=>{render();h.mount();await tick();return render();};
+ return {render,flush,emit:(type,e={})=>{assert.ok(listeners.has(type),'missing listener '+type);listeners.get(type)(e);},native,
+  final,partial,starts,downloads,setAllowed:x=>permissionGranted=x,setInstalled:x=>modelInstalled=x,
+  permissions:()=>permissionCount,aborts:()=>abortCount};
+}
+
+test('offline model missing does not trigger permissions, cloud ASR or unsolicited downloads',async()=>{
+ const h=setup({installed:false});
+ let view=await h.flush();view=await h.flush();
+ assert.equal(view.model,'missing');
+ assert.equal(await view.start('question-a'),false);
+ assert.equal(h.permissions(),0);
+ assert.equal(h.starts.length,0);
+ assert.equal(h.downloads.length,0);
+ assert.match(h.render().issue,/no instalado/);
+ // Download remains opt-in and a scheduled operation does not claim installation.
+ await h.render().downloadModel();
+ assert.deepEqual(h.downloads,['en-CA']);
+ assert.equal(h.render().model,'missing');
+ h.setInstalled(true);await h.render().checkModel();
+ assert.equal(h.render().model,'installed');
+ assert.equal(await h.render().start('question-a'),true);
+ assert.equal(h.starts.length,1);
+ assert.equal(h.starts[0].requiresOnDeviceRecognition,true);
+ assert.equal(h.starts[0].recordingOptions.persist,false);
+ h.emit('end');
+});
+test('permission denial keeps turn and progress unchanged; explicit retry can recover',async()=>{
+ const h=setup({allowed:false});await h.flush();await h.flush();
+ assert.equal(await h.render().start('question-a'),false);
+ assert.equal(h.starts.length,0);
+ assert.match(h.render().issue,/Autoriza el micrófono/);
+ h.setAllowed(true);
+ assert.equal(await h.render().start('question-a'),true);
+ assert.equal(h.final.length,0);
+ h.emit('end');
+});
+test('native no-speech error never submits an answer; gate remains closed until native end',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('question-1'),true);
+ h.emit('result',{isFinal:false,results:[{transcript:'partial'}]});
+ assert.deepEqual(h.partial,[{value:'partial',id:'question-1'}]);
+ h.emit('error',{error:'no-speech',message:'untrusted'});
+ assert.equal(h.final.length,0);
+ assert.match(h.render().issue,/No se detectó una respuesta/);
+ assert.equal(await h.render().start('question-2'),false,'cannot attribute a late result to next turn');
+ h.emit('result',{isFinal:true,results:[{transcript:'stale answer',confidence:1}]});
+ assert.deepEqual(h.final,[],'error revokes the previous turn');
+ h.emit('end');
+ assert.equal(await h.render().start('question-2'),true);
+ h.emit('result',{isFinal:true,results:[{transcript:'Hello',confidence:0.9}]});
+ assert.deepEqual(h.final,[{id:'question-2',r:{text:'Hello',confidence:'high'}}]);
+ h.emit('end');
+});
+test('native offline-service error offers text fallback without uploading voice',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('question'),true);
+ h.emit('error',{error:'network',message:'send me the recording'});
+ assert.match(h.render().issue,/no enviará tu voz a Internet/);
+ assert.deepEqual(h.final,[]);
+ h.emit('end');
+});
