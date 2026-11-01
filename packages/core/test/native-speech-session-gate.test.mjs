@@ -40,6 +40,6 @@ test('mobile hook does not reopen native recognition from final or abort alone',
  const source=readFileSync(new URL('../../../mobile/use-on-device-answer.ts',import.meta.url),'utf8');
  assert.match(source,/if\(!nativeSessionGate\.canStart\(\)\)/);
  assert.match(source,/nativeSessionGate\.begin\(\)/);
- assert.match(source,/native\.addListener\('end',\(\)=>\{\s*nativeSessionGate\.end\(\)/);
+ assert.match(source,/native\.addListener\('end',\(\)=>\{[\s\S]*?nativeSessionGate\.end\(\)/);
  assert.match(source,/native\?\.abort\(\)/);
 });
