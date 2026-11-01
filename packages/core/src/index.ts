@@ -158,3 +158,5 @@ export * from './speech-stack.js';
 export * from './speech-model-candidates.js';
 export * from './learning-checkpoint.js';
 export * from './session-narration.js';
+
+export * from './session-voice-controls.js';
