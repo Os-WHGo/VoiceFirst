@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.author         = 'MU'
   s.homepage       = 'https://github.com/Os-WHGo/VoiceFirst'
   s.platforms      = { :ios => '15.1' }
-  s.source         = { :path => '.' }
+  s.source         = { :git => '' }
   s.static_framework = true
   s.dependency 'ExpoModulesCore'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
