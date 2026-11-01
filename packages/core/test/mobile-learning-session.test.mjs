@@ -204,6 +204,15 @@ function voiceHarness(options={}){
  return {runtime,events,audio,answerStarts,commandStarts,modelActions,callbacks,render,flush,press,drain,
   background:()=>{appState.currentState='background';appStateCallback('background');}};
 }
+test('guided voice session warns that Bluetooth and glasses microphone provenance is not verified',async()=>{
+ const h=voiceHarness();
+ const tree=await h.flush();
+ assert.match(textOf(tree),/Fuente del micrófono sin verificar/);
+ assert.match(textOf(tree),/no se ha comprobado audio de lentes inteligentes/);
+ assert.equal(h.events.length,0,'a source warning does not affect progress');
+ assert.equal(h.answerStarts.length,0,'warning does not start recognition');
+ assert.equal(h.commandStarts.length,0);
+});
 test('missing command-language ASR model has visible actionable offline recovery without changing learning evidence',async()=>{
  const h=voiceHarness({canDownload:true,answerModel:'installed',commandModel:'missing',
   commandIssue:'El reconocimiento local para comandos no está disponible.'});
