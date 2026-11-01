@@ -187,5 +187,10 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   }catch{if(mounted.current&&languageRef.current===language)setIssue('No se pudo solicitar el modelo local para este idioma.');}
  },[native,language,checkModel]);
  return {available:!!native,listening,issue,model,checkingModel,checkModel,start,stop,downloadModel,
+  // The current Expo speech-recognition adapter cannot read AVAudioSession
+  // currentRoute or Android AudioManager's active input. Merely allowing
+  // Bluetooth does not prove that a glasses or headset mic was selected.
+  // Replace only after a tested, permission-scoped native route observer.
+  audioInputEvidence:'unverified' as const,
   canDownload:!!native&&Platform.OS==='android'&&!!native.androidTriggerOfflineModelDownload};
 }
