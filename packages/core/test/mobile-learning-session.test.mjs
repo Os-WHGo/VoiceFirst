@@ -57,6 +57,75 @@ test('actual hook keeps last committed snapshot and blocks writes after storage 
  assert.equal(render().blocked,true);assert.equal(render().value.session,null);
  await render().transition('start');assert.equal(saves,1);
 });
+test('changing the target before a checkpoint read completes never loads the former language',async()=>{
+ const h=hooks(),pending=new Map();
+ const api=compile('../../../mobile/use-learning-session.ts',{
+  react:h.react,'@voicefirst/core':core,'./learning-checkpoint-storage':{
+   loadLearningCheckpoint:target=>new Promise((resolve,reject)=>pending.set(target,{resolve,reject})),
+   saveLearningCheckpoint:async()=>assert.fail('no writes before target is loaded'),
+  },
+ });
+ const render=target=>h.render(()=>api.useLearningSession(target,'es',core.defaultExperiencePreferences));
+ render('en-CA');h.mount();
+ let stale=render('fr-CA');
+ assert.equal(stale.value,null,'a render for another target cannot show an old checkpoint');
+ await stale.transition('start');
+ h.mount();
+ pending.get('fr-CA').resolve({checkpoint:core.newLearningCheckpoint('fr-CA'),raw:null});
+ await tick();
+ assert.equal(render('fr-CA').value.target,'fr-CA');
+ pending.get('en-CA').resolve({checkpoint:core.newLearningCheckpoint('en-CA'),raw:null});
+ await tick();
+ assert.equal(render('fr-CA').value.target,'fr-CA','late original read cannot replace new language');
+ assert.equal(render('fr-CA').blocked,false);
+});
+test('a previous target checkpoint disappears before effects and its old save cannot overwrite the new target',async()=>{
+ const h=hooks();let finishOldSave;const saved=[];
+ const api=compile('../../../mobile/use-learning-session.ts',{
+  react:h.react,'@voicefirst/core':core,'./learning-checkpoint-storage':{
+   loadLearningCheckpoint:async target=>({checkpoint:core.newLearningCheckpoint(target),raw:null}),
+   saveLearningCheckpoint:async checkpoint=>{
+    saved.push(checkpoint.target);
+    if(checkpoint.target==='en-CA')return new Promise(resolve=>{finishOldSave=()=>resolve(core.learningCheckpointToJSON(checkpoint));});
+    return core.learningCheckpointToJSON(checkpoint);
+   },
+  },
+ });
+ const render=target=>h.render(()=>api.useLearningSession(target,'es',core.defaultExperiencePreferences));
+ render('en-CA');h.mount();await tick();
+ const old=render('en-CA').transition('start');
+ assert.deepEqual(saved,['en-CA']);
+ const staleView=render('fr-CA');
+ assert.equal(staleView.value,null,'synchronous render must hide previous language');
+ await staleView.transition('start');
+ assert.deepEqual(saved,['en-CA'],'new target cannot write using previous checkpoint');
+ h.mount();await tick();
+ assert.equal(render('fr-CA').value.target,'fr-CA');
+ finishOldSave();await old;
+ assert.equal(render('fr-CA').value.target,'fr-CA');
+ assert.equal(render('fr-CA').busy,false);
+ assert.equal(render('fr-CA').blocked,false);
+ await render('fr-CA').transition('start');
+ assert.equal(render('fr-CA').value.session.target,'fr-CA');
+ assert.deepEqual(saved,['en-CA','fr-CA']);
+});
+test('late load failures from the previous target do not block the selected course',async()=>{
+ const h=hooks(),pending=new Map();
+ const api=compile('../../../mobile/use-learning-session.ts',{
+  react:h.react,'@voicefirst/core':core,'./learning-checkpoint-storage':{
+   loadLearningCheckpoint:target=>new Promise((resolve,reject)=>pending.set(target,{resolve,reject})),
+   saveLearningCheckpoint:async()=>assert.fail('no writes expected'),
+  },
+ });
+ const render=target=>h.render(()=>api.useLearningSession(target,'es',core.defaultExperiencePreferences));
+ render('de');h.mount();
+ render('it');h.mount();
+ pending.get('it').resolve({checkpoint:core.newLearningCheckpoint('it'),raw:null});await tick();
+ pending.get('de').reject(Error('old disk error'));await tick();
+ assert.equal(render('it').value.target,'it');
+ assert.equal(render('it').blocked,false);
+});
+
 const a0Lesson={lessonId:'a0.fr.1',conceptId:'a0.greeting',targetLanguage:'fr-CA',sequence:1,prerequisites:[],skill:'reading',contextByKnownLanguage:{},promptByKnownLanguage:{},options:[{id:'a',text:'Bonjour'},{id:'b',text:'Bonsoir'}],correctOptionId:'a',publishable:false,humanReviewRequired:true};
 const a0Lessons=[a0Lesson];
 function a0HookHarness(port){
