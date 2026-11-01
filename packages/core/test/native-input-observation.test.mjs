@@ -43,3 +43,20 @@ test('device labels and a supported route alone cannot prove actual PCM source',
  assert.ok(sample);
  assert.equal(nativeRouteSourceVerifiedBySnapshot(sample),false);
 });
+
+test('two-snapshot watcher handoff detects an unplug between initial read and event subscription',()=>{
+ // A notification can be missed before subscribe, even though the first
+ // native snapshot looked healthy. The post-subscription read must be checked.
+ const iosBefore=parseNativeInputSnapshot(ios());
+ const iosAfter=parseNativeInputSnapshot({...ios(),activeInputId:'headset',
+  observedAtEpochMs:1780000100010});
+ assert.equal(shouldInterruptForInputRouteChange(iosBefore,iosAfter),true);
+ const androidBefore=parseNativeInputSnapshot(android());
+ const androidAfter=parseNativeInputSnapshot({...android(),
+  connectedInputs:[{id:'internal',kind:'built-in'}],
+  observedAtEpochMs:1780000100010});
+ assert.equal(shouldInterruptForInputRouteChange(androidBefore,androidAfter),true);
+ assert.equal(shouldInterruptForInputRouteChange(androidBefore,parseNativeInputSnapshot({
+  ...android(),observedAtEpochMs:1780000100010})),false);
+ assert.equal(shouldInterruptForInputRouteChange(iosBefore,null),true);
+});
