@@ -22,5 +22,11 @@ for(const [index,module] of output.modules.entries()){
    invalid.push({index,project:j,package:module.packageName||module.name,publication:project.publication});
  }
 }
-if(invalid.length){console.error('Invalid Gradle publication metadata detected:',JSON.stringify(invalid));process.exit(1);}
+// A prebuild may succeed while silently missing a local Expo native module.
+// Require the VoiceFirst read-only route observer to be listed in the actual
+// autolinking output; this does not claim its Kotlin code compiled successfully.
+const moduleListed=output.modules.some(m=>JSON.stringify(m).includes('voicefirst-audio-route')||
+ JSON.stringify(m).includes('VoiceFirstAudioRouteModule'));
+if(!moduleListed)invalid.push({module:'VoiceFirstAudioRoute',reason:'Local input route observer not registered with Android autolinking'});
+if(invalid.length){console.error('Invalid Expo Android autolinking:',JSON.stringify(invalid));process.exit(1);}
 console.log('Native Android Expo autolinking metadata has valid publication versions.');
