@@ -1,0 +1,16 @@
+{
+  "platforms": [
+    "apple",
+    "android"
+  ],
+  "apple": {
+    "modules": [
+      "VoiceFirstAudioRouteModule"
+    ]
+  },
+  "android": {
+    "modules": [
+      "expo.modules.voicefirstaudioroute.VoiceFirstAudioRouteModule"
+    ]
+  }
+}
