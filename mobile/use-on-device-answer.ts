@@ -4,7 +4,8 @@
  */
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Platform} from 'react-native';
-import {classifyVoiceConfidence,offlineSpeechFailure,queryLocalModelState,NativeSpeechSessionGate,newNativeCaptureEvidence,recordNativeCaptureSignal,type NativeCaptureEvidence,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
+import {readNativeInputSnapshot,observeNativeInputChanges} from './native-input-route';
+import {classifyVoiceConfidence,offlineSpeechFailure,queryLocalModelState,NativeSpeechSessionGate,newNativeCaptureEvidence,recordNativeCaptureSignal,shouldInterruptForInputRouteChange,type NativeInputSnapshot,type NativeCaptureEvidence,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
 type Subscription={remove:()=>void};
 // Derive the Android locale query contract from the installed package.
 type NativeLocaleOptions=Parameters<typeof import('expo-speech-recognition')['ExpoSpeechRecognitionModule']['getSupportedLocales']>[0];
@@ -49,6 +50,9 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  const [checkingModel,setCheckingModel]=useState(false);
  const active=useRef<{id:string;token:number}|null>(null);
  const captureEvidence=useRef<NativeCaptureEvidence|null>(null);
+ const observedInput=useRef<NativeInputSnapshot|null>(null);
+ const routeUnsubscribe=useRef<(()=>void)|null>(null);
+ const routeProbe=useRef(0);
  const epoch=useRef(0);
  const requesting=useRef(false);
  const mounted=useRef(true);
@@ -76,7 +80,15 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   void checkModel();
   return()=>{probeEpoch.current++;};
  },[checkModel]);
+ const releaseRouteWatch=useCallback(()=>{
+  routeProbe.current++;
+  const unsubscribe=routeUnsubscribe.current;
+  routeUnsubscribe.current=null;
+  observedInput.current=null;
+  try{unsubscribe?.();}catch{/* Native cleanup must not hold a turn open. */}
+ },[]);
  const stop=useCallback(()=>{
+  releaseRouteWatch();
   epoch.current++;
   const wasListening=active.current!==null;
   active.current=null;
@@ -92,7 +104,26 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   }
   owner.current=null;
   if(mounted.current)setListening(false);
- },[native]);
+ },[native,releaseRouteWatch]);
+ const startRouteWatch=useCallback(async(token:number)=>{
+  // Observe AFTER audiostart so the expected HFP switch during startup
+  // is not counted as a mid-turn interruption.
+  const probe=++routeProbe.current;
+  const initial=await readNativeInputSnapshot();
+  if(!initial||routeProbe.current!==probe||!mounted.current||
+     active.current?.token!==token||AppState.currentState!=='active')return;
+  observedInput.current=initial;
+  routeUnsubscribe.current=observeNativeInputChanges(next=>{
+   if(!mounted.current||routeProbe.current!==probe||active.current?.token!==token||
+      AppState.currentState!=='active')return;
+   const previous=observedInput.current;
+   observedInput.current=next;
+   if(shouldInterruptForInputRouteChange(previous,next)){
+    stop();
+    setIssue('Cambió la entrada de audio durante la práctica. Se canceló esta respuesta; comprueba el micrófono y vuelve a intentarlo.');
+   }
+  });
+ },[stop]);
  useEffect(()=>{
   mounted.current=true;
   const sub=AppState.addEventListener('change',state=>{if(state!=='active')stop();});
@@ -118,6 +149,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
      return;
     }
     setCapturePhase('capturing');
+    void startRouteWatch(active.current.token);
    }),
    native.addListener('audioend',event=>{
     if(!active.current||!mounted.current||microphoneOwner!==owner.current||
@@ -136,6 +168,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
    native.addListener('nomatch',()=>{
     if(!active.current||!mounted.current||microphoneOwner!==owner.current||
        nativeSessionGate.canStart())return;
+    releaseRouteWatch();
     active.current=null;captureEvidence.current=null;
     owner.current=null;microphoneOwner=null;
     setListening(false);setCapturePhase('idle');
@@ -150,12 +183,14 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     const spoken=event.results?.[0]?.transcript;
     if(typeof spoken!=='string'||!spoken.trim())return;
     if(!event.isFinal){callbacks.current.onPartial?.(spoken.trim(),captured.id);return;}
+    releaseRouteWatch();
     active.current=null;captureEvidence.current=null;owner.current=null;microphoneOwner=null;setListening(false);setCapturePhase('idle');
     const confidence=event.results?.[0]?.confidence;
     callbacks.current.onFinal({text:spoken.trim(),confidence:classifyVoiceConfidence(confidence)},captured.id);
    }),
    native.addListener('error',event=>{
     if(!active.current||microphoneOwner!==owner.current)return;
+    releaseRouteWatch();
     active.current=null;captureEvidence.current=null;owner.current=null;microphoneOwner=null;setListening(false);setCapturePhase('idle');
     // Do not grade errors or silently retry. Keep the native gate closed
     // until the platform emits its terminal 'end' event.
@@ -169,6 +204,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     if(!hadActive)return;
     // A terminal end with no result/error/nomatch must never be marked as
     // completed learning evidence or leave a phantom listening state.
+    releaseRouteWatch();
     active.current=null;captureEvidence.current=null;owner.current=null;microphoneOwner=null;
     setListening(false);setCapturePhase('idle');
     setIssue(hadNativeStart
@@ -177,7 +213,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
    }),
   ];
   return()=>subs.forEach(sub=>sub.remove());
- },[native,language,stop]);
+ },[native,language,stop,startRouteWatch,releaseRouteWatch]);
  const start=useCallback(async(exerciseId:string):Promise<boolean>=>{
   if(!mounted.current||languageRef.current!==language||AppState.currentState!=='active')return false;
   if(!native){setIssue('Este dispositivo no dispone de reconocimiento local compatible.');return false;}
@@ -217,6 +253,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   }catch{
    if(begun)nativeSessionGate.end(); // Only if native.start threw synchronously.
    if(epoch.current===token){
+    releaseRouteWatch();
     active.current=null;captureEvidence.current=null;setListening(false);setCapturePhase('idle');
     setIssue('Este idioma necesita un modelo local compatible. Puedes continuar por texto.');
    }
