@@ -63,7 +63,7 @@ export interface HandsFreeDecision {
 }
 const maxAgeMs=4000;
 function fresh(observed:number,now:number):boolean{
- return Number.isFinite(now)&&Number.isFinite(observed)&&now>=observed&&
+ return Number.isFinite(now)&&Number.isFinite(observed)&&now>=0&&observed>=0&&now>=observed&&
   now-observed<=maxAgeMs;
 }
 /** The result is advisory. It does not start an OS audio session or guarantee
@@ -100,7 +100,10 @@ export function assessHandsFreeEvidence(e:HandsFreeEvidence):HandsFreeDecision{
   if(w?.registration!=='registered')blockers.push('wearable-unregistered');
   if(!w?.connected||!w.deviceId.trim())blockers.push('wearable-not-connected');
   if(!w?.microphoneCapabilityObserved)blockers.push('wearable-microphone-unsupported');
-  if(!w?.microphoneInputId||w.microphoneInputId!==routeInput?.id)
+  // Until a native DAT PCM source has its own evidence contract, only an
+  // observed HFP input can be attributed to the wearable. The phone mic
+  // must never become the glass mic just because IDs happened to match.
+  if(routeInput?.kind!=='bluetooth-hfp'||!w?.microphoneInputId||w.microphoneInputId!==routeInput?.id)
    blockers.push('wearable-input-mismatch');
  }
  const canStart=!e.turnActive&&blockers.length===0;
