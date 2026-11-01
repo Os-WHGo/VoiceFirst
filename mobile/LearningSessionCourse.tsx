@@ -17,6 +17,18 @@ const labels:Record<TargetLanguage,readonly string[]>={
  de:['Lokaler A0–A1-Kurs · Beispiele','Sitzung starten','Fortsetzen','Pause','Weiter','Antwort','Prüfen','Sprechen','Stimme und Mikrofon stoppen','Wiederholen','Langsamer','Hinweis','Ohne Nachteil überspringen','Beenden und speichern','Vorgeschlagene Antwort bestätigen','Ablehnen und wiederholen','Anweisungen hören','Korrekturen anfordern','Zusammenfassung hören','Lokale Daten nicht verfügbar, aber erhalten. App schließen und erneut öffnen.','Fortschritt laden…','Aussprache nicht bewertet. Vorläufige Wiederholungsregeln. Offline-Stimme und Mikrofon müssen am Gerät geprüft werden.','Aussprachehilfe zeigen','Aussprachehilfe verbergen','Fortschritt gespeichert','Fällige Wiederholungen','Beispiel','Sitzung in der Hilfssprache gespeichert'],
  it:['Corso locale A0–A1 · esempi','Inizia sessione','Riprendi','Pausa','Continua','Risposta','Verifica','Parla','Ferma voce e microfono','Ripeti','Più lentamente','Indizio','Salta senza penalità','Termina e salva','Conferma risposta proposta','Rifiuta e ripeti','Ascolta istruzioni','Chiedi correzioni','Ascolta riepilogo','Dati locali non disponibili, conservati. Chiudi e riapri l’app per rileggerli.','Ripristino…','Pronuncia non valutata. Regole di ripasso provvisorie. Voce e microfono offline da verificare sul dispositivo.','Mostra aiuto fonetico','Nascondi aiuto fonetico','Progresso salvato','Ripassi dovuti','Modello','Sessione salvata nella lingua di aiuto'],
 };
+/** Wivra-to-VoiceFirst handoff: request Bluetooth routing, but never claim
+ * a headset or Meta glasses microphone until the active native input is read.
+ * Current Expo ASR integration has no active-route introspection.
+ */
+const unverifiedInputCopy:Record<TargetLanguage,string>={
+ es:'Fuente del micrófono sin verificar. El sistema puede usar el teléfono o los audífonos; no se ha comprobado audio de lentes inteligentes.',
+ 'en-CA':'Microphone source unverified. The system may use the phone or headset; smart-glasses audio has not been confirmed.',
+ 'fr-CA':'Source du microphone non vérifiée. Le système peut utiliser le téléphone ou un casque; le micro des lunettes n’est pas confirmé.',
+ 'pt-BR':'Fonte do microfone não verificada. O sistema pode usar o celular ou fones; o áudio dos óculos não foi confirmado.',
+ de:'Mikrofonquelle nicht geprüft. Das System nutzt möglicherweise Telefon oder Headset; eine Brillenaufnahme ist nicht bestätigt.',
+ it:'Origine del microfono non verificata. Il sistema può usare telefono o cuffie; l’audio degli occhiali non è confermato.'
+};
 const commandLabel:Record<TargetLanguage,string>={es:'Comando de voz', 'en-CA':'Voice command','fr-CA':'Commande vocale','pt-BR':'Comando de voz',de:'Sprachbefehl',it:'Comando vocale'};
 const offlineModelCopy:Record<TargetLanguage,{target:string;command:string;installed:string;missing:string;unknown:string;prepare:string;check:string}>={
  es:{target:'Voz para responder',command:'Voz para comandos',installed:'modelo local instalado (sin prueba de micrófono)',missing:'falta modelo local',unknown:'modelo local sin verificar',prepare:'Preparar modelo para comandos',check:'Comprobar modelo para comandos'},
@@ -235,6 +247,9 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    <Text style={s.note}>{guideCopy[known].notice} · {playbackRate.toFixed(2)}×</Text>
   </>}
   <Text accessibilityLiveRegion="polite" style={s.text}>{mic.listening||commandMic.listening?guideCopy[known].listening:narrating?guideCopy[known].speaking:''}</Text>
+  {session?.status==='active'&&(mic.available||commandMic.available)&&
+   (mic.audioInputEvidence!=='verified'||commandMic.audioInputEvidence!=='verified')&&
+   <Text style={s.note}>{unverifiedInputCopy[known]}</Text>}
   {runtime.value&&<Text style={s.text}>{c[24]}: {runtime.value.progress.completed.length} / {new Set(runtime.activities.map(a=>a.lessonId)).size} · {c[25]}: {dueObjectiveReviews(runtime.value.model,deviceLocalDay()).length}</Text>}
   {session&&session.known!==nativeLanguage&&session.status!=='finished'&&<Text style={s.warning}>{c[27]}: {session.known}</Text>}
   {runtime.value&&(!session||session.status==='finished')&&action(c[1]!,()=>{stop();void runtime.transition('start');})}
