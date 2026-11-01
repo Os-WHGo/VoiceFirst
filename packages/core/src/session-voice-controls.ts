@@ -15,11 +15,17 @@ export type SessionVoiceDecision =
 
 /** Resolve only explicit navigation actions. The caller must confirm the
  * command with the learner before executing it, and re-check session state.
+ * A guided confirmation is a distinct intentional spoken act, accepted only
+ * when an authored answer is awaiting confirmation, never an ASR grade.
  */
 export function resolveSessionVoiceCommand(
- command:VoiceCommand,status:LearningSessionState['status'],day:string
+ command:VoiceCommand,status:LearningSessionState['status'],day:string,pendingAnswer=false
 ):SessionVoiceDecision{
  switch(command.type){
+  case 'CONFIRM_ANSWER':
+   return status==='active'&&pendingAnswer?{kind:'event',event:{type:'confirm'}}:{kind:'unsupported'};
+  case 'REJECT_ANSWER':
+   return status==='active'&&pendingAnswer?{kind:'event',event:{type:'reject'}}:{kind:'unsupported'};
   case 'STOP':return status==='finished'?{kind:'unsupported'}:{kind:'event',event:{type:'finish'}};
   case 'PAUSE':return status==='active'?{kind:'event',event:{type:'pause'}}:{kind:'unsupported'};
   case 'RESUME':return status==='paused'?{kind:'event',event:{type:'resume',day}}:{kind:'unsupported'};
