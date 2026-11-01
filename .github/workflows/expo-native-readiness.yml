@@ -29,10 +29,14 @@ jobs:
       - run: npm run build:core
       - run: npm run check:expo-config
   android-native-source:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -44,6 +48,11 @@ jobs:
         run: node scripts/check-android-release-wiring.mjs
       - name: Inspect release signing configuration without building
         run: node scripts/inspect-android-release-signing.mjs
+      - name: Compile Android debug Kotlin (including local audio route module)
+        run: |
+          cd mobile/android
+          chmod +x gradlew
+          ./gradlew :app:compileDebugKotlin --no-daemon --max-workers=2 --stacktrace
   mobile-js-bundle:
     runs-on: ubuntu-latest
     timeout-minutes: 20
