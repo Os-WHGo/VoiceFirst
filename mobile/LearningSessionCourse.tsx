@@ -19,13 +19,22 @@ const labels:Record<TargetLanguage,readonly string[]>={
 };
 const commandLabel:Record<TargetLanguage,string>={es:'Comando de voz', 'en-CA':'Voice command','fr-CA':'Commande vocale','pt-BR':'Comando de voz',de:'Sprachbefehl',it:'Comando vocale'};
 const modelActions:Record<TargetLanguage,readonly [string,string]>={es:['Preparar modelo local (Android)','Comprobar modelo local'],'en-CA':['Prepare local model (Android)','Check local model'],'fr-CA':['Préparer le modèle local (Android)','Vérifier le modèle local'],'pt-BR':['Preparar modelo local (Android)','Verificar modelo local'],de:['Lokales Modell vorbereiten (Android)','Lokales Modell prüfen'],it:['Prepara modello locale (Android)','Verifica modello locale']};
+/** Full-sentence, non-ambiguous opt-in spoken confirmation, with a visual fallback. */
+const answerConfirmationCopy:Record<TargetLanguage,string>={
+ es:'Para aceptar, di confirmar mi respuesta. Para repetir, di rechazar mi respuesta. También puedes usar los botones.',
+ 'en-CA':'To accept, say confirm my answer. To retry, say reject my answer. You can also use the buttons.',
+ 'fr-CA':'Pour accepter, dites confirmer ma réponse. Pour recommencer, dites refuser ma réponse. Vous pouvez aussi utiliser les boutons.',
+ 'pt-BR':'Para aceitar, diga confirmar minha resposta. Para tentar novamente, diga rejeitar minha resposta. Você também pode usar os botões.',
+ de:'Zum Bestätigen sage Antwort bestätigen. Zum Wiederholen sage Antwort ablehnen. Du kannst auch die Tasten verwenden.',
+ it:'Per accettare, di conferma la mia risposta. Per riprovare, di rifiuta la mia risposta. Puoi anche usare i pulsanti.',
+};
 const guideCopy:Record<TargetLanguage,{enable:string;disable:string;notice:string;speaking:string;listening:string;unavailable:string}>={
- es:{enable:'Activar guía de voz',disable:'Detener guía de voz',notice:'La guía lee la sesión y puede activar el micrófono al terminar de hablar. Solo funciona con la app abierta. Confirma las respuestas inciertas en pantalla.',speaking:'El tutor está hablando',listening:'Micrófono activo',unavailable:'La voz no está disponible. Puedes continuar por texto o volver a activar la guía.'},
- 'en-CA':{enable:'Enable voice guide',disable:'Stop voice guide',notice:'The guide reads the session and may start the microphone after speaking. It works only while the app is open. Confirm uncertain answers on screen.',speaking:'The tutor is speaking',listening:'Microphone active',unavailable:'Voice is unavailable. Continue with text or enable the guide again.'},
- 'fr-CA':{enable:'Activer le guide vocal',disable:'Arrêter le guide vocal',notice:'Le guide lit la séance et peut activer le micro après avoir parlé. L’application doit rester ouverte. Confirmez les réponses incertaines à l’écran.',speaking:'Le tuteur parle',listening:'Micro actif',unavailable:'La voix est indisponible. Continuez par écrit ou réactivez le guide.'},
- 'pt-BR':{enable:'Ativar guia de voz',disable:'Parar guia de voz',notice:'O guia lê a sessão e pode ativar o microfone depois de falar. O aplicativo deve permanecer aberto. Confirme respostas incertas na tela.',speaking:'O tutor está falando',listening:'Microfone ativo',unavailable:'Voz indisponível. Continue por texto ou ative o guia novamente.'},
- de:{enable:'Sprachführung aktivieren',disable:'Sprachführung stoppen',notice:'Die Führung liest die Sitzung vor und kann danach das Mikrofon aktivieren. Die App muss geöffnet bleiben. Unsichere Antworten am Bildschirm bestätigen.',speaking:'Der Tutor spricht',listening:'Mikrofon aktiv',unavailable:'Sprache nicht verfügbar. Per Text fortfahren oder die Führung erneut aktivieren.'},
- it:{enable:'Attiva guida vocale',disable:'Ferma guida vocale',notice:'La guida legge la sessione e può attivare il microfono dopo aver parlato. L’app deve restare aperta. Conferma le risposte incerte sullo schermo.',speaking:'Il tutor sta parlando',listening:'Microfono attivo',unavailable:'Voce non disponibile. Continua per iscritto o riattiva la guida.'},
+ es:{enable:'Activar guía de voz',disable:'Detener guía de voz',notice:'La guía lee la sesión y puede activar el micrófono al terminar de hablar. Solo funciona con la app abierta. Confirma respuestas inciertas mediante una orden de voz explícita o usando la pantalla.',speaking:'El tutor está hablando',listening:'Micrófono activo',unavailable:'La voz no está disponible. Puedes continuar por texto o volver a activar la guía.'},
+ 'en-CA':{enable:'Enable voice guide',disable:'Stop voice guide',notice:'The guide reads the session and may start the microphone after speaking. It works only while the app is open. Confirm uncertain answers with an explicit voice command or on screen.',speaking:'The tutor is speaking',listening:'Microphone active',unavailable:'Voice is unavailable. Continue with text or enable the guide again.'},
+ 'fr-CA':{enable:'Activer le guide vocal',disable:'Arrêter le guide vocal',notice:'Le guide lit la séance et peut activer le micro après avoir parlé. L’application doit rester ouverte. Confirmez les réponses incertaines par commande vocale explicite ou à l’écran.',speaking:'Le tuteur parle',listening:'Micro actif',unavailable:'La voix est indisponible. Continuez par écrit ou réactivez le guide.'},
+ 'pt-BR':{enable:'Ativar guia de voz',disable:'Parar guia de voz',notice:'O guia lê a sessão e pode ativar o microfone depois de falar. O aplicativo deve permanecer aberto. Confirme respostas incertas com um comando de voz explícito ou na tela.',speaking:'O tutor está falando',listening:'Microfone ativo',unavailable:'Voz indisponível. Continue por texto ou ative o guia novamente.'},
+ de:{enable:'Sprachführung aktivieren',disable:'Sprachführung stoppen',notice:'Die Führung liest die Sitzung vor und kann danach das Mikrofon aktivieren. Die App muss geöffnet bleiben. Unsichere Antworten mit einem ausdrücklichen Sprachbefehl oder am Bildschirm bestätigen.',speaking:'Der Tutor spricht',listening:'Mikrofon aktiv',unavailable:'Sprache nicht verfügbar. Per Text fortfahren oder die Führung erneut aktivieren.'},
+ it:{enable:'Attiva guida vocale',disable:'Ferma guida vocale',notice:'La guida legge la sessione e può attivare il microfono dopo aver parlato. L’app deve restare aperta. Conferma le risposte incerte con un comando vocale esplicito oppure sullo schermo.',speaking:'Il tutor sta parlando',listening:'Microfono attivo',unavailable:'Voce non disponibile. Continua per iscritto o riattiva la guida.'},
 };
 export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,rate=0.88,experience=defaultExperiencePreferences}:{nativeLanguage:TargetLanguage;target:TargetLanguage;guideLocale?:string|null;rate?:number;experience?:ExperiencePreferences}){
  const runtime=useLearningSession(target,nativeLanguage,experience);
@@ -36,7 +45,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const [showReading,setShowReading]=useState(false),[foreground,setForeground]=useState(AppState.currentState==='active');
  const [heardActivity,setHeardActivity]=useState<string|null>(null);
  const [showLibrary,setShowLibrary]=useState(false);
- const [pendingCommand,setPendingCommand]=useState<{command:VoiceCommand;text:string}|null>(null);
+ const [pendingCommand,setPendingCommand]=useState<{command:VoiceCommand;text:string;sessionId:string;revision:number}|null>(null);
  const [guided,setGuided]=useState(false),[narrating,setNarrating]=useState(false);
  const [playbackRate,setPlaybackRate]=useState(()=>effectivePlaybackRate(rate));
  useEffect(()=>setPlaybackRate(effectivePlaybackRate(rate)),[rate]);
@@ -61,7 +70,16 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const commandMic=useOnDeviceAnswer(known,(result,id)=>{
   if(!commandState.current.enabled||id!==commandState.current.id)return;
   const command=parseVoiceCommand(result.text);
-  if(command&&resolveSessionVoiceCommand(command,session?.status??'finished',deviceLocalDay()).kind!=='unsupported')setPendingCommand({command,text:result.text});
+  if(!command||!session)return;
+  const decision=resolveSessionVoiceCommand(command,session.status,deviceLocalDay(),!!session.current?.pendingConfirmation);
+  if(decision.kind==='unsupported')return;
+  // A second, explicit full-sentence spoken act confirms the *proposal*.
+  // The original transcript never auto-grades itself. Screen buttons remain available.
+  if(guidedRef.current&&decision.kind==='event'&&
+    (decision.event.type==='confirm'||decision.event.type==='reject')){
+   send(decision.event);return;
+  }
+  setPendingCommand({command,text:result.text,sessionId:session.sessionId,revision:session.revision});
  });
  const stop=()=>{epoch.current++;narrator.cancel();mic.stop();commandMic.stop();setNarrating(false);};
  const halt=()=>{guidedRef.current=false;setGuided(false);stop();};
@@ -104,6 +122,9 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   if(runtime.blocked||!foreground||session.status==='paused')return;
   const outputs=runtime.outputs.length?runtime.outputs:sessionOpening(session,runtime.activities);
   const lines=sessionNarration(outputs,session.known,target);
+  if(session.current?.pendingConfirmation)lines.push({
+   text:answerConfirmationCopy[session.known],language:session.known,purpose:'instruction'
+  });
   if(!lines.length)return;
   const token=++epoch.current,revision=session.revision;
   mic.stop();commandMic.stop();setAudioIssue('');setNarrating(true);
@@ -116,7 +137,13 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    if(result.kind==='failed'){
     guidedRef.current=false;setGuided(false);setAudioIssue(guideCopy[session.known].unavailable);return;
    }
-   if(result.kind!=='completed'||!automatic||!guidedRef.current||!current.current.ready||current.current.revision!==revision||session.current?.pendingConfirmation)return;
+   if(result.kind!=='completed'||!automatic||!guidedRef.current||!current.current.ready||current.current.revision!==revision)return;
+   if(session.current?.pendingConfirmation){
+    // Open a separate local command turn only after the answer proposal and
+    // its confirmation instructions have finished playing.
+    if(commandMic.available)void commandMic.start(commandState.current.id);
+    return;
+   }
    const nextPrompt=outputs.find(o=>o.kind==='prompt');
    if(!nextPrompt||nextPrompt.kind!=='prompt')return;
    // One explicit foreground turn. An uncertain result is proposed, never auto-graded.
@@ -144,11 +171,11 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   </>}
   {session?.status==='paused'&&action(c[2]!,()=>send({type:'resume',day:deviceLocalDay()}))}
   {session&&session.status!=='finished'&&action(commandLabel[known],()=>{stop();setPendingCommand(null);void commandMic.start(commandState.current.id);},runtime.busy||runtime.blocked||!foreground||!commandMic.available)}
-  {pendingCommand&&<>
+  {pendingCommand&&pendingCommand.sessionId===session?.sessionId&&pendingCommand.revision===session?.revision&&<>
    <Text style={s.text}>{commandLabel[known]}: {pendingCommand.text}</Text>
    <View style={s.row}>{action(c[14]!,()=>{
     // Revalidate against the current session: recognition and confirmation may be separated by a state change.
-    const decision=resolveSessionVoiceCommand(pendingCommand.command,session?.status??'finished',deviceLocalDay());
+    const decision=resolveSessionVoiceCommand(pendingCommand.command,session?.status??'finished',deviceLocalDay(),!!session?.current?.pendingConfirmation);
     setPendingCommand(null);
     switch(decision.kind){
      case 'event':send(decision.event);return;
@@ -175,6 +202,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    </>}
    {session.current?.pendingConfirmation&&<>
     <Text style={s.phrase}>{session.current.pendingConfirmation}</Text>
+    <Text style={s.note}>{answerConfirmationCopy[known]}</Text>
     <View style={s.row}>{action(c[14]!,()=>send({type:'confirm'}))}{action(c[15]!,()=>send({type:'reject'}))}</View>
    </>}
    <View style={s.row}>{action(c[11]!,()=>send({type:'hint'}))}{action(c[12]!,()=>send({type:'skip'}))}{action(c[17]!,()=>send({type:'request-corrections'}))}{action(c[13]!,()=>send({type:'finish'}))}</View>
