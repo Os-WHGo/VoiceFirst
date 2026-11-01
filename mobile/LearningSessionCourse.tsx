@@ -18,6 +18,14 @@ const labels:Record<TargetLanguage,readonly string[]>={
  it:['Corso locale A0–A1 · esempi','Inizia sessione','Riprendi','Pausa','Continua','Risposta','Verifica','Parla','Ferma voce e microfono','Ripeti','Più lentamente','Indizio','Salta senza penalità','Termina e salva','Conferma risposta proposta','Rifiuta e ripeti','Ascolta istruzioni','Chiedi correzioni','Ascolta riepilogo','Dati locali non disponibili, conservati. Chiudi e riapri l’app per rileggerli.','Ripristino…','Pronuncia non valutata. Regole di ripasso provvisorie. Voce e microfono offline da verificare sul dispositivo.','Mostra aiuto fonetico','Nascondi aiuto fonetico','Progresso salvato','Ripassi dovuti','Modello','Sessione salvata nella lingua di aiuto'],
 };
 const commandLabel:Record<TargetLanguage,string>={es:'Comando de voz', 'en-CA':'Voice command','fr-CA':'Commande vocale','pt-BR':'Comando de voz',de:'Sprachbefehl',it:'Comando vocale'};
+const offlineModelCopy:Record<TargetLanguage,{target:string;command:string;installed:string;missing:string;unknown:string;prepare:string;check:string}>={
+ es:{target:'Voz para responder',command:'Voz para comandos',installed:'modelo local instalado (sin prueba de micrófono)',missing:'falta modelo local',unknown:'modelo local sin verificar',prepare:'Preparar modelo para comandos',check:'Comprobar modelo para comandos'},
+ 'en-CA':{target:'Answer recognition',command:'Voice commands',installed:'local model installed (mic not tested)',missing:'local model missing',unknown:'local model unverified',prepare:'Prepare command model',check:'Check command model'},
+ 'fr-CA':{target:'Reconnaissance des réponses',command:'Commandes vocales',installed:'modèle local installé (micro non testé)',missing:'modèle local manquant',unknown:'modèle local non vérifié',prepare:'Préparer le modèle de commandes',check:'Vérifier le modèle de commandes'},
+ 'pt-BR':{target:'Reconhecimento de respostas',command:'Comandos de voz',installed:'modelo local instalado (microfone não testado)',missing:'modelo local ausente',unknown:'modelo local não verificado',prepare:'Preparar modelo de comandos',check:'Verificar modelo de comandos'},
+ de:{target:'Antworterkennung',command:'Sprachbefehle',installed:'lokales Modell installiert (Mikrofon ungeprüft)',missing:'lokales Modell fehlt',unknown:'lokales Modell nicht geprüft',prepare:'Befehlsmodell vorbereiten',check:'Befehlsmodell prüfen'},
+ it:{target:'Riconoscimento risposte',command:'Comandi vocali',installed:'modello locale installato (microfono non testato)',missing:'modello locale mancante',unknown:'modello locale non verificato',prepare:'Prepara modello comandi',check:'Verifica modello comandi'},
+};
 const modelActions:Record<TargetLanguage,readonly [string,string]>={es:['Preparar modelo local (Android)','Comprobar modelo local'],'en-CA':['Prepare local model (Android)','Check local model'],'fr-CA':['Préparer le modèle local (Android)','Vérifier le modèle local'],'pt-BR':['Preparar modelo local (Android)','Verificar modelo local'],de:['Lokales Modell vorbereiten (Android)','Lokales Modell prüfen'],it:['Prepara modello locale (Android)','Verifica modello locale']};
 /** Full-sentence, non-ambiguous opt-in spoken confirmation, with a visual fallback. */
 const answerConfirmationCopy:Record<TargetLanguage,string>={
@@ -180,7 +188,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    {(showLibrary||experience.sensoryPresentation==='standard')&&<View style={s.row}>{lessonsFor(target).map(lesson=><React.Fragment key={lesson.id}>{action(`${lesson.band} · ${lesson.goal[nativeLanguage]}${runtime.value!.progress.completed.includes(lesson.id)?' ✓':''}`,()=>{stop();void runtime.transition({type:'start-lesson',lessonId:lesson.id});},runtime.busy||runtime.blocked||!foreground||courseLessonStatus(runtime.value!.progress,lesson)==='locked')}</React.Fragment>)}</View>}
   </>}
   {session?.status==='paused'&&action(c[2]!,()=>send({type:'resume',day:deviceLocalDay()}))}
-  {session&&session.status!=='finished'&&action(commandLabel[known],()=>{stop();setPendingCommand(null);void commandMic.start(commandState.current.id);},runtime.busy||runtime.blocked||!foreground||!commandMic.available)}
+  {session&&session.status!=='finished'&&action(commandLabel[known],()=>{stop();setPendingCommand(null);void commandMic.start(commandState.current.id);},runtime.busy||runtime.blocked||!foreground||!commandMic.available||commandMic.model==='missing')}
   {pendingCommand&&pendingCommand.sessionId===session?.sessionId&&pendingCommand.revision===session?.revision&&<>
    <Text style={s.text}>{commandLabel[known]}: {pendingCommand.text}</Text>
    <View style={s.row}>{action(c[14]!,()=>{
@@ -207,7 +215,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
     <TextInput accessibilityLabel={c[5]} style={s.input} value={answer} onChangeText={text=>{setAnswer(text);setSpeechAnswer(false);}} autoCorrect={false}/>
     <View style={s.row}>
      {action(c[6]!,()=>send({type:'answer',response:answer,source:speechAnswer?{kind:'speech',confidence:'unknown'}:{kind:'typed'}}),!ready||!answer.trim()||activity.kind==='choice'&&heardActivity!==activity.id)}
-     {action(mic.listening?c[8]!:c[7]!,()=>{if(mic.listening){stop();return;}stop();void mic.start(`${activity.id}:${session.revision}`);},!ready||!mic.available)}
+     {action(mic.listening?c[8]!:c[7]!,()=>{if(mic.listening){stop();return;}stop();void mic.start(`${activity.id}:${session.revision}`);},!ready||!mic.available||mic.model==='missing')}
     </View>
    </>}
    {session.current?.pendingConfirmation&&<>
@@ -224,8 +232,16 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   <View accessibilityLiveRegion="polite">{messages.map((text,i)=><Text style={s.text} key={i}>{text}</Text>)}</View>
   {session&&summary&&<>{session.status==='finished'&&summary.statements.map((text,i)=><Text style={s.text} key={i}>{text}</Text>)}{action(c[18]!,()=>play(summary.statements.join(' '),session.known))}</>}
   <View style={s.row}>{action(c[8]!,halt,false)}</View>
-  {mic.canDownload&&<View style={s.row}>{action(modelActions[known][0],()=>{stop();void mic.downloadModel();})}{action(modelActions[known][1],()=>void mic.checkModel())}</View>}
-  {!!mic.issue&&<Text style={s.warning}>{mic.issue}</Text>}
+  {mic.canDownload&&<View>
+   <Text style={s.note}>{offlineModelCopy[known].target} ({target}): {offlineModelCopy[known][mic.model]}</Text>
+   <View style={s.row}>{action(modelActions[known][0],()=>{stop();void mic.downloadModel();})}{action(modelActions[known][1],()=>void mic.checkModel())}</View>
+  </View>}
+  {commandMic.canDownload&&known!==target&&<View>
+   <Text style={s.note}>{offlineModelCopy[known].command} ({known}): {offlineModelCopy[known][commandMic.model]}</Text>
+   <View style={s.row}>{action(offlineModelCopy[known].prepare,()=>{stop();void commandMic.downloadModel();})}{action(offlineModelCopy[known].check,()=>void commandMic.checkModel())}</View>
+  </View>}
+  {!!mic.issue&&<Text accessibilityRole="alert" style={s.warning}>{mic.issue}</Text>}
+  {!!commandMic.issue&&known!==target&&<Text accessibilityRole="alert" style={s.warning}>{commandMic.issue}</Text>}
   {!!audioIssue&&<Text style={s.warning}>{audioIssue}</Text>}
   <Text style={s.note}>{c[21]}</Text>
  </View>;
