@@ -3,7 +3,7 @@
  */
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {AppState,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
-import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,resolveSessionVoiceCommand,fasterSessionPlaybackRate,effectivePlaybackRate,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
+import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,resolveSessionVoiceCommand,fasterSessionPlaybackRate,effectivePlaybackRate,voiceChoiceIndex,voiceChoiceConfirmation,voiceChoiceCommandHint,voiceChoiceLabel,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
 import {useLearningSession} from './use-learning-session';
 import {useOnDeviceAnswer} from './use-on-device-answer';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
@@ -54,6 +54,8 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const [heardActivity,setHeardActivity]=useState<string|null>(null);
  const [showLibrary,setShowLibrary]=useState(false);
  const [pendingCommand,setPendingCommand]=useState<{command:VoiceCommand;text:string;sessionId:string;revision:number}|null>(null);
+ const [proposedChoice,setProposedChoice]=useState<{sessionId:string;revision:number;activityId:string;optionId:string;optionText:string;index:number}|null>(null);
+ const [choiceRetry,setChoiceRetry]=useState(0);
  const [guided,setGuided]=useState(false),[narrating,setNarrating]=useState(false);
  const [playbackRate,setPlaybackRate]=useState(()=>effectivePlaybackRate(rate));
  useEffect(()=>setPlaybackRate(effectivePlaybackRate(rate)),[rate]);
@@ -77,8 +79,28 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  commandState.current={enabled:!!session&&!runtime.busy&&!runtime.blocked&&foreground,id:`${session?.sessionId}:${session?.revision}:command`};
  const commandMic=useOnDeviceAnswer(known,(result,id)=>{
   if(!commandState.current.enabled||id!==commandState.current.id)return;
+  if(!session)return;
   const command=parseVoiceCommand(result.text);
-  if(!command||!session)return;
+  const proposed=proposedChoice&&proposedChoice.sessionId===session.sessionId&&
+    proposedChoice.revision===session.revision&&proposedChoice.activityId===activity?.id&&
+    session.status==='active'&&heardActivity===activity.id;
+  // A voice selection is a proposal until the learner explicitly confirms it.
+  if(proposed){
+   if(command?.type==='CONFIRM_ANSWER'){send({type:'choose',optionId:proposedChoice.optionId});return;}
+   if(command?.type==='REJECT_ANSWER'){commandMic.stop();setProposedChoice(null);setChoiceRetry(n=>n+1);return;}
+   return;
+  }
+  if(session.status==='active'&&activity?.kind==='choice'&&heardActivity===activity.id&&
+    prompt?.kind==='prompt'&&prompt.activityId===activity.id){
+   const index=voiceChoiceIndex(result.text,known,prompt.options?.length??0);
+   const option=index!==null?prompt.options?.[index]:undefined;
+   if(index!==null&&option){
+    setProposedChoice({sessionId:session.sessionId,revision:session.revision,activityId:activity.id,
+     optionId:option.id,optionText:option.text,index});
+    return;
+   }
+  }
+  if(!command)return;
   const decision=resolveSessionVoiceCommand(command,session.status,deviceLocalDay(),!!session.current?.pendingConfirmation);
   if(decision.kind==='unsupported')return;
   // A second, explicit full-sentence spoken act confirms the *proposal*.
@@ -95,14 +117,14 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   live.current=true;
   const sub=AppState.addEventListener('change',state=>{
    const active=state==='active';setForeground(active);
-   if(!active){epoch.current++;guidedRef.current=false;setGuided(false);setNarrating(false);narrator.cancel();mic.stop();commandMic.stop();setPendingCommand(null);}
+   if(!active){epoch.current++;guidedRef.current=false;setGuided(false);setNarrating(false);narrator.cancel();mic.stop();commandMic.stop();setPendingCommand(null);setProposedChoice(null);setChoiceRetry(0);}
   });
   return()=>{live.current=false;epoch.current++;guidedRef.current=false;narrator.cancel();mic.stop();commandMic.stop();sub.remove();};
  },[mic.stop,commandMic.stop,narrator]);
- useEffect(()=>{stop();setAnswer('');setSpeechAnswer(false);setShowReading(false);setHeardActivity(null);setPendingCommand(null);},[activity?.id,session?.sessionId,nativeLanguage]);
+ useEffect(()=>{stop();setAnswer('');setSpeechAnswer(false);setShowReading(false);setHeardActivity(null);setPendingCommand(null);setProposedChoice(null);setChoiceRetry(0);},[activity?.id,session?.sessionId,nativeLanguage]);
  // A just-committed transition can finish after the app moved to the background.
  useEffect(()=>{if(!foreground&&!runtime.busy&&session?.status==='active')void runtime.transition({type:'pause'});},[foreground,runtime.busy,session?.revision]);
- const send=(event:LearningSessionEvent)=>{stop();requestedNarration.current=['replay','slower','hint'].includes(event.type);setPendingCommand(null);setAnswer('');setSpeechAnswer(false);void runtime.transition(event);};
+ const send=(event:LearningSessionEvent)=>{stop();requestedNarration.current=['replay','slower','hint'].includes(event.type);setPendingCommand(null);setProposedChoice(null);setChoiceRetry(0);setAnswer('');setSpeechAnswer(false);void runtime.transition(event);};
  const summary=session?summarizeSession(session,runtime.activities,runtime.value?.model):null;
  const prompt=session?sessionOpening(session,runtime.activities).find(o=>o.kind==='prompt'):undefined;
  // Reconstruct the visible prompt after corrections, or immediately after restore.
@@ -165,11 +187,44 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    const nextPrompt=outputs.find(o=>o.kind==='prompt')??followUp;
    if(!nextPrompt||nextPrompt.kind!=='prompt')return;
    // One explicit foreground turn. An uncertain result is proposed, never auto-graded.
-   if(nextPrompt.activityKind==='listen'){
-    if(commandMic.available)void commandMic.start(commandState.current.id);
-   }else if(nextPrompt.activityKind!=='choice'&&mic.available)void mic.start(`${activity?.id}:${revision}`);
+   if(nextPrompt.activityKind==='listen'||nextPrompt.activityKind==='choice'){
+    if(commandMic.available&&commandMic.model!=='missing')void commandMic.start(commandState.current.id);
+   }else if(mic.available&&mic.model!=='missing')void mic.start(`${activity?.id}:${revision}`);
   });
  },[runtime.outputs,runtime.busy,guided]);
+ // A separately heard, explicit numbered choice is only a *proposal*.
+ // Its spoken confirmation must complete before opening a second ASR command turn.
+ useEffect(()=>{
+  if(!proposedChoice||!guidedRef.current||!foreground||runtime.busy||runtime.blocked||
+     !session||session.status!=='active'||session.sessionId!==proposedChoice.sessionId||
+     session.revision!==proposedChoice.revision||activity?.id!==proposedChoice.activityId||
+     heardActivity!==activity.id)return;
+  const token=++epoch.current;
+  commandMic.stop();setNarrating(true);
+  void narrator.run([{text:voiceChoiceConfirmation(known,proposedChoice.index,proposedChoice.optionText),
+   language:known,purpose:'instruction'}],playbackRate).then(result=>{
+   if(!live.current||token!==epoch.current)return;
+   setNarrating(false);
+   if(result.kind==='failed'){setAudioIssue(guideCopy[known].unavailable);return;}
+   if(result.kind==='completed'&&guidedRef.current&&current.current.ready&&
+      current.current.revision===proposedChoice.revision&&commandMic.available&&commandMic.model!=='missing')
+      void commandMic.start(commandState.current.id);
+  });
+ },[proposedChoice]);
+ useEffect(()=>{
+  if(!choiceRetry||!guidedRef.current||!foreground||runtime.busy||runtime.blocked||
+     !session||session.status!=='active'||activity?.kind!=='choice')return;
+  const token=++epoch.current;
+  setNarrating(true);
+  void narrator.run([{text:voiceChoiceCommandHint(known),language:known,purpose:'instruction'}],playbackRate).then(result=>{
+   if(!live.current||token!==epoch.current)return;
+   setNarrating(false);
+   if(result.kind==='failed'){setAudioIssue(guideCopy[known].unavailable);return;}
+   if(result.kind==='completed'&&guidedRef.current&&current.current.ready&&
+      current.current.revision===session.revision&&commandMic.available&&commandMic.model!=='missing')
+      void commandMic.start(commandState.current.id);
+  });
+ },[choiceRetry]);
  const action=(label:string,fn:()=>void,disabled=runtime.busy||runtime.blocked||!foreground)=><Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} style={[s.button,disabled&&s.disabled]} onPress={fn}><Text style={s.text}>{label}</Text></Pressable>;
  return <View style={s.wrap}>
   <Text style={s.title}>{c[0]}</Text>
@@ -210,7 +265,16 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    {(activity?.kind==='listen'||activity?.kind==='repeat')&&<Text style={s.phrase}>{activity.model}</Text>}
    <View style={s.row}>{action(c[3]!,()=>send({type:'pause'}))}{action(c[16]!,()=>play(instruction,known))}{action(c[4]!,()=>send({type:'continue'}))}</View>
    {narration&&<View style={s.row}>{action(c[9]!,()=>play(narration.text,narration.language))}{action(c[10]!,()=>play(narration.text,narration.language,true))}</View>}
-   {activity?.kind==='choice'&&<View style={s.row}>{(prompt?.kind==='prompt'?prompt.options:undefined)?.map(o=><React.Fragment key={o.id}>{action(o.text,()=>send({type:'choose',optionId:o.id}),!ready||heardActivity!==activity.id)}</React.Fragment>)}</View>}
+   {activity?.kind==='choice'&&<View style={s.row}>{(prompt?.kind==='prompt'?prompt.options:undefined)?.map((o,i)=><React.Fragment key={o.id}>{action(`${voiceChoiceLabel(known,i)}: ${o.text}`,()=>send({type:'choose',optionId:o.id}),!ready||heardActivity!==activity.id)}</React.Fragment>)}</View>}
+   {activity?.kind==='choice'&&<Text style={s.note}>{voiceChoiceCommandHint(known)}</Text>}
+   {proposedChoice&&proposedChoice.sessionId===session.sessionId&&proposedChoice.revision===session.revision&&
+    activity?.id===proposedChoice.activityId&&<View>
+     <Text accessibilityLiveRegion="polite" style={s.phrase}>{voiceChoiceConfirmation(known,proposedChoice.index,proposedChoice.optionText)}</Text>
+     <View style={s.row}>
+      {action(c[14]!,()=>send({type:'choose',optionId:proposedChoice.optionId}),!ready)}
+      {action(c[15]!,()=>{commandMic.stop();setProposedChoice(null);setChoiceRetry(n=>n+1);},!ready)}
+     </View>
+    </View>}
    {activity&&activity.kind!=='listen'&&<>
     <TextInput accessibilityLabel={c[5]} style={s.input} value={answer} onChangeText={text=>{setAnswer(text);setSpeechAnswer(false);}} autoCorrect={false}/>
     <View style={s.row}>
