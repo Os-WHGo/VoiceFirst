@@ -53,6 +53,39 @@ jobs:
           cd mobile/android
           chmod +x gradlew
           ./gradlew :app:compileDebugKotlin --no-daemon --max-workers=2 --stacktrace
+  ios-native-source:
+    # Standard macOS runner in this public repository. No EAS, signing, IPA,
+    # App Store upload, hardware microphone or paid Apple account.
+    runs-on: macos-15
+    timeout-minutes: 50
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_NO_GIT_STATUS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate native iOS source without EAS or signing
+        run: |
+          cd mobile
+          npx --no-install expo prebuild --platform ios --no-install --clean
+      - name: Install native CocoaPods from pinned source
+        working-directory: mobile/ios
+        run: pod install
+      - name: Compile local Swift route observer for iOS Simulator
+        run: |
+          test -f mobile/ios/Pods/Pods.xcodeproj/project.pbxproj
+          xcodebuild -list -project mobile/ios/Pods/Pods.xcodeproj
+          xcodebuild -project mobile/ios/Pods/Pods.xcodeproj \
+            -target VoiceFirstAudioRoute -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO build
   mobile-js-bundle:
     runs-on: ubuntu-latest
     timeout-minutes: 20
