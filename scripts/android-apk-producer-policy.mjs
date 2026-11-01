@@ -3,6 +3,8 @@
  * Pure policy. No GitHub tokens, signing secrets, or APK binaries are required.
  */
 import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import {resolve} from 'node:path';
 
 export function inspectAndroidCandidateProducer(run,{runId,sourceSha,repository}){
  const errors=[];
@@ -23,7 +25,7 @@ export function inspectAndroidCandidateProducer(run,{runId,sourceSha,repository}
  if(!['push','workflow_dispatch'].includes(run.event))errors.push('Unexpected producer workflow event');
  return {ok:errors.length===0,errors};
 }
-if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1]).href){
+if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){
  const [file,sha,id,repo]=process.argv.slice(2);
  if(!file||!sha||!id||!repo){console.error('Usage: node scripts/android-apk-producer-policy.mjs metadata.json SOURCE_SHA RUN_ID OWNER/REPO');process.exit(2);}
  try{
