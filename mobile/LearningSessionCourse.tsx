@@ -3,7 +3,7 @@
  */
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {AppState,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
-import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
+import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,resolveSessionVoiceCommand,fasterSessionPlaybackRate,effectivePlaybackRate,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
 import {useLearningSession} from './use-learning-session';
 import {useOnDeviceAnswer} from './use-on-device-answer';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
@@ -38,6 +38,8 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const [showLibrary,setShowLibrary]=useState(false);
  const [pendingCommand,setPendingCommand]=useState<{command:VoiceCommand;text:string}|null>(null);
  const [guided,setGuided]=useState(false),[narrating,setNarrating]=useState(false);
+ const [playbackRate,setPlaybackRate]=useState(()=>effectivePlaybackRate(rate));
+ useEffect(()=>setPlaybackRate(effectivePlaybackRate(rate)),[rate]);
  const guidedRef=useRef(false);guidedRef.current=guided;
  const narrator=useMemo(()=>new SessionNarrator({play:playCuratedVoice,stop:stopCuratedVoice}),[]);
  const epoch=useRef(0),live=useRef(true);
@@ -59,7 +61,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const commandMic=useOnDeviceAnswer(known,(result,id)=>{
   if(!commandState.current.enabled||id!==commandState.current.id)return;
   const command=parseVoiceCommand(result.text);
-  if(command&&['STOP','PAUSE','RESUME','REPEAT','SLOWER','HELP','NEXT','SUMMARY'].includes(command.type))setPendingCommand({command,text:result.text});
+  if(command&&resolveSessionVoiceCommand(command,session?.status??'finished',deviceLocalDay()).kind!=='unsupported')setPendingCommand({command,text:result.text});
  });
  const stop=()=>{epoch.current++;narrator.cancel();mic.stop();commandMic.stop();setNarrating(false);};
  const halt=()=>{guidedRef.current=false;setGuided(false);stop();};
@@ -86,7 +88,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const play=(text:string,language:TargetLanguage,slow=false)=>{
   if(!foreground||runtime.blocked||runtime.busy)return;
   halt();setAudioIssue('');setNarrating(true);const token=epoch.current;
-  void narrator.run([{text,language,purpose:'target-cue',slower:slow}],rate,()=>{
+  void narrator.run([{text,language,purpose:'target-cue',slower:slow}],playbackRate,()=>{
    if(live.current&&token===epoch.current&&activity?.kind==='choice'&&text===activity.cue&&language===target)setHeardActivity(activity.id);
   }).then(result=>{
    if(!live.current||token!==epoch.current)return;
@@ -105,7 +107,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   if(!lines.length)return;
   const token=++epoch.current,revision=session.revision;
   mic.stop();commandMic.stop();setAudioIssue('');setNarrating(true);
-  void narrator.run(lines,rate,line=>{
+  void narrator.run(lines,playbackRate,line=>{
    if(!live.current||token!==epoch.current)return;
    if(line.purpose==='target-cue'&&line.activityId===activity?.id&&activity?.kind==='choice'&&line.text===activity.cue&&line.language===target)setHeardActivity(activity.id);
   }).then(result=>{
@@ -130,7 +132,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   {runtime.blocked&&<Text accessibilityRole="alert" style={s.warning}>{c[19]}</Text>}
   {runtime.value&&<>
    {action(guided?guideCopy[known].disable:guideCopy[known].enable,()=>{if(guided){halt();return;}stop();guidedRef.current=true;setGuided(true);})}
-   <Text style={s.note}>{guideCopy[known].notice}</Text>
+   <Text style={s.note}>{guideCopy[known].notice} · {playbackRate.toFixed(2)}×</Text>
   </>}
   <Text accessibilityLiveRegion="polite" style={s.text}>{mic.listening||commandMic.listening?guideCopy[known].listening:narrating?guideCopy[known].speaking:''}</Text>
   {runtime.value&&<Text style={s.text}>{c[24]}: {runtime.value.progress.completed.length} / {new Set(runtime.activities.map(a=>a.lessonId)).size} · {c[25]}: {dueObjectiveReviews(runtime.value.model,deviceLocalDay()).length}</Text>}
@@ -145,10 +147,16 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   {pendingCommand&&<>
    <Text style={s.text}>{commandLabel[known]}: {pendingCommand.text}</Text>
    <View style={s.row}>{action(c[14]!,()=>{
-    const type=pendingCommand.command.type;
-    if(type==='SUMMARY'){setPendingCommand(null);if(summary)play(summary.statements.join(' '),session!.known);return;}
-    const event:LearningSessionEvent=type==='STOP'?{type:'finish'}:type==='PAUSE'?{type:'pause'}:type==='RESUME'?(session?.status==='paused'?{type:'resume',day:deviceLocalDay()}:{type:'continue'}):type==='REPEAT'?{type:'replay'}:type==='SLOWER'?{type:'slower'}:type==='HELP'?{type:'hint'}:{type:'skip'};
-    send(event);
+    // Revalidate against the current session: recognition and confirmation may be separated by a state change.
+    const decision=resolveSessionVoiceCommand(pendingCommand.command,session?.status??'finished',deviceLocalDay());
+    setPendingCommand(null);
+    switch(decision.kind){
+     case 'event':send(decision.event);return;
+     case 'speed-up':stop();setPlaybackRate(previous=>fasterSessionPlaybackRate(previous));return;
+     case 'play-summary':if(summary&&session)play(summary.statements.join(' '),session.known);return;
+     case 'play-current':if(activity)play(activity.cue??activity.model,target);return;
+     case 'unsupported':return;
+    }
    })}{action(c[15]!,()=>{stop();setPendingCommand(null);})}</View>
   </>}
   {session?.status==='active'&&<>
