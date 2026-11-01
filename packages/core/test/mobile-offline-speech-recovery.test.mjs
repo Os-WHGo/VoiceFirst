@@ -45,6 +45,15 @@ function setup({installed=true,allowed=true}={}){
   permissions:()=>permissionCount,aborts:()=>abortCount};
 }
 
+test('current OS recognition does not claim headset or Meta glasses microphone provenance',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(h.render().audioInputEvidence,'unverified');
+ assert.equal(await h.render().start('voice-check'),true);
+ assert.equal(h.render().audioInputEvidence,'unverified','a successful native start cannot identify the microphone');
+ h.emit('result',{isFinal:true,results:[{transcript:'hello',confidence:1}]});
+ assert.equal(h.render().audioInputEvidence,'unverified','a transcript proves no particular Bluetooth route');
+ h.emit('end');
+});
 test('offline model missing does not trigger permissions, cloud ASR or unsolicited downloads',async()=>{
  const h=setup({installed:false});
  let view=await h.flush();view=await h.flush();
