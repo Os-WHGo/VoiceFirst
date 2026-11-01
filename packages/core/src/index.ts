@@ -162,3 +162,5 @@ export * from './session-narration.js';
 export * from './session-voice-controls.js';
 
 export * from './offline-speech-recovery.js';
+
+export * from './voice-choice.js';
