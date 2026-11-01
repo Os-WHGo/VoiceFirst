@@ -239,6 +239,9 @@ async function reachVoiceChoice(h){
  assert.ok(selectedIndex>=0);
  const spoken=['Elijo la primera opción','Elijo la segunda opción','Elijo la tercera opción'][selectedIndex];
  const before=h.runtime.value.session.results.length;
+ // The hook harness has no automatic React render; commit the heard-cue state
+ // before delivering the subsequent native ASR callback.
+ await h.flush();
  h.callbacks.get('es')({text:spoken,confidence:'unknown'},h.commandStarts.at(-1));
  tree=await h.flush();
  assert.equal(h.runtime.value.session.results.length,before,'proposing a choice must not score it');
