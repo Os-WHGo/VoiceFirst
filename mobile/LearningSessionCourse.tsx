@@ -248,7 +248,6 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   </>}
   <Text accessibilityLiveRegion="polite" style={s.text}>{mic.listening||commandMic.listening?guideCopy[known].listening:narrating?guideCopy[known].speaking:''}</Text>
   {session?.status==='active'&&(mic.available||commandMic.available)&&
-   (mic.audioInputEvidence!=='verified'||commandMic.audioInputEvidence!=='verified')&&
    <Text style={s.note}>{unverifiedInputCopy[known]}</Text>}
   {runtime.value&&<Text style={s.text}>{c[24]}: {runtime.value.progress.completed.length} / {new Set(runtime.activities.map(a=>a.lessonId)).size} · {c[25]}: {dueObjectiveReviews(runtime.value.model,deviceLocalDay()).length}</Text>}
   {session&&session.known!==nativeLanguage&&session.status!=='finished'&&<Text style={s.warning}>{c[27]}: {session.known}</Text>}
