@@ -115,3 +115,28 @@ test('TTS error displays a localized fallback without generating learning eviden
  assert.equal(h.calls.length,1);
  h.cleanup();
 });
+
+test('one-tap A0 listening plays every authored word in target language, sequentially without grading',async()=>{
+ const h=harness('en-CA','es',0.83);h.flush();h.press('Ver palabras');
+ h.press('Escuchar todas las palabras');
+ assert.equal(h.calls.length,1,'second word must wait for TTS completion');
+ assert.equal(h.calls[0].cue.text,'hello');
+ h.calls[0].done();await tick();
+ assert.equal(h.calls.length,2);assert.equal(h.calls[1].cue.text,'hi');
+ h.calls[1].done();await tick();
+ assert.equal(h.calls.length,3);assert.equal(h.calls[2].cue.text,'language');
+ assert.ok(h.calls.every(c=>c.cue.language==='en-CA'&&c.rate===0.83));
+ h.calls[2].done();await tick();
+ assert.ok(textOf(h.render()).includes('Escuchar todas las palabras'),'sequence ends without replay');
+ h.cleanup();
+});
+test('stopping an A0 listening sequence prevents later audio from late platform callbacks',async()=>{
+ const h=harness('de','es');h.flush();h.press('Ver palabras');
+ h.press('Escuchar todas las palabras');
+ assert.equal(h.calls.length,1);
+ h.press('Detener audio');
+ h.calls[0].done();await tick();
+ assert.equal(h.calls.length,1,'stale callback cannot start remaining words');
+ assert.ok(textOf(h.render()).includes('Escuchar todas las palabras'));
+ h.cleanup();
+});
