@@ -71,6 +71,18 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Select supported Xcode 26 and Swift 6.2 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_26*.app' | sort -r | head -n 1)
+          if [[ -z "$XCODE" ]]; then
+            echo '::error::Xcode 26 is required by ExpoModulesJSI Swift tools 6.2'
+            exit 1
+          fi
+          sudo xcode-select --switch "$XCODE/Contents/Developer"
+          xcodebuild -version
+          xcrun swift --version
       - name: Generate native iOS source without EAS or signing
         run: |
           cd mobile
