@@ -123,6 +123,18 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     setIssue('Cambió la entrada de audio durante la práctica. Se canceló esta respuesta; comprueba el micrófono y vuelve a intentarlo.');
    }
   });
+  // Close the read-to-subscribe gap: an input may disappear after the first
+  // snapshot but before the native listener is installed. Resample now that
+  // changes are observed. An unreadable second sample also fails closed.
+  const afterSubscription=await readNativeInputSnapshot();
+  if(!mounted.current||routeProbe.current!==probe||active.current?.token!==token||
+     AppState.currentState!=='active')return;
+  if(shouldInterruptForInputRouteChange(observedInput.current,afterSubscription)){
+   stop();
+   setIssue('Cambió la entrada de audio durante la práctica. Se canceló esta respuesta; comprueba el micrófono y vuelve a intentarlo.');
+  }else{
+   observedInput.current=afterSubscription;
+  }
  },[stop]);
  useEffect(()=>{
   mounted.current=true;
