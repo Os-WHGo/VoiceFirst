@@ -110,3 +110,68 @@ test('native offline-service error offers text fallback without uploading voice'
  assert.deepEqual(h.final,[]);
  h.emit('end');
 });
+
+test('native audiostart and audioend show capture versus processing; late final result is still handled',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('question-1'),true);
+ assert.equal(h.render().capturePhase,'requested');
+ h.emit('audiostart',{timestamp:1780000000100,uri:null});
+ assert.equal(h.render().capturePhase,'capturing');
+ assert.equal(h.render().listening,true);
+ assert.equal(h.render().audioInputEvidence,'unverified','native audiostart is not proof of glasses mic');
+ h.emit('audioend',{timestamp:1780000001100,uri:null});
+ assert.equal(h.render().capturePhase,'processing');
+ assert.equal(h.render().listening,false);
+ assert.equal(await h.render().start('question-2'),false,'audioend cannot unlock session gate');
+ h.emit('result',{isFinal:true,results:[{transcript:'Hello again',confidence:0.91}]});
+ assert.deepEqual(h.final,[{id:'question-1',r:{text:'Hello again',confidence:'high'}}]);
+ assert.equal(h.render().capturePhase,'idle');
+ assert.equal(await h.render().start('question-2'),false,'final transcript is not native end');
+ h.emit('end');
+ assert.equal(await h.render().start('question-2'),true);
+ h.emit('end');
+});
+test('native nomatch ends an attempt with no score and waits for end before new input',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('question'),true);
+ h.emit('audiostart',{timestamp:1800});
+ h.emit('nomatch');
+ assert.equal(h.final.length,0);
+ assert.equal(h.render().capturePhase,'idle');
+ assert.match(h.render().issue,/No se reconoció una respuesta/);
+ assert.equal(await h.render().start('retry'),false);
+ h.emit('result',{isFinal:true,results:[{transcript:'stale',confidence:1}]});
+ assert.equal(h.final.length,0);
+ h.emit('end');
+ assert.equal(await h.render().start('retry'),true);
+ h.emit('end');
+});
+test('native capture restart in one turn aborts safely and requires terminal end',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('question'),true);
+ h.emit('audiostart',{timestamp:1000});
+ h.emit('audioend',{timestamp:1200});
+ h.emit('audiostart',{timestamp:1300});
+ assert.equal(h.aborts(),1);
+ assert.match(h.render().issue,/reinició o cambió de ruta/);
+ assert.equal(h.final.length,0);
+ assert.equal(await h.render().start('other'),false);
+ h.emit('result',{isFinal:true,results:[{transcript:'wrong turn',confidence:1}]});
+ assert.equal(h.final.length,0,'route discontinuity cannot grade a stale transcript');
+ h.emit('end');
+ assert.equal(await h.render().start('other'),true);
+ h.emit('end');
+});
+test('terminal native end without an ASR result reports recovery instead of phantom success',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('question'),true);
+ h.emit('end');
+ assert.match(h.render().issue,/micrófono no llegó a iniciar/);
+ assert.equal(h.render().capturePhase,'idle');
+ assert.equal(h.final.length,0);
+ assert.equal(await h.render().start('retry'),true);
+ h.emit('audiostart',{timestamp:9000});
+ h.emit('end');
+ assert.match(h.render().issue,/terminó sin respuesta reconocida/);
+ assert.equal(h.final.length,0);
+});
