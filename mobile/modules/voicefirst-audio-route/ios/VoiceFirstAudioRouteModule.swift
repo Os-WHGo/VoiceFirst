@@ -47,10 +47,11 @@ public class VoiceFirstAudioRouteModule: Module {
     let ports: [[String: String]] = currentInputs.map { port in
       ["id": port.uid, "kind": self.inputKind(port.portType)]
     }
+    let activeId: Any = currentInputs.first?.uid as Any? ?? NSNull()
     return [
       "platform": "ios",
       "scope": "app-audio-session",
-      "activeInputId": currentInputs.first?.uid ?? NSNull(),
+      "activeInputId": activeId,
       // Only the CURRENT session's input ports, not merely paired devices.
       "connectedInputs": ports,
       "observedAtEpochMs": Date().timeIntervalSince1970 * 1000.0
