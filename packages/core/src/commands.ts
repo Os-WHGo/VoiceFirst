@@ -1,6 +1,6 @@
 import type { TargetLanguage } from './types.js';
 export type VoiceCommand =
-  | { type: 'START' | 'STOP' | 'PAUSE' | 'RESUME' | 'REPEAT' | 'HELP' | 'SLOWER' | 'FASTER' | 'SUMMARY' | 'NEXT' | 'ONLY_LISTEN' }
+  | { type: 'START' | 'STOP' | 'PAUSE' | 'RESUME' | 'REPEAT' | 'HELP' | 'SLOWER' | 'FASTER' | 'SUMMARY' | 'NEXT' | 'ONLY_LISTEN' | 'CONFIRM_ANSWER' | 'REJECT_ANSWER' }
   | { type: 'TARGET'; language: TargetLanguage }
   | { type: 'EXPLAIN_IN'; language: TargetLanguage };
 
@@ -48,6 +48,13 @@ const patterns: ReadonlyArray<{ words: readonly string[]; action: VoiceCommand }
   { words: ['ecouter seulement', 'seulement ecouter', 'nur anhoren', 'ascolta soltanto'], action: { type: 'ONLY_LISTEN' } },
   { words: ['plus vite', 'parle plus rapidement', 'plus rapido', 'piu in fretta'], action: { type: 'FASTER' } },
   { words: ['un indice', 'aide moi', 'hilfe bitte', 'aiutami'], action: { type: 'HELP' } },
+  // Explicit multiword confirmation ONLY after a pending ASR answer, never a bare yes/no.
+  { words: ['confirmar mi respuesta', 'confirmo mi respuesta', 'confirm my answer', 'i confirm my answer',
+    'confirmer ma reponse', 'je confirme ma reponse', 'confirmar minha resposta', 'confirmo minha resposta',
+    'antwort bestatigen', 'ich bestatige meine antwort', 'conferma la mia risposta', 'confermo la mia risposta'], action: { type: 'CONFIRM_ANSWER' } },
+  { words: ['rechazar mi respuesta', 'repito mi respuesta', 'reject my answer', 'retry my answer',
+    'refuser ma reponse', 'recommencer ma reponse', 'rejeitar minha resposta', 'refazer minha resposta',
+    'antwort ablehnen', 'ich wiederhole meine antwort', 'rifiuta la mia risposta', 'ripeto la mia risposta'], action: { type: 'REJECT_ANSWER' } },
   { words: ['explica em portugues'], action: { type: 'EXPLAIN_IN', language: 'pt-BR' } },
   { words: ['erklar es auf deutsch'], action: { type: 'EXPLAIN_IN', language: 'de' } },
   { words: ['spiegami in italiano'], action: { type: 'EXPLAIN_IN', language: 'it' } },
