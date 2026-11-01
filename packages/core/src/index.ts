@@ -166,3 +166,4 @@ export * from './offline-speech-recovery.js';
 export * from './voice-choice.js';
 
 export * from './handsfree-capture-policy.js';
+export * from './native-capture-evidence.js';
