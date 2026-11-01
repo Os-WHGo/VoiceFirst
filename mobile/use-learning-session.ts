@@ -7,22 +7,39 @@ export function useLearningSession(target:TargetLanguage,known:TargetLanguage,ex
  const [value,setValue]=useState<LearningCheckpoint|null>(null);
  const [outputs,setOutputs]=useState<LearningSessionOutput[]>([]);
  const [busy,setBusy]=useState(false);
- const [blocked,setBlocked]=useState(false);
+ const [blockedTarget,setBlockedTarget]=useState<TargetLanguage|null>(null);
  const current=useRef<{checkpoint:LearningCheckpoint;raw:string|null}|null>(null);
  const gate=useRef(false),mounted=useRef(false);
+ const generation=useRef(0),busyTarget=useRef<TargetLanguage|null>(null);
  const activities=useMemo(()=>courseActivities(target),[target]);
  useEffect(()=>{
+  // A different target must never inherit an earlier course or its pending commands.
+  // Old reads and writes can finish asynchronously; generation ownership stops
+  // them from displaying or blocking the newly selected language.
+  const token=++generation.current;
+  let cancelled=false;
   mounted.current=true;
+  current.current=null;gate.current=false;busyTarget.current=null;
+  setValue(null);setOutputs([]);setBusy(false);setBlockedTarget(null);
   void loadLearningCheckpoint(target).then(entry=>{
-   if(!mounted.current)return;
+   if(cancelled||!mounted.current||generation.current!==token)return;
+   if(entry.checkpoint.target!==target)throw new Error('CHECKPOINT_TARGET_MISMATCH');
    current.current=entry;setValue(entry.checkpoint);
-  }).catch(()=>{if(mounted.current)setBlocked(true);});
-  return()=>{mounted.current=false;};
+  }).catch(()=>{
+   if(!cancelled&&mounted.current&&generation.current===token)setBlockedTarget(target);
+  });
+  return()=>{
+   cancelled=true;
+   if(generation.current===token)generation.current++;
+   mounted.current=false;current.current=null;gate.current=false;busyTarget.current=null;
+  };
  },[target]);
  async function transition(event:LearningSessionEvent|'start'|{type:'start-lesson';lessonId:string}){
-  if(gate.current||!current.current||blocked)return;
-  gate.current=true;setBusy(true);
   const previous=current.current;
+  // Guard the gap between a prop change and effect cleanup, too.
+  if(gate.current||!previous||previous.checkpoint.target!==target||blockedTarget===target)return;
+  const token=generation.current;
+  gate.current=true;busyTarget.current=target;setBusy(true);
   try{
    let checkpoint:LearningCheckpoint,nextOutputs:LearningSessionOutput[];
    if(event==='start'||event.type==='start-lesson'){
@@ -42,14 +59,21 @@ export function useLearningSession(target:TargetLanguage,known:TargetLanguage,ex
     checkpoint=result.checkpoint;nextOutputs=result.outputs;
    }
    const raw=await saveLearningCheckpoint(checkpoint,previous.raw);
+   if(!mounted.current||generation.current!==token)return;
    current.current={checkpoint,raw};
-   if(mounted.current){setValue(checkpoint);setOutputs(nextOutputs);}
+   setValue(checkpoint);setOutputs(nextOutputs);
   }catch{
-   // Keep both the last committed snapshot and stored bytes; no automatic reset/retry.
-   if(mounted.current)setBlocked(true);
+   // A failure from an abandoned language cannot block the selected one.
+   // Preserve the previous checkpoint and stored bytes without auto-retry.
+   if(mounted.current&&generation.current===token)setBlockedTarget(target);
   }finally{
-   gate.current=false;if(mounted.current)setBusy(false);
+   if(generation.current===token){
+    gate.current=false;busyTarget.current=null;
+    if(mounted.current)setBusy(false);
+   }
   }
  }
- return {value,outputs,busy,blocked,transition,activities};
+ // Hide stale state immediately, including the render before the effect resets it.
+ const visible=!!current.current&&current.current.checkpoint===value&&value.target===target;
+ return {value:visible?value:null,outputs:visible?outputs:[],busy:busy&&busyTarget.current===target,blocked:blockedTarget===target,transition,activities};
 }
