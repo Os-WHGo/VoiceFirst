@@ -29,6 +29,14 @@ const unverifiedInputCopy:Record<TargetLanguage,string>={
  de:'Mikrofonquelle nicht geprüft. Das System nutzt möglicherweise Telefon oder Headset; eine Brillenaufnahme ist nicht bestätigt.',
  it:'Origine del microfono non verificata. Il sistema può usare telefono o cuffie; l’audio degli occhiali non è confermato.'
 };
+const processingCopy:Record<TargetLanguage,string>={
+ es:'Procesando la respuesta localmente…',
+ 'en-CA':'Processing the answer locally…',
+ 'fr-CA':'Traitement local de la réponse…',
+ 'pt-BR':'Processando a resposta localmente…',
+ de:'Antwort wird lokal verarbeitet…',
+ it:'Elaborazione locale della risposta…'
+};
 const commandLabel:Record<TargetLanguage,string>={es:'Comando de voz', 'en-CA':'Voice command','fr-CA':'Commande vocale','pt-BR':'Comando de voz',de:'Sprachbefehl',it:'Comando vocale'};
 const offlineModelCopy:Record<TargetLanguage,{target:string;command:string;installed:string;missing:string;unknown:string;prepare:string;check:string}>={
  es:{target:'Voz para responder',command:'Voz para comandos',installed:'modelo local instalado (sin prueba de micrófono)',missing:'falta modelo local',unknown:'modelo local sin verificar',prepare:'Preparar modelo para comandos',check:'Comprobar modelo para comandos'},
@@ -246,7 +254,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    {action(guided?guideCopy[known].disable:guideCopy[known].enable,()=>{if(guided){halt();return;}stop();guidedRef.current=true;setGuided(true);})}
    <Text style={s.note}>{guideCopy[known].notice} · {playbackRate.toFixed(2)}×</Text>
   </>}
-  <Text accessibilityLiveRegion="polite" style={s.text}>{mic.listening||commandMic.listening?guideCopy[known].listening:narrating?guideCopy[known].speaking:''}</Text>
+  <Text accessibilityLiveRegion="polite" style={s.text}>{mic.listening||commandMic.listening?guideCopy[known].listening:narrating?guideCopy[known].speaking:mic.capturePhase==='processing'||commandMic.capturePhase==='processing'?processingCopy[known]:''}</Text>
   {session?.status==='active'&&(mic.available||commandMic.available)&&
    <Text style={s.note}>{unverifiedInputCopy[known]}</Text>}
   {runtime.value&&<Text style={s.text}>{c[24]}: {runtime.value.progress.completed.length} / {new Set(runtime.activities.map(a=>a.lessonId)).size} · {c[25]}: {dueObjectiveReviews(runtime.value.model,deviceLocalDay()).length}</Text>}
