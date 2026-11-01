@@ -19,8 +19,9 @@ function hooks(){
  return {react,render:fn=>{cursor=0;return fn();},mount:()=>effects.splice(0).forEach(fn=>fn())};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function setup({installed=true,allowed=true}={}){
+function setup({installed=true,allowed=true,routeSupport=false,android=false}={}){
  const h=hooks(),listeners=new Map(),final=[],partial=[],starts=[],downloads=[];let permissionCount=0,abortCount=0,permissionGranted=allowed,modelInstalled=installed;
+ let routeListener=null,routeSubscriptions=0;
  const appState={currentState:'active',addEventListener(){return {remove(){}};}};
  const native={
   isRecognitionAvailable:()=>true,supportsOnDeviceRecognition:()=>true,
@@ -33,16 +34,27 @@ function setup({installed=true,allowed=true}={}){
  const script=readFileSync(new URL('../../../mobile/use-on-device-answer.ts',import.meta.url),'utf8');
  const code=ts.transpileModule(script,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText;
  const module={exports:{}};
+ const routeSnapshot=()=>android?{
+  platform:'android',scope:'connected-inputs-only',activeInputId:null,
+  connectedInputs:[{id:'phone',kind:'built-in'},{id:'headset',kind:'bluetooth-hfp'}],observedAtEpochMs:1780000100000
+ }:{platform:'ios',scope:'app-audio-session',activeInputId:'phone',
+  connectedInputs:[{id:'phone',kind:'built-in'},{id:'headset',kind:'bluetooth-hfp'}],observedAtEpochMs:1780000100000};
  const imports={
   react:h.react,'react-native':{AppState:appState,Platform:{OS:'android'}},
-  '@voicefirst/core':core,'expo-speech-recognition':{ExpoSpeechRecognitionModule:native}
+  '@voicefirst/core':core,'expo-speech-recognition':{ExpoSpeechRecognitionModule:native},
+  './native-input-route':{
+   readNativeInputSnapshot:async()=>routeSupport?routeSnapshot():null,
+   observeNativeInputChanges:callback=>{routeListener=callback;routeSubscriptions++;return ()=>{if(routeListener===callback)routeListener=null;};}
+  }
  };
  new Function('require','module','exports',code)(name=>{assert.ok(name in imports,'unknown import '+name);return imports[name];},module,module.exports);
  const render=()=>h.render(()=>module.exports.useOnDeviceAnswer('en-CA',(r,id)=>final.push({r,id}),(value,id)=>partial.push({value,id})));
  const flush=async()=>{render();h.mount();await tick();return render();};
  return {render,flush,emit:(type,e={})=>{assert.ok(listeners.has(type),'missing listener '+type);listeners.get(type)(e);},native,
   final,partial,starts,downloads,setAllowed:x=>permissionGranted=x,setInstalled:x=>modelInstalled=x,
-  permissions:()=>permissionCount,aborts:()=>abortCount};
+  permissions:()=>permissionCount,aborts:()=>abortCount,
+  routeSnapshot,emitRoute:route=>{assert.ok(routeListener,'no active native route listener');routeListener(route);},
+  routeWatchers:()=>routeSubscriptions,hasRouteWatcher:()=>!!routeListener};
 }
 
 test('current OS recognition does not claim headset or Meta glasses microphone provenance',async()=>{
@@ -174,4 +186,58 @@ test('terminal native end without an ASR result reports recovery instead of phan
  h.emit('end');
  assert.match(h.render().issue,/terminó sin respuesta reconocida/);
  assert.equal(h.final.length,0);
+});
+
+
+test('iOS route change after recognized audiostart aborts a proposed answer and waits for terminal end',async()=>{
+ const h=setup({routeSupport:true});await h.flush();await h.flush();
+ assert.equal(await h.render().start('answer-a'),true);
+ h.emit('audiostart',{timestamp:1780000100000});
+ await tick();
+ assert.equal(h.hasRouteWatcher(),true);
+ const changed={...h.routeSnapshot(),activeInputId:'headset',observedAtEpochMs:1780000100100};
+ h.emitRoute(changed);
+ assert.equal(h.aborts(),1);
+ assert.match(h.render().issue,/Cambió la entrada de audio/);
+ assert.equal(h.hasRouteWatcher(),false,'observer removed on interruption');
+ h.emit('result',{isFinal:true,results:[{transcript:'stale',confidence:1}]});
+ assert.deepEqual(h.final,[]);
+ assert.equal(await h.render().start('answer-b'),false,'must await native end after route change');
+ h.emit('end');
+ assert.equal(await h.render().start('answer-b'),true);
+ h.emit('end');
+});
+test('Android connected input changes abort cautiously without claiming it was ASR microphone',async()=>{
+ const h=setup({routeSupport:true,android:true});await h.flush();await h.flush();
+ assert.equal(await h.render().start('answer'),true);
+ h.emit('audiostart',{timestamp:1780000100000});
+ await tick();
+ assert.equal(h.hasRouteWatcher(),true);
+ h.emitRoute({...h.routeSnapshot(),connectedInputs:[{id:'phone',kind:'built-in'}],observedAtEpochMs:1780000101000});
+ assert.equal(h.aborts(),1);
+ assert.equal(h.render().audioInputEvidence,'unverified');
+ h.emit('end');
+});
+test('unchanged route, including output-only activity, never interrupts local ASR',async()=>{
+ const h=setup({routeSupport:true});await h.flush();await h.flush();
+ assert.equal(await h.render().start('answer'),true);
+ h.emit('audiostart',{timestamp:1780000100000});
+ await tick();
+ h.emitRoute({...h.routeSnapshot(),observedAtEpochMs:1780000100200});
+ assert.equal(h.aborts(),0);
+ h.emit('result',{isFinal:true,results:[{transcript:'Good morning',confidence:0.94}]});
+ assert.deepEqual(h.final,[{id:'answer',r:{text:'Good morning',confidence:'high'}}]);
+ assert.equal(h.hasRouteWatcher(),false);
+ h.emit('end');
+});
+test('native observer unavailable never prevents basic phone microphone learning',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('answer'),true);
+ h.emit('audiostart',{timestamp:1780000100000});
+ await tick();
+ assert.equal(h.hasRouteWatcher(),false);
+ assert.equal(h.render().audioInputEvidence,'unverified');
+ h.emit('result',{isFinal:true,results:[{transcript:'Hello',confidence:0.8}]});
+ assert.equal(h.final.length,1);
+ h.emit('end');
 });
