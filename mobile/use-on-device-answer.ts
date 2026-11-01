@@ -113,7 +113,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   if(!initial||routeProbe.current!==probe||!mounted.current||
      active.current?.token!==token||AppState.currentState!=='active')return;
   observedInput.current=initial;
-  routeUnsubscribe.current=observeNativeInputChanges(next=>{
+  const unsubscribe=observeNativeInputChanges(next=>{
    if(!mounted.current||routeProbe.current!==probe||active.current?.token!==token||
       AppState.currentState!=='active')return;
    const previous=observedInput.current;
@@ -123,6 +123,15 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     setIssue('Cambió la entrada de audio durante la práctica. Se canceló esta respuesta; comprueba el micrófono y vuelve a intentarlo.');
    }
   });
+  // The native emitter can invoke a callback synchronously during registration.
+  // If that invalidates the turn, unsubscribe the newly returned listener
+  // immediately rather than storing an orphaned observer after stop().
+  if(routeProbe.current!==probe||!mounted.current||
+     active.current?.token!==token||AppState.currentState!=='active'){
+   try{unsubscribe();}catch{/* Native teardown is best-effort. */}
+   return;
+  }
+  routeUnsubscribe.current=unsubscribe;
   // Close the read-to-subscribe gap: an input may disappear after the first
   // snapshot but before the native listener is installed. Resample now that
   // changes are observed. An unreadable second sample also fails closed.
