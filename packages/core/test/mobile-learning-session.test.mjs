@@ -166,7 +166,7 @@ function elements(node){
  return [node,...elements(node.props?.children)];
 }
 function textOf(node){return typeof node==='string'?node:Array.isArray(node)?node.map(textOf).join(''):node&&typeof node==='object'?textOf(node.props?.children):'';}
-function voiceHarness(){
+function voiceHarness(options={}){
  const h=hooks(),activities=core.courseActivities('en-CA');
  let checkpoint=core.newLearningCheckpoint('en-CA');
  const session=core.planLearningSession({sessionId:'guided-ui',target:'en-CA',known:'es',today:'2026-10-31',activities,model:checkpoint.model,completedLessons:[],preferences:core.defaultSessionPreferences});
@@ -174,8 +174,13 @@ function voiceHarness(){
  const events=[],audio=[],answerStarts=[],commandStarts=[],callbacks=new Map();let appStateCallback;
  const runtime={value:checkpoint,activities,outputs:core.sessionOpening(session,activities),busy:false,blocked:false,
   async transition(event){events.push(event);const next=core.stepLearningCheckpoint(runtime.value,event,activities);runtime.value=next.checkpoint;runtime.outputs=next.outputs;}};
- const mic={available:true,listening:false,issue:'',stop(){mic.listening=false;},async start(id){answerStarts.push(id);mic.listening=true;return true;}};
- const commandMic={available:true,listening:false,issue:'',stop(){commandMic.listening=false;},async start(id){commandStarts.push(id);commandMic.listening=true;return true;}};
+ const modelActions=[];
+ const mic={available:true,listening:false,model:options.answerModel??'unknown',canDownload:options.canDownload??false,issue:options.answerIssue??'',
+  stop(){mic.listening=false;},async start(id){answerStarts.push(id);mic.listening=true;return true;},
+  async downloadModel(){modelActions.push('download-answer');},async checkModel(){modelActions.push('check-answer');}};
+ const commandMic={available:true,listening:false,model:options.commandModel??'unknown',canDownload:options.canDownload??false,issue:options.commandIssue??'',
+  stop(){commandMic.listening=false;},async start(id){commandStarts.push(id);commandMic.listening=true;return true;},
+  async downloadModel(){modelActions.push('download-command');},async checkModel(){modelActions.push('check-command');}};
  const appState={currentState:'active',addEventListener:(_name,cb)=>{appStateCallback=cb;return {remove(){}};}};
  const api=compile('../../../mobile/LearningSessionCourse.tsx',{
   react:h.react,'react-native':{AppState:appState,Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:x=>x}},
@@ -196,9 +201,28 @@ function voiceHarness(){
   }
   assert.fail('unbounded narration');
  };
- return {runtime,events,audio,answerStarts,commandStarts,callbacks,render,flush,press,drain,
+ return {runtime,events,audio,answerStarts,commandStarts,modelActions,callbacks,render,flush,press,drain,
   background:()=>{appState.currentState='background';appStateCallback('background');}};
 }
+test('missing command-language ASR model has visible actionable offline recovery without changing learning evidence',async()=>{
+ const h=voiceHarness({canDownload:true,answerModel:'installed',commandModel:'missing',
+  commandIssue:'El reconocimiento local para comandos no está disponible.'});
+ const tree=await h.flush();
+ const rendered=elements(tree);
+ const voiceButton=rendered.find(e=>e.type==='Pressable'&&textOf(e)==='Comando de voz');
+ assert.equal(voiceButton.props.disabled,true,'do not start unavailable command recognizer');
+ assert.ok(textOf(tree).includes('Voz para responder (en-CA): modelo local instalado'));
+ assert.ok(textOf(tree).includes('Voz para comandos (es): falta modelo local'));
+ assert.ok(textOf(tree).includes('El reconocimiento local para comandos no está disponible.'));
+ h.press(tree,'Preparar modelo para comandos');
+ h.press(tree,'Comprobar modelo para comandos');
+ h.press(tree,'Preparar modelo local (Android)');
+ h.press(tree,'Comprobar modelo local');
+ assert.deepEqual(h.modelActions,['download-command','check-command','download-answer','check-answer']);
+ assert.deepEqual(h.events,[],'checking/downloading models never submits an answer');
+ assert.deepEqual(h.answerStarts,[]);
+ assert.deepEqual(h.commandStarts,[]);
+});
 test('guided mobile session narrates before capture, waits for choices and never auto-confirms ASR',async()=>{
  const h=voiceHarness();let tree=await h.flush();
  assert.equal(h.audio.length,0,'guide is opt-in');
