@@ -46,7 +46,7 @@ function harness(target='en-CA',known='es',rate=0.75){
  const press=(label)=>{
   const t=render(),item=elements(t).find(e=>e.type==='Pressable'&&textOf(e)===label);
   assert.ok(item,'missing control: '+label);
-  assert.equal(item.props.disabled,true===item.props.disabled?false:undefined,'button must be enabled: '+label);
+  assert.notEqual(item.props.disabled,true,'button must be enabled: '+label);
   item.props.onPress();return render();
  };
  return {calls,stops,render,flush,press,elements,appState:(value)=>{appState=value;assert.ok(appChange);appChange(value);},
