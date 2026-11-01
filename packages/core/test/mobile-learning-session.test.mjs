@@ -136,7 +136,7 @@ test('guided mobile session narrates before capture, waits for choices and never
  h.press(tree,'Activar guía de voz');await h.flush();
  assert.equal(h.audio[0].cue.language,'es');assert.equal(h.commandStarts.length,0);
  await h.drain();assert.equal(h.commandStarts.length,1,'listen stage accepts a separate command turn');
- h.callbacks.get('es')({text:'reanudar clase',confidence:'unknown'},h.commandStarts[0]);
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},h.commandStarts[0]);
  tree=await h.flush();assert.equal(h.events.length,0,'uncalibrated command waits for confirmation');
  h.press(tree,'Confirmar respuesta propuesta');await h.flush();await h.drain();
  assert.equal(h.runtime.value.session.current.activityId,'en-CA-a0-greeting-comprehension');
@@ -159,6 +159,33 @@ test('guided mobile session narrates before capture, waits for choices and never
  // Dispose the last pending utterance before the test exits.
  tree=await h.flush();h.press(tree,'Detener voz y micrófono');
 });
+test('mobile voice commands change playback speed and listen without submitting an answer',async()=>{
+ const h=voiceHarness();let tree=await h.flush();
+ h.press(tree,'Comando de voz');
+ h.callbacks.get('es')({text:'reanudar clase',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();
+ assert.equal(elements(tree).some(e=>e.type==='Pressable'&&textOf(e)==='Confirmar respuesta propuesta'),false,
+  'resume during an active session must not act as next');
+ assert.equal(h.events.length,0);
+
+ h.press(tree,'Comando de voz');
+ h.callbacks.get('es')({text:'más rápido',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ tree=await h.flush();
+ assert.equal(h.events.length,0,'speed control does not create learning evidence');
+ assert.ok(textOf(tree).includes('0.98×'),'playback rate is visible');
+
+ h.press(tree,'Comando de voz');
+ h.callbacks.get('es')({text:'solo escuchar',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ await tick();
+ assert.equal(h.audio.length,1);
+ assert.equal(h.audio[0].rate,0.98);
+ assert.equal(h.audio[0].cue.language,'en-CA');
+ assert.equal(h.events.length,0,'listen-only never submits an answer or advances course');
+ tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+
 test('background during guided narration revokes queued audio and prevents a late microphone start',async()=>{
  const h=voiceHarness();let tree=await h.flush();h.press(tree,'Activar guía de voz');await h.flush();
  const late=h.audio[0];h.background();await h.flush();
