@@ -4,7 +4,7 @@
  */
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Platform} from 'react-native';
-import {classifyVoiceConfidence,queryLocalModelState,NativeSpeechSessionGate,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
+import {classifyVoiceConfidence,offlineSpeechFailure,queryLocalModelState,NativeSpeechSessionGate,type LocalModelState,type TargetLanguage} from '@voicefirst/core';
 type Subscription={remove:()=>void};
 // Derive the Android locale query contract from the installed package.
 type NativeLocaleOptions=Parameters<typeof import('expo-speech-recognition')['ExpoSpeechRecognitionModule']['getSupportedLocales']>[0];
@@ -112,10 +112,13 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     const confidence=event.results?.[0]?.confidence;
     callbacks.current.onFinal({text:spoken.trim(),confidence:classifyVoiceConfidence(confidence)},captured.id);
    }),
-   native.addListener('error',()=>{
+   native.addListener('error',event=>{
     if(!active.current||microphoneOwner!==owner.current)return;
     active.current=null;owner.current=null;microphoneOwner=null;setListening(false);
-    setIssue('No se pudo reconocer la voz localmente. Continúa por texto o vuelve a intentarlo.');
+    // Do not grade errors or silently retry. Keep the native gate closed
+    // until the platform emits its terminal 'end' event.
+    const failure=offlineSpeechFailure(event);
+    if(failure.recovery!=='none')setIssue(failure.message);
    }),
    native.addListener('end',()=>{
     nativeSessionGate.end();
