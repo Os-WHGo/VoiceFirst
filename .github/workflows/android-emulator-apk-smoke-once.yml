@@ -1,13 +1,24 @@
 
-name: Android emulator APK smoke (internal one-shot)
+name: Android emulator APK smoke (manual, matched commit)
 
+# Explicit opt-in only. Never auto-run a costly emulator for code pushes.
+# GitHub exposes workflow_dispatch only when the workflow is on the default branch;
+# this source change does not launch an emulator or approve a production release.
 on:
-  push:
-    branches:
-      - codex/voicefirst-initial-source
-    paths:
-      - .github/workflows/android-emulator-apk-smoke-once.yml
-      - scripts/android-emulator-smoke.sh
+  workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: 'Successful Android standalone candidate run ID containing a current APK'
+        required: true
+        type: string
+      expected_sha:
+        description: 'Exact 40-character source commit SHA matching the APK producer'
+        required: true
+        type: string
+      confirm_internal_smoke:
+        description: 'Type RUN_OFFLINE_SMOKE to authorize emulator runner usage'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -15,11 +26,26 @@ permissions:
 
 jobs:
   emulator-smoke:
+    if: ${{ inputs.confirm_internal_smoke == 'RUN_OFFLINE_SMOKE' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha }}
+          persist-credentials: false
+
+      - name: Validate operator inputs
+        shell: bash
+        env:
+          INPUT_RUN_ID: ${{ inputs.candidate_run_id }}
+          INPUT_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$INPUT_RUN_ID" =~ ^[0-9]{1,20}$ ]] || { echo '::error::Invalid producer run ID'; exit 1; }
+          [[ "$INPUT_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::Expected source SHA must be full 40-character lowercase hex'; exit 1; }
+          test "$(git rev-parse HEAD)" = "$INPUT_SHA" || { echo '::error::Checkout source mismatch'; exit 1; }
 
       - name: Validate emulator smoke script syntax
         run: bash -n scripts/android-emulator-smoke.sh
@@ -28,21 +54,28 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: voicefirst-android-release-candidate-unverified
-          run-id: 39514938027
+          run-id: ${{ inputs.candidate_run_id }}
           github-token: ${{ github.token }}
           path: candidate
 
       - name: Verify candidate source provenance
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.candidate_run_id }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: |
           set -euo pipefail
-          producer_sha=$(gh api repos/${{ github.repository }}/actions/runs/39514938027 --jq '.head_sha')
-          printf 'APK producer source SHA: %s\nCurrent checkout SHA: %s\n' "$producer_sha" "$GITHUB_SHA"
-          if [[ "$producer_sha" != "$GITHUB_SHA" ]]; then
-            echo '::error::Existing APK was built from a different source commit. Rebuild and test the matching APK; refusing stale binary validation.'
-            exit 1
-          fi
+          producer=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID")
+          producer_sha=$(jq -r '.head_sha' <<< "$producer")
+          producer_repo=$(jq -r '.head_repository.full_name' <<< "$producer")
+          producer_branch=$(jq -r '.head_branch' <<< "$producer")
+          producer_result=$(jq -r '.conclusion' <<< "$producer")
+          printf 'Producer SHA: %s\nExpected SHA: %s\nCheckout SHA: %s\n' "$producer_sha" "$EXPECTED_SHA" "$(git rev-parse HEAD)"
+          test "$producer_repo" = "$GITHUB_REPOSITORY" || { echo '::error::Artifact produced by a different repository'; exit 1; }
+          test "$producer_branch" = 'codex/voicefirst-initial-source' || { echo '::error::APK must originate from authorized development branch'; exit 1; }
+          test "$producer_result" = 'success' || { echo '::error::APK producing workflow did not succeed'; exit 1; }
+          test "$producer_sha" = "$EXPECTED_SHA" || { echo '::error::Stale or unrelated APK source'; exit 1; }
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA" || { echo '::error::Checked-out source does not match APK'; exit 1; }
 
       - name: Verify APK checksum
         run: |
@@ -72,7 +105,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: voicefirst-android-emulator-smoke-diagnostics
+          name: voicefirst-android-emulator-smoke-${{ inputs.expected_sha }}
           path: |
             android-emulator-logcat.txt
             voicefirst-online-logcat.txt
