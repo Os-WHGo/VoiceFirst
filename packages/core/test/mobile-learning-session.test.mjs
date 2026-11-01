@@ -255,6 +255,62 @@ test('mobile voice commands change playback speed and listen without submitting 
  tree=await h.flush();h.press(tree,'Detener voz y micrófono');
 });
 
+
+async function reachPendingVoiceAnswer(h){
+ let tree=await h.flush();
+ h.press(tree,'Activar guía de voz');
+ await h.flush();await h.drain();
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();
+ h.press(tree,'Confirmar respuesta propuesta');
+ await h.flush();await h.drain();
+ const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
+ const activity=h.runtime.activities.find(a=>a.id===prompt.activityId);
+ const correct=prompt.options.find(o=>o.id===activity.correctOptionId);
+ tree=await h.flush();h.press(tree,correct.text);
+ await h.flush();await h.drain();
+ assert.equal(h.answerStarts.length,1);
+ const before=h.runtime.value.session.results.length;
+ h.callbacks.get('en-CA')({text:'Hello!',confidence:'high'},h.answerStarts.at(-1));
+ await h.flush();
+ assert.equal(h.runtime.value.session.results.length,before,'first ASR result is only a proposal');
+ assert.equal(h.runtime.value.session.current.pendingConfirmation,'Hello!');
+ await h.drain();
+ assert.equal(h.commandStarts.length,2,'a separate command turn follows the spoken proposal');
+ return before;
+}
+test('guided learner can explicitly confirm a proposed answer by voice, without screen taps',async()=>{
+ const h=voiceHarness(),before=await reachPendingVoiceAnswer(h);
+ const id=h.commandStarts.at(-1);
+ h.callbacks.get('es')({text:'confirmar mi respuesta',confidence:'unknown'},id);
+ await h.flush();
+ assert.equal(h.events.at(-1).type,'confirm');
+ assert.equal(h.runtime.value.session.results.length,before+1);
+ assert.equal(h.runtime.value.session.results.at(-1).achievement,'learner-confirmed');
+ const tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('guided learner can reject a proposed answer by voice and receive a fresh listening turn',async()=>{
+ const h=voiceHarness(),before=await reachPendingVoiceAnswer(h);
+ h.callbacks.get('es')({text:'rechazar mi respuesta',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.at(-1).type,'reject');
+ assert.equal(h.runtime.value.session.results.length,before,'rejected proposal is not evidence');
+ assert.equal(h.runtime.value.session.current.pendingConfirmation,null);
+ await h.drain();
+ assert.equal(h.answerStarts.length,2,'rejection restates the question and reopens the target mic');
+ const tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('ordinary yes, no and incidental speech cannot confirm an uncertain guided answer',async()=>{
+ const h=voiceHarness(),before=await reachPendingVoiceAnswer(h);
+ const n=h.events.length;
+ h.callbacks.get('es')({text:'sí',confidence:'high'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.length,n,'a bare affirmative is not a valid confirmation command');
+ assert.equal(h.runtime.value.session.results.length,before);
+ assert.equal(h.runtime.value.session.current.pendingConfirmation,'Hello!');
+ const tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ assert.equal(h.runtime.value.session.results.length,before+1,'visual fallback remains available');
+});
 test('background during guided narration revokes queued audio and prevents a late microphone start',async()=>{
  const h=voiceHarness();let tree=await h.flush();h.press(tree,'Activar guía de voz');await h.flush();
  const late=h.audio[0];h.background();await h.flush();
