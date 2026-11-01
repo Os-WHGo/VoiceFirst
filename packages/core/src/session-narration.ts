@@ -3,6 +3,7 @@ import type {LearningSessionOutput} from './learning-session.js';
 import {PlaybackRequestOwnership,effectivePlaybackRate} from './playback-request-ownership.js';
 import {authoredVoiceCues,cueFingerprint,voiceLocales,type VoiceCue} from './voice-library.js';
 import type {TargetLanguage} from './types.js';
+import {voiceChoiceLabel,voiceChoiceCommandHint} from './voice-choice.js';
 
 export interface SessionNarrationLine {
  text:string;
@@ -25,7 +26,11 @@ export function sessionNarration(outputs:readonly LearningSessionOutput[],known:
    case 'prompt':
     add({text:output.instruction,language:known,purpose:'instruction',activityId:output.activityId});
     if(output.speech)add({...output.speech,purpose:'target-cue',activityId:output.activityId});
-    for(const option of output.options??[])add({text:option.text,language:option.language,purpose:'instruction',activityId:output.activityId});
+    for(const [index,option] of (output.options??[]).entries()){
+     if(output.activityKind==='choice')add({text:voiceChoiceLabel(known,index),language:known,purpose:'instruction',activityId:output.activityId});
+     add({text:option.text,language:option.language,purpose:'instruction',activityId:output.activityId});
+    }
+    if(output.activityKind==='choice'&&output.options?.length)add({text:voiceChoiceCommandHint(known),language:known,purpose:'instruction',activityId:output.activityId});
     break;
    case 'replay':
     add({text:output.instruction,language:known,purpose:'instruction',slower:output.rate==='slower'});
