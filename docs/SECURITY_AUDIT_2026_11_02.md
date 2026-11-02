@@ -53,3 +53,20 @@
 5. **P2, producción:** pruebas de penetración y SAST/secret scanning dedicados, verificación de permisos efectivos y bloqueo de publicación hasta cursos y seguridad completos. Esta auditoría **no es un pentest exhaustivo**, ni certificación de seguridad de la app.
 
 **Estado de entrega de este documento:** la verificación de CI se actualizará en el checkpoint único después de observar el HEAD final. La auditoría no demuestra ninguna remediación de los cinco GHSA de dependencias; documenta su origen, alcance probable, opciones y el refuerzo verificable del gate PR.
+
+
+## Macrobloque de remediación experimental · 2 noviembre 2026
+
+**Hallazgo reproducido:** existe una mejora compatible de la línea Expo 57. Se creó `scripts/expo57-security-trial.mjs` y `.github/workflows/expo57-security-patch-trial.yml` para ensayar `npm update --workspace mobile --package-lock-only --ignore-scripts --no-audit --no-fund` en un runner efímero. Compara estructura real de package-lock v3 y salidas npm audit, detecta advisories nuevas, no permite Expo 58 ni React Native 0.88, reinstala con `npm ci` y prueba núcleo, TypeScript, Expo config y Metro. No modifica ni publica el lockfile del PR, no genera APK/IPA, no activa servicios facturables y no acepta riesgo. Las pruebas unitarias cubren versiones inválidas, remoción legítima de una dependencia vulnerable y deterioro de severidad; un primer ensayo detectó y motivó arreglar el supuesto incorrecto de que toda dependencia transitoria tenía que seguir instalada. 
+
+**Resultado CI:** https://github.com/Os-WHGo/VoiceFirst/actions/runs/41416966368 SUCCESS bajo commit `d517b5064e37f7e8bd052e84c41ec4e89b1acd57` (código de seguridad sin cambio de lockfile). El update temporal resuelve:
+- `expo` 57.0.30 → **57.0.31**;
+- `@expo/cli` 57.0.31 → **57.0.32**;
+- `@expo/config-plugins` 57.0.10 → **57.0.11**;
+- `uuid` 7.0.3 → **no instalado** (ya no está en la cadena del lockfile experimentado).
+
+El escaneo tras la prueba mostró **13 paquetes afectados (2 high, 9 moderate, 2 low)** frente a 15 (2 high, 11 moderate, 2 low). Se eliminó la fuente de advisory `GHSA-w5hq-g745-h8pq` de `uuid`, sin añadir nuevos avisos. Quedan cuatro fuentes: `zod` GHSA-mrhx-c7xc-m3w5 (HIGH), `glob` GHSA-3g3m-2fjr-6pw4, `minimatch` GHSA-g3hv-75wg-m249 (MODERATE), `deepmerge` GHSA-gcqx-w48m-w2h4 (LOW). El experimento ejecutó **779/779 tests** con el lockfile temporal, TypeScript, Expo public config y Metro bundle PASS. **Esta mejora NO está aplicada en el lockfile oficial**, por lo tanto el CI de seguridad habitual sigue reportando 15 hallazgos y la PR #1 sigue bloqueada para fusión. La prueba en Android/iOS Kotlin/Swift actualizados sigue pendiente antes de una promoción de lockfile. No confundir experimento verde con auditoría aprobada.
+
+**Control adicional de permisos:** `scripts/voicefirst-privacy-config.mjs`, conectado a `scripts/check-expo-config.mjs`, verifica que `expo-audio` explicite `enableBackgroundRecording:false`, `enableBackgroundPlayback:false`, textos suficientes para permisos de voz, y sin `UIBackgroundModes` en iOS ni foreground service/background location Android sin autorización B2. 4 pruebas regresivas `packages/core/test/voicefirst-privacy-config.test.mjs`; estos controles comprueban configuración de fuente, no comportamiento real del SO. En el HEAD del experimento, 779/779 pruebas totales de núcleo PASS; TypeScript/bundle Expo/lockfile PASS; inventario FAIL esperado. 
+
+**Siguiente acción viable:** promover solamente el lockfile reproducible de parches 57 después de revisar el diff completo generado por npm y repetir compilaciones nativas agrupadas en la rama autorizada; preservar el gate de seguridad, que seguirá rojo con cuatro advisories raíz. Investigar parches upstream o adaptación probada (no majors forzados) para Zod, glob/minimatch y deepmerge. No fusionar main ni empaquetar beta como segura antes de cerrar la puerta de seguridad.
