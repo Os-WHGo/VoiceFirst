@@ -46,8 +46,12 @@ export function assessModelFit(entry:SpeechModelEntry,device:DeviceProfile,optio
     (options.ramShare??defaultRamShare)<=0||(options.ramShare??defaultRamShare)>1||
     entry.peakRamMb>device.totalRamMb*(options.ramShare??defaultRamShare))problems.push('memory');
  // Archive and extracted files coexist until promotion, plus a 5% margin.
- const requiredDiskBytes=Math.ceil((entry.pack.bytes+entry.installedBytes)*1.05);
- if(requiredDiskBytes>device.freeDiskBytes)problems.push('storage');
+ const calculatedBytes=Math.ceil((entry.pack.bytes+entry.installedBytes)*1.05);
+ const requiredDiskBytes=Number.isSafeInteger(calculatedBytes)&&calculatedBytes>0?calculatedBytes:Number.MAX_SAFE_INTEGER;
+ if(!Number.isSafeInteger(entry.pack.bytes)||entry.pack.bytes<=0||
+    !Number.isSafeInteger(entry.installedBytes)||entry.installedBytes<=0||
+    !Number.isSafeInteger(device.freeDiskBytes)||device.freeDiskBytes<0||
+    requiredDiskBytes===Number.MAX_SAFE_INTEGER||requiredDiskBytes>device.freeDiskBytes)problems.push('storage');
  if(!entry.pack.licenseReviewed)problems.push('license');
  if(entry.evidence.kind!=='device-test')problems.push('not-device-tested');
  // Missing device evidence is reported but does not block a learner-chosen, licensed install.
