@@ -13,7 +13,10 @@ export function newA0Journal(targetLanguage:TargetLanguage):A0Journal {
 export function appendA0JournalEvent(journal:A0Journal,lesson:A0LessonCandidate,event:A0JournalEvent):A0Journal {
  if(lesson.targetLanguage!==journal.targetLanguage||!validId(event.eventId)||journal.events.length>=10000)return journal;
  if(journal.events.some(x=>x.eventId===event.eventId))return journal;
- if(!evaluateA0Choice(lesson,event))return journal;
+ const assessment=evaluateA0Choice(lesson,event);
+ // A regional synonym that also answers the question must not become a wrong attempt.
+ // Preserve historic events on load, but never append new ambiguous evidence.
+ if(!assessment||assessment.feedbackCode==='also_valid')return journal;
  // Once a lesson has been answered correctly, its completion is immutable.
  if(journal.events.some(x=>x.lessonId===lesson.lessonId&&x.selectedOptionId===lesson.correctOptionId))return journal;
  const expected=journal.events.filter(x=>x.lessonId===lesson.lessonId).length+1;
