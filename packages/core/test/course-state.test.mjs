@@ -62,3 +62,13 @@ test('six-language storage rejects completed lessons when prerequisites are miss
   assert.match(loaded.reason,/prerequisite/i);
  }
 });
+
+test('due listening does not displace the next unlocked lesson',()=>{
+ for(const language of ['en-CA','fr-CA','es','pt-BR','de','it']){
+  const lessons=lessonsFor(language),first=lessons[0];
+  const progress={...initialCourseState(language),completed:[first.id],due:{[first.exercises[0].id]:'2026-10-16'}};
+  assert.equal(chooseCourseLesson(progress,'2026-11-01').id,lessons[1].id);
+  progress.due[first.exercises[2].id]='2026-10-16';
+  assert.equal(chooseCourseLesson(progress,'2026-11-01').id,first.id);
+ }
+});
