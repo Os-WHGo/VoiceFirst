@@ -84,7 +84,8 @@ export type RemovalPlan={status:'ok';remove:readonly string[];freedBytes:number}
 /** Removing a pack never breaks another installed pack or the model the current session is using. */
 export function planPackRemoval(catalog:readonly LanguagePack[],installedIds:readonly string[],remove:readonly string[],inUse:readonly string[]):RemovalPlan{
  const byId=new Map(catalog.map(p=>[p.id,p]));
- const unknown=remove.filter(id=>!byId.has(id)||!installedIds.includes(id));
+ const uniqueRemove=[...new Set(remove)];
+ const unknown=uniqueRemove.filter(id=>!byId.has(id)||!installedIds.includes(id));
  if(unknown.length)return {status:'blocked',reason:'unknown-pack',ids:unknown};
  const busy=remove.filter(id=>inUse.includes(id));
  if(busy.length)return {status:'blocked',reason:'in-use',ids:busy};
