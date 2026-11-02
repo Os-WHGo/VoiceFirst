@@ -19,3 +19,38 @@ test('A0 catalog update blocks invalid curriculum',()=>{
  const result=reviewA0CatalogUpdate(pack([]),[]);
  assert.equal(result.kind,'blocked');assert.equal(result.reason,'INVALID_CATALOG');
 });
+
+test('A0 update with saved answers requires previous catalog to preserve meaning',()=>{
+ const before=load();
+ const saved=appendA0JournalEvent(newA0Journal('en-CA'),before,{eventId:'answered',lessonId:before.lessonId,selectedOptionId:'yes',attemptNumber:1});
+ const unchanged=pack([make()]);
+ assert.equal(reviewA0CatalogUpdate(unchanged,[saved]).reason,'MISSING_BASELINE');
+ assert.equal(reviewA0CatalogUpdate(unchanged,[saved],[before]).kind,'compatible_candidate');
+ const reordered=make();reordered.activity.options.reverse();
+ assert.equal(reviewA0CatalogUpdate(pack([reordered]),[saved],[before]).kind,'compatible_candidate','reordering without changing meanings is harmless');
+});
+test('A0 update rejects changed keys, labels, removed options, and missing old baseline',()=>{
+ const prior=load();
+ const saved=appendA0JournalEvent(newA0Journal('en-CA'),prior,{eventId:'answered',lessonId:prior.lessonId,selectedOptionId:'yes',attemptNumber:1});
+ const cases=[
+  [item=>{item.activity.correct_option_ids=['no'];},'CHANGED_CORRECT_OPTION'],
+  [item=>{item.activity.options[0].text='Bye';},'CHANGED_ANSWER_OPTIONS'],
+  [item=>{item.activity.options[1].text='Hello';},'CHANGED_ANSWER_OPTIONS'],
+  [item=>{item.activity.options[1].id='later';},'CHANGED_ANSWER_OPTIONS']
+ ];
+ for(const [change,code] of cases){
+  const next=make();change(next);
+  const result=reviewA0CatalogUpdate(pack([next]),[saved],[prior]);
+  assert.equal(result.kind,'blocked',code);
+  assert.equal(result.reason,'INCOMPATIBLE_PROGRESS');
+  assert.ok(result.progressIssues.some(issue=>issue.code===code),code);
+ }
+ const missing=reviewA0CatalogUpdate(pack([make()]),[saved],[]);
+ assert.equal(missing.reason,'INCOMPATIBLE_PROGRESS');
+ assert.ok(missing.progressIssues.some(issue=>issue.code==='MISSING_PREVIOUS_LESSON'));
+});
+function load(){
+ const result=reviewA0CatalogUpdate(pack([make()]),[]);
+ assert.equal(result.kind,'compatible_candidate');
+ return result.lessons[0];
+}
