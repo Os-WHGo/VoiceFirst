@@ -92,7 +92,7 @@ export function planPackRemoval(catalog:readonly LanguagePack[],installedIds:rea
  const keep=installedIds.filter(id=>!uniqueRemove.includes(id));
  const dependents=keep.filter(id=>byId.get(id)?.dependencies.some(d=>uniqueRemove.includes(d)));
  if(dependents.length)return {status:'blocked',reason:'required-by-installed',ids:dependents};
- return {status:'ok',remove:[...remove],freedBytes:remove.reduce((n,id)=>n+(byId.get(id)?.bytes??0),0)};
+ return {status:'ok',remove:uniqueRemove,freedBytes:uniqueRemove.reduce((n,id)=>n+(byId.get(id)?.bytes??0),0)};
 }
 export interface PackFile {path:string;packId:string;kind:'download'|'staging'|'installed'}
 /** Temporary files that are safe to delete: downloads and staging areas of packs no install is still working on.
