@@ -41,7 +41,7 @@ export function inspectHistoricalNormalizedCurriculum(input:unknown):HistoricalC
    issues.push(prefix+':UNSUPPORTED_LEVEL_OR_LANGUAGE');continue;
   }
   if(typeof raw.id!=='string'||typeof raw.objective_id!=='string'||
-   raw.id!==raw.objective_id+'.'+locale||raw.objective_id!==level+'.'+raw.objective_id.split('.')[1]||
+   raw.id!==raw.objective_id+'.'+locale||raw.objective_id!==String(level)+'.'+raw.objective_id.split('.')[1]||
    !/^A0\.[0-9]{2}$|^A1\.[0-9]{2}$|^A2\.[0-9]{2}$|^B1\.[0-9]{2}$/.test(raw.objective_id)){
    issues.push(prefix+':INVALID_ORIGINAL_ID');continue;
   }
@@ -65,9 +65,10 @@ export function inspectHistoricalNormalizedCurriculum(input:unknown):HistoricalC
  if(!safeCount(input.counts.variants)||input.counts.variants!==variants||
    !safeCount(input.counts.stage_instances)||input.counts.stage_instances!==stageInstances)
   issues.push('TOTALS_MISMATCH');
- if(!record(input.counts.by_level)||levels.some(l=>!safeCount((input.counts as {by_level:Record<string,unknown>}).by_level[l])||
-   input.counts.by_level[l]!==byLevel[l])||
-   Object.keys(input.counts.by_level).some(key=>!levels.includes(key as HistoricalCurriculumLevel)))
+ const declaredLevels=input.counts.by_level;
+ if(!record(declaredLevels)||levels.some(l=>!safeCount(declaredLevels[l])||
+   declaredLevels[l]!==byLevel[l])||
+   Object.keys(declaredLevels).some(key=>!levels.includes(key as HistoricalCurriculumLevel)))
   issues.push('LEVEL_TOTALS_MISMATCH');
  return result();
 }
