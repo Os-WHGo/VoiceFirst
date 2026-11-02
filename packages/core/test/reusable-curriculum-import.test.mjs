@@ -31,3 +31,33 @@ test('accepted candidates report real directed-pair coverage, not approval',()=>
  assert.equal(full.coverage[0].candidatePairs,30);
  assert.equal(full.readyForPublicRelease,false);
 });
+
+test('C1 and C2 activity-only drafts compose across directed pairs without invented dialogue',()=>{
+ for(const level of ['C1','C2']){
+  const upper={...concept,id:'concept.'+level+'.argument',level,goal:'Evaluate an argument',skills:['listening','interaction']};
+  const units=targetLanguages.map(targetLanguage=>({
+   conceptId:upper.id,targetLanguage,dialogue:[],activities:['Examine the claim and explain the uncertainty'],
+   vocabulary:['evidence'],editorialStatus:'candidate',rightsCleared:false,audioReviewed:false
+  }));
+  const helps=targetLanguages.map(knownLanguage=>({
+   conceptId:upper.id,knownLanguage,instructions:'Analyze the argument',editorialStatus:'candidate'
+  }));
+  const inspected=inspectReusableCurriculumImport({concepts:[upper],units,supports:helps});
+  assert.equal(inspected.acceptedForReview,true,JSON.stringify(inspected.errors));
+  assert.equal(inspected.coverage[0].candidatePairs,30);
+  assert.equal(inspected.readyForPublicRelease,false);
+ }
+});
+test('import blocks empty and malformed activity-only drafts rather than inventing content',()=>{
+ const activityOnly={...unit('fr-CA'),dialogue:[],activities:['Observe the intended meaning']};
+ assert.equal(inspectReusableCurriculumImport(packageOf([activityOnly],[support('es')])).acceptedForReview,true);
+ for(const malformed of [
+  {...activityOnly,activities:[]},
+  {...activityOnly,activities:['']},
+  {...activityOnly,activities:['Valid',0]},
+  {...activityOnly,activities:'A prompt'},
+  {...activityOnly,dialogue:[' ']},
+ ]){
+  assert.equal(inspectReusableCurriculumImport(packageOf([malformed],[support('es')])).acceptedForReview,false);
+ }
+});
