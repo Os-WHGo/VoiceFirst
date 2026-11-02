@@ -3,7 +3,8 @@
  * No APK/IPA, signing, EAS account, simulator or device is used.
  */
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync,rmSync,readdirSync} from 'node:fs';
+import {mkdtempSync,rmSync,readdirSync,readFileSync} from 'node:fs';
+import {inspectMobileBundleSources} from './inspect-mobile-bundle-sources.mjs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -14,7 +15,7 @@ const temp=mkdtempSync(join(tmpdir(),'voicefirst-metro-'));
 try{
  for(const platform of ['android','ios']){
   const out=join(temp,platform);
-  const run=spawnSync('npx',['--no-install','expo','export','--platform',platform,'--output-dir',out],
+  const run=spawnSync('npx',['--no-install','expo','export','--platform',platform,'--source-maps','--output-dir',out],
    {cwd,encoding:'utf8',timeout:240000,maxBuffer:4*1024*1024,
     env:{...process.env,CI:'1',EXPO_NO_TELEMETRY:'1'}});
   if(run.status!==0){
@@ -31,6 +32,10 @@ try{
    console.error('Expo output: '+(run.stdout||'').slice(-2500));
    process.exitCode=1;break;
   }
+  const mapPaths=names.filter(name=>name.endsWith('.map'));
+  const sourceMaps=mapPaths.map(name=>JSON.parse(readFileSync(join(out,name),'utf8')));
+  const report=inspectMobileBundleSources(sourceMaps);
+  console.log('Metro '+platform+' JS provenance: '+JSON.stringify(report));
   console.log('Metro '+platform+' bundle exported successfully: '+bundles.slice(0,5).join(', ')+' (not a native installable).');
  }
 }finally{rmSync(temp,{recursive:true,force:true});}
