@@ -64,7 +64,19 @@ test('due review queue sorts by date then weakest success count and exercise ID'
  const exercises=lesson.exercises;
  const state={...newCourseProgress('en-CA'),completed:[lesson.id],due:Object.fromEntries(exercises.map(e=>[e.id,'2026-10-17'])),correct:{[exercises[0].id]:2,[exercises[1].id]:0,[exercises[2].id]:1,[exercises[3].id]:0}};
  const queue=courseReviewQueue(state,'2026-10-18');
- assert.equal(queue.length,4);
- assert.deepEqual(queue.map(e=>e.correct),[0,0,1,2]);
- assert.deepEqual(queue.map(e=>e.exercise.id).slice(0,2),[exercises[1].id,exercises[3].id].sort());
+ assert.equal(queue.length,2);
+ assert.deepEqual(queue.map(e=>e.correct),[0,1]);
+ assert.deepEqual(queue.map(e=>e.exercise.type),['checkpoint','recall']);
+});
+
+test('hearing and imitation never become due mastery reviews in any of the six languages',()=>{
+ for(const language of ['en-CA','fr-CA','es','pt-BR','de','it']){
+  const lesson=lessonsFor(language)[0];
+  const progress={...newCourseProgress(language),completed:[lesson.id],due:Object.fromEntries(
+   lesson.exercises.map(e=>[e.id,'2026-10-17']))};
+  const due=courseReviewQueue(progress,'2026-10-18');
+  assert.deepEqual(due.map(e=>e.exercise.type).sort(),['checkpoint','recall']);
+  assert.equal(courseReviewSummary(progress,'2026-10-18').due,2);
+  assert.equal(courseReviewSummary(progress,'2026-10-18').overdue,2);
+ }
 });
