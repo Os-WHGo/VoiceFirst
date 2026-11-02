@@ -1,7 +1,7 @@
 /** A0 candidate preview. No lesson is bundled or marked publishable here. */
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {View,Text,Pressable,StyleSheet} from 'react-native';
-import {a0LessonRoutes,nextA0LessonId,type A0LessonCandidate,type TargetLanguage} from '@voicefirst/core';
+import {a0LessonRoutes,nextA0LessonId,evaluateA0Choice,alsoValidNote,type A0LessonCandidate,type TargetLanguage} from '@voicefirst/core';
 import {useA0Session} from './use-a0-session';
 const palette={background:'#142339',text:'#F2F7FC',secondary:'#A6BBD0',accent:'#89D4C5'};
 export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:TargetLanguage;nativeLanguage:TargetLanguage;lessons:readonly A0LessonCandidate[]}){
@@ -26,6 +26,14 @@ export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:Targe
  const prompt=lesson?.promptByKnownLanguage[nativeLanguage];
  const answer=async(optionId:string)=>{
   if(!lesson||session.status!=='ready'||!session.journal||inFlight.current)return;
+  const outcome=evaluateA0Choice(lesson,{lessonId:lesson.lessonId,selectedOptionId:optionId,attemptNumber:count+1});
+  if(outcome?.feedbackCode==='also_valid'){
+   // Another regional/register answer is genuinely acceptable. Give context
+   // without submitting an error, consuming an attempt or requiring a replay.
+   setLastOutcome(null);
+   setFeedback(alsoValidNote[nativeLanguage]);
+   return;
+  }
   const eventId='a0.'+Date.now().toString(36)+'.'+Math.random().toString(36).slice(2,10);
   inFlight.current=true;
   const view=viewEpoch.current;
