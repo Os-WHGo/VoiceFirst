@@ -20,6 +20,10 @@ import { missionsFor, languageNames, targetLanguages, courseReadingLocale, type 
 const C = { bg:'#0B1421', surface:'#142339', border:'#2B435A', text:'#F2F7FC', secondary:'#A6BBD0', mint:'#89D4C5', gold:'#E1BD83' };
 const a0Catalog=readA0CatalogSource({id:'VoiceFirst_A0_Functional_6Langs_v0.2',read:()=>a0CandidateJson});
 const pendingA0Lessons: readonly A0LessonCandidate[] = a0Catalog.kind==='candidate'?a0Catalog.catalog.lessons:[];
+// VoiceFirst_A0_Functional_6Langs_v0.2.json is the frozen reference for existing
+// A0 journals. Future revisions MUST use a new asset while keeping v0.2 here.
+// The CI test pins this baseline's Git blob SHA, preventing silent edits.
+const a0CatalogPreflight={input:a0CandidateJson,previousLessons:pendingA0Lessons};
 const bands: CefrBand[] = ['A0','A1','A2','B1','B2','C1','C2'];
 export default function App() {
   const [nativeLanguage, setNativeLanguage] = useState<TargetLanguage>('es');
@@ -99,7 +103,7 @@ export default function App() {
         <GuidedDialoguePractice key={target} nativeLanguage={nativeLanguage} target={target} focus={focus} rate={rate} experience={experience}/>
         {level==='A0' && <A0TextOrientation key={'orientation-'+target} target={target} nativeLanguage={nativeLanguage} rate={rate} />}
         {level==='A0' && a0Catalog.kind==='blocked' && <Text style={styles.note}>Catálogo A0 bloqueado por validación. No se cargaron ejercicios.</Text>}
-        {level==='A0' && a0Catalog.kind==='candidate' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={pendingA0Lessons} />}
+        {level==='A0' && a0Catalog.kind==='candidate' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={pendingA0Lessons} preflight={a0CatalogPreflight} />}
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} guideLocale={guideLocale} rate={rate} experience={experience} />
         <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
