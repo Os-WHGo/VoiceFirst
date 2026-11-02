@@ -45,6 +45,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  const [issue,setIssue]=useState('');
  const [modelReport,setModelReport]=useState<{locale:string;value:LocalModelState}>({locale:'',value:'unknown'});
  const model=modelReport.locale===locale[language]?modelReport.value:'unknown';
+ const currentModel=useRef(model);currentModel.current=model;
  const probeEpoch=useRef(0);
  const languageRef=useRef(language);languageRef.current=language;
  const [checkingModel,setCheckingModel]=useState(false);
@@ -247,7 +248,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  const start=useCallback(async(exerciseId:string,options?:{waitForNativeEnd?:boolean}):Promise<boolean>=>{
   if(!mounted.current||languageRef.current!==language||AppState.currentState!=='active')return false;
   if(!native){setIssue('Este dispositivo no dispone de reconocimiento local compatible.');return false;}
-  if(Platform.OS==='android'&&model==='missing'){
+  if(Platform.OS==='android'&&currentModel.current==='missing'){
    setIssue('El idioma elegido figura como disponible pero no instalado para reconocer voz offline. Instala el modelo y comprueba de nuevo.');
    return false;
   }
