@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {reviewA0StoredCatalog,newA0Journal,appendA0JournalEvent,loadA0CandidateCatalog} from '../dist/index.js';
+import {reviewA0StoredCatalog,restoreA0CatalogSession,newA0Journal,appendA0JournalEvent,loadA0CandidateCatalog} from '../dist/index.js';
 const help=Object.fromEntries(['fr-CA','es','pt-BR','de','it'].map(x=>[x,'Select the correct answer']));
 const rawLesson=(id)=>({lesson_id:id,concept_id:id,target_language:'en-CA',sequence:1,prerequisites:[],editorial_status:'candidate',publishable:false,human_review_required:true,activity:{type:'single_choice',skill:'reading',audio_required:false,text_fallback:true,context_by_known_language:help,prompt_by_known_language:help,options:[{id:'yes',text:'Hello'},{id:'no',text:'Bye'}],correct_option_ids:['yes'],assessment:{scoring:'exact_match'}}});
 const old={lessonId:'old',targetLanguage:'en-CA',options:[{id:'yes',text:'Hello'},{id:'no',text:'Bye'}],correctOptionId:'yes'};
@@ -47,4 +47,43 @@ test('A0 stored catalog blocks changed answer meaning despite identical IDs and 
  assert.equal(result.kind,'blocked');
  assert.equal(result.reason,'INCOMPATIBLE_PROGRESS');
  assert.deepEqual(writes,[],'incompatible progress must be retained byte-for-byte');
+});
+
+test('protected A0 mount reads a single snapshot and returns it for exact CAS',async()=>{
+ const source=pack('same');
+ const previousLessons=loadA0CandidateCatalog(source).lessons;
+ const journal=appendA0JournalEvent(newA0Journal('en-CA'),previousLessons[0],{
+  eventId:'record-1',lessonId:'same',selectedOptionId:'yes',attemptNumber:1
+ });
+ const raw=JSON.stringify(journal);
+ let reads=0;
+ const port={read:async()=>{reads++;return raw;},write:async()=>assert.fail('no writes during restore')};
+ const restored=await restoreA0CatalogSession(port,source,'en-CA',previousLessons);
+ assert.equal(restored.kind,'ok');
+ assert.equal(reads,1,'must not read once for preflight and again for restore');
+ assert.equal(restored.raw,raw,'return exactly the verified snapshot');
+ assert.deepEqual(restored.journal,journal);
+ assert.equal(restored.publishable,false);
+});
+test('protected A0 mount blocks altered scenarios before showing or writing historical results',async()=>{
+ const source=pack('same'),previous=loadA0CandidateCatalog(source).lessons;
+ const journal=appendA0JournalEvent(newA0Journal('en-CA'),previous[0],{
+  eventId:'record-1',lessonId:'same',selectedOptionId:'no',attemptNumber:1
+ });
+ const candidate=pack('same');
+ candidate.lessons[0].activity.prompt_by_known_language.es='Choose a different situation';
+ let reads=0;
+ const port={read:async()=>{reads++;return JSON.stringify(journal);},write:async()=>assert.fail('must preserve history')};
+ const result=await restoreA0CatalogSession(port,candidate,'en-CA',previous);
+ assert.equal(reads,1);
+ assert.deepEqual(result,{kind:'blocked',reason:'INCOMPATIBLE_PROGRESS',publishable:false});
+});
+test('protected A0 mount accepts first install but blocks untrusted saved bytes',async()=>{
+ const catalog=pack('new'),previous=loadA0CandidateCatalog(catalog).lessons;
+ const blank=await restoreA0CatalogSession({read:async()=>null,write:async()=>{}},catalog,'en-CA',previous);
+ assert.equal(blank.kind,'ok');assert.equal(blank.raw,null);assert.equal(blank.journal.revision,0);
+ const invalid=await restoreA0CatalogSession({read:async()=>'{oops',write:async()=>{}},catalog,'en-CA',previous);
+ assert.equal(invalid.reason,'UNREADABLE_PROGRESS');
+ const missing=await restoreA0CatalogSession({read:async()=>{throw Error('disk error');},write:async()=>{}},catalog,'en-CA',previous);
+ assert.equal(missing.reason,'STORAGE_UNAVAILABLE');
 });
