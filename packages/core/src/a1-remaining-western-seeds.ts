@@ -1,0 +1,150 @@
+/** A1 editorial-only original situational briefs: English (Canada), French (Canada), Spanish.
+ * Not approved for learner playback, assessment or external reuse.
+ */
+import type {ExtraA1Seed} from './a1-extra-topic-seeds.js';
+import type {TargetLanguage} from './types.js';
+export const remainingA1Topics=['daily-routines','food-and-shopping','places-and-directions','basic-needs-and-help'] as const;
+export type RemainingA1Topic=(typeof remainingA1Topics)[number];
+const seed=(outcome:string,grammar:string,dialogue:readonly [string,string],
+ vocabulary:readonly [string,string,string,string],
+ tasks:readonly [string,string,string,string,string,string]):ExtraA1Seed=>({outcome,grammar,dialogue,vocabulary,tasks});
+export const a1RemainingWestern:Readonly<Partial<Record<TargetLanguage,Readonly<Record<RemainingA1Topic,ExtraA1Seed>>>>>={
+'en-CA':{
+ 'daily-routines':seed(
+ 'Describe a simple fictional daily routine with an order and a time.',
+ 'Practise present simple I get up and I start; contrast in the morning with at eight.',
+ ['What do you do before work?','I eat breakfast at seven, then I take the bus.'],
+ ['I wake up','I eat breakfast','I take the bus','In the morning'],
+ ['Listen to an approved morning routine and put two actions in order.',
+  'Say two fictional morning activities with a natural time phrase.',
+  'Read a short fictional schedule and identify what happens first.',
+  'Write a simple imaginary weekday routine with two activities.',
+  'Ask a partner about a pretend morning and respond with one action.',
+  'Explain the order of two activities to a learner who missed the exchange.']),
+ 'food-and-shopping':seed(
+ 'Ask for the price of an everyday grocery item and make a simple purchase request.',
+ 'Use How much is this? and I would like; distinguish one apple from two apples.',
+ ['Excuse me, how much is this apple?','It is two dollars. Would you like one?'],
+ ['How much is this?','I would like one','Two dollars','Thank you'],
+ ['Listen to an approved shop exchange and identify the item and its price.',
+  'Ask aloud for a fictional grocery item and quantity.',
+  'Read a sample price label and choose the matching item.',
+  'Write a two-item shopping note with invented prices.',
+  'Take turns asking a price and replying without processing real payments.',
+  'Restate the item, quantity and price for a partner.']),
+ 'places-and-directions':seed(
+ 'Ask for a nearby public place and follow a short two-step direction.',
+ 'Use Where is the library? and Turn left; contrast next to with across from.',
+ ['Excuse me, where is the library?','Go straight and turn left at the corner.'],
+ ['Where is the library?','Go straight','Turn left','Next to the park'],
+ ['Listen to verified directions and identify the first and second steps.',
+  'Say how to reach a fictional library using two simple commands.',
+  'Read a fictional neighbourhood map and find the library.',
+  'Write short directions between two imaginary public places.',
+  'Ask for a place and check that the two directions were understood.',
+  'Explain the route again with simple words, without using live location.']),
+ 'basic-needs-and-help':seed(
+ 'Ask politely for simple assistance when an everyday task is unclear.',
+ 'Use Can you help me? and Please speak slowly; practise I need and Thank you.',
+ ['Excuse me, can you help me with this ticket?','Of course. I can explain it slowly.'],
+ ['Can you help me?','I need help','Please speak slowly','Thank you'],
+ ['Listen to an approved help request and identify what the person needs.',
+  'Say a polite help request about a fictional ticket.',
+  'Read two sample help messages and select the polite request.',
+  'Write a fictional request for clear instructions without private data.',
+  'Practise asking for help and requesting a slower explanation.',
+  'Explain the response in simpler words for another learner.'])
+},
+'fr-CA':{
+ 'daily-routines':seed(
+ 'Décrire deux actions d’une journée fictive et leur ordre.',
+ 'Employer je me lève et je prends; distinguer le matin de à sept heures.',
+ ['Que faites-vous avant le travail ?','Je déjeune à sept heures, puis je prends l’autobus.'],
+ ['Je me lève','Je déjeune','Je prends l’autobus','Le matin'],
+ ['Écouter une routine enregistrée et approuvée, puis classer deux actions.',
+  'Dire deux habitudes fictives du matin avec une heure simple.',
+  'Lire un petit horaire inventé et repérer la première activité.',
+  'Écrire une routine imaginaire de deux activités pour un jour de semaine.',
+  'Poser une question sur la routine d’un personnage fictif et répondre.',
+  'Reformuler l’ordre des activités pour une personne qui n’a pas entendu.']),
+ 'food-and-shopping':seed(
+ 'Demander le prix d’un aliment courant et commander une petite quantité.',
+ 'Employer Combien ça coûte ? et Je voudrais; opposer une pomme et deux pommes.',
+ ['Bonjour, combien coûte cette pomme ?','Elle coûte deux dollars. Vous en voulez une ?'],
+ ['Combien ça coûte ?','Je voudrais une pomme','Deux dollars','Merci'],
+ ['Écouter un échange de magasin approuvé et relever article et prix.',
+  'Demander oralement un aliment fictif et préciser la quantité.',
+  'Lire une étiquette de prix imaginaire et trouver le bon article.',
+  'Écrire une liste d’achats fictive de deux produits et leurs prix.',
+  'Jouer une demande de prix et une réponse sans achat réel.',
+  'Expliquer à un partenaire la quantité et le prix entendus.']),
+ 'places-and-directions':seed(
+ 'Demander où se trouve un lieu public et comprendre deux indications.',
+ 'Employer Où est la bibliothèque ? et Tournez à gauche; distinguer tout droit de à côté.',
+ ['Excusez-moi, où est la bibliothèque ?','Allez tout droit, puis tournez à gauche au coin.'],
+ ['Où est la bibliothèque ?','Allez tout droit','Tournez à gauche','À côté du parc'],
+ ['Écouter des indications approuvées et repérer l’ordre des deux étapes.',
+  'Expliquer oralement comment atteindre une bibliothèque fictive.',
+  'Lire un petit plan de quartier imaginaire et trouver un lieu public.',
+  'Écrire deux indications pour relier deux lieux fictifs.',
+  'Demander le chemin et confirmer les indications poliment.',
+  'Reformuler le trajet sans localisation réelle ni données personnelles.']),
+ 'basic-needs-and-help':seed(
+ 'Demander poliment de l’aide et une explication plus lente dans une situation simple.',
+ 'Pratiquer Pouvez-vous m’aider ? et Parlez plus lentement, s’il vous plaît.',
+ ['Excusez-moi, pouvez-vous m’aider avec ce billet ?','Bien sûr. Je peux vous expliquer doucement.'],
+ ['Pouvez-vous m’aider ?','J’ai besoin d’aide','Parlez plus lentement','Merci beaucoup'],
+ ['Écouter une demande d’aide approuvée et identifier le besoin exprimé.',
+  'Formuler oralement une demande d’aide à propos d’un billet fictif.',
+  'Lire deux messages imaginaires et reconnaître la formulation polie.',
+  'Écrire une courte demande d’instructions sans renseignements privés.',
+  'Faire un jeu de rôle pour demander de l’aide et ralentir l’explication.',
+  'Reformuler la réponse en mots simples pour un autre apprenant.'])
+},
+es:{
+ 'daily-routines':seed(
+ 'Describir dos actividades de una rutina diaria ficticia con un horario sencillo.',
+ 'Usar me levanto, desayuno y luego; distinguir por la mañana de a las siete.',
+ ['¿Qué haces antes del trabajo?','Desayuno a las siete y luego tomo el autobús.'],
+ ['Me levanto','Desayuno','Tomo el autobús','Por la mañana'],
+ ['Escuchar una rutina aprobada y reconocer el orden de dos actividades.',
+  'Decir dos acciones de una mañana ficticia con su horario.',
+  'Leer un horario imaginario y señalar qué acción sucede primero.',
+  'Escribir una rutina inventada con dos actividades cotidianas.',
+  'Preguntar a un compañero por la rutina de un personaje ficticio.',
+  'Explicar con palabras sencillas la secuencia de la mañana.']),
+ 'food-and-shopping':seed(
+ 'Preguntar el precio de un alimento y solicitar una cantidad pequeña.',
+ 'Practicar ¿Cuánto cuesta? y Quisiera; distinguir una manzana de dos manzanas.',
+ ['Disculpe, ¿cuánto cuesta esta manzana?','Cuesta dos dólares. ¿Quiere una?'],
+ ['¿Cuánto cuesta?','Quisiera una manzana','Dos dólares','Muchas gracias'],
+ ['Escuchar una compra ficticia aprobada e identificar producto y precio.',
+  'Pedir en voz alta un producto imaginario y decir la cantidad.',
+  'Leer dos etiquetas de precios ficticias y reconocer el producto.',
+  'Escribir una lista de compras inventada con dos artículos.',
+  'Practicar una consulta de precio y la respuesta sin pagar dinero real.',
+  'Resumir a otra persona el producto, la cantidad y el precio.']),
+ 'places-and-directions':seed(
+ 'Preguntar por un lugar público y comprender indicaciones de dos pasos.',
+ 'Usar ¿Dónde está la biblioteca? y Gire a la izquierda; distinguir siga derecho y al lado de.',
+ ['Disculpe, ¿dónde está la biblioteca?','Siga derecho y gire a la izquierda en la esquina.'],
+ ['¿Dónde está la biblioteca?','Siga derecho','Gire a la izquierda','Al lado del parque'],
+ ['Escuchar indicaciones revisadas e identificar el primer y segundo paso.',
+  'Dar oralmente dos indicaciones para llegar a una biblioteca ficticia.',
+  'Leer un mapa imaginario y ubicar dos lugares públicos.',
+  'Escribir un trayecto inventado con dos pasos sencillos.',
+  'Preguntar el camino y confirmar que entendió las instrucciones.',
+  'Explicar el recorrido sin revelar la ubicación real del alumno.']),
+ 'basic-needs-and-help':seed(
+ 'Pedir ayuda de manera respetuosa y solicitar instrucciones más lentas.',
+ 'Practicar ¿Puede ayudarme? y Hable más despacio, por favor; expresar una necesidad simple.',
+ ['Disculpe, ¿puede ayudarme con este boleto?','Claro. Se lo explico más despacio.'],
+ ['¿Puede ayudarme?','Necesito ayuda','Hable más despacio','Muchas gracias'],
+ ['Escuchar una solicitud de ayuda aprobada y reconocer el problema.',
+  'Pedir ayuda en voz alta para un boleto ficticio.',
+  'Leer dos mensajes y distinguir una petición cortés.',
+  'Escribir una solicitud imaginaria sin nombres ni datos privados.',
+  'Practicar turnos de diálogo y pedir que repitan más despacio.',
+  'Explicar a otro alumno la respuesta usando frases sencillas.'])
+}
+};
