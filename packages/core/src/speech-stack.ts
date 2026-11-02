@@ -69,12 +69,21 @@ export interface SpeechStackPlan {
  /** Typing or choosing is always possible, so a missing engine never blocks a lesson. */
  nonSpeechFallback:true;
 }
+/** Installation space is needed only before a pack is installed.
+ * Installed models still require a valid manifest, supported platform,
+ * reviewed license, and sufficient RAM. Re-check installation size safety
+ * with a maximally available budget instead of rejecting an existing model
+ * simply because free storage is low. No disk IO or model load happens here.
+ */
+function installedModelUsable(entry:SpeechModelEntry,device:DeviceProfile):boolean{
+ return assessModelFit(entry,{...device,freeDiskBytes:Number.MAX_SAFE_INTEGER}).usable;
+}
 const exact=(list:readonly string[],locale:string)=>list.some(l=>l.toLowerCase()===locale.toLowerCase());
 export function planSpeechStack(input:{target:TargetLanguage;locale?:string;device:DeviceProfile;catalog:readonly SpeechModelEntry[];installedIds:readonly string[]}):SpeechStackPlan{
  if(!targetLanguages.includes(input.target))throw new Error('Unsupported target');
  const locale=input.locale??input.target;
  const forLocale=(role:SpeechModelEntry['role'])=>input.catalog.filter(e=>e.role===role&&e.pack.locales.includes(input.target));
- const installedFit=(role:SpeechModelEntry['role'])=>forLocale(role).filter(e=>input.installedIds.includes(e.pack.id)&&assessModelFit(e,input.device).usable)
+ const installedFit=(role:SpeechModelEntry['role'])=>forLocale(role).filter(e=>input.installedIds.includes(e.pack.id)&&installedModelUsable(e,input.device))
   .sort((a,b)=>Number(b.evidence.kind==='device-test')-Number(a.evidence.kind==='device-test')||a.peakRamMb-b.peakRamMb);
  const asrModel=installedFit('asr')[0];
  const asr:SpeechStackPlan['asr']=asrModel?{source:'installed-model',modelId:asrModel.pack.id,confidencePolicy:asrModel.calibratedConfidence?'use-reported-confidence':'confirm-every-answer',languageLock:asrModel.languageLock}
@@ -82,7 +91,7 @@ export function planSpeechStack(input:{target:TargetLanguage;locale?:string;devi
   :{source:'none',confidencePolicy:'confirm-every-answer',languageLock:false};
  const ttsModel=installedFit('tts')[0];
  const tts:SpeechStackPlan['tts']=ttsModel?{source:'installed-model',modelId:ttsModel.pack.id}:exact(input.device.osVoiceLocales,locale)?{source:'os-voice'}:{source:'recorded-audio-only'};
- const vadModel=input.catalog.find(e=>e.role==='vad'&&input.installedIds.includes(e.pack.id)&&assessModelFit(e,input.device).usable);
+ const vadModel=input.catalog.find(e=>e.role==='vad'&&input.installedIds.includes(e.pack.id)&&installedModelUsable(e,input.device));
  const suggestedDownloads=asr.source==='installed-model'?[]:forLocale('asr').filter(e=>!input.installedIds.includes(e.pack.id))
   .map(e=>({e,fit:assessModelFit(e,input.device)})).filter(x=>x.fit.usable).sort((a,b)=>a.e.pack.bytes-b.e.pack.bytes)
   .map(x=>({id:x.e.pack.id,bytes:x.e.pack.bytes,requiredDiskBytes:x.fit.requiredDiskBytes}));
