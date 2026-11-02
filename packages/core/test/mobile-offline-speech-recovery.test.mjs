@@ -19,13 +19,14 @@ function hooks(){
  return {react,render:fn=>{cursor=0;return fn();},mount:()=>effects.splice(0).forEach(fn=>fn())};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function setup({installed=true,allowed=true,routeSupport=false,android=false,immediateRouteChange=false}={}){
+function setup({installed=true,allowed=true,routeSupport=false,android=false,immediateRouteChange=false,permissionFailure=false}={}){
  const h=hooks(),listeners=new Map(),final=[],partial=[],starts=[],downloads=[];let permissionCount=0,abortCount=0,permissionGranted=allowed,modelInstalled=installed;
  let routeListener=null,routeSubscriptions=0;
- const appState={currentState:'active',addEventListener(){return {remove(){}};}};
+ let appStateListener=null;
+ const appState={currentState:'active',addEventListener(_type,listener){appStateListener=listener;return {remove(){if(appStateListener===listener)appStateListener=null;}};}};
  const native={
   isRecognitionAvailable:()=>true,supportsOnDeviceRecognition:()=>true,
-  requestMicrophonePermissionsAsync:async()=>{permissionCount++;return {granted:permissionGranted};},
+  requestMicrophonePermissionsAsync:async()=>{permissionCount++;if(permissionFailure)throw Error('OS permission unavailable');return {granted:permissionGranted};},
   addListener(name,callback){listeners.set(name,callback);return {remove(){listeners.delete(name);}};},
   start(opts){starts.push(opts);},abort(){abortCount++;},
   getSupportedLocales:async()=>({locales:['en-CA'],installedLocales:modelInstalled?['en-CA']:[]}),
@@ -58,6 +59,8 @@ function setup({installed=true,allowed=true,routeSupport=false,android=false,imm
  const flush=async()=>{render();h.mount();await tick();return render();};
  return {render,flush,emit:(type,e={})=>{assert.ok(listeners.has(type),'missing listener '+type);listeners.get(type)(e);},native,
   final,partial,starts,downloads,setAllowed:x=>permissionGranted=x,setInstalled:x=>modelInstalled=x,
+  setPermissionFailure:x=>permissionFailure=x,
+  setAppState:state=>{appState.currentState=state;appStateListener?.(state);},
   permissions:()=>permissionCount,aborts:()=>abortCount,
   routeSnapshot,emitRoute:route=>{assert.ok(routeListener,'no active native route listener');routeListener(route);},
   routeWatchers:()=>routeSubscriptions,hasRouteWatcher:()=>!!routeListener};
@@ -284,4 +287,36 @@ test('route changes after audioend cannot cancel a captured answer awaiting tran
   assert.equal(await h.render().start('next'),true);
   h.emit('end');
  }
+});
+
+test('permission service rejection shows microphone recovery, not an unsupported language claim',async()=>{
+ const h=setup({permissionFailure:true});await h.flush();await h.flush();
+ assert.equal(await h.render().start('permission-reject'),false);
+ assert.equal(h.starts.length,0);
+ assert.equal(h.aborts(),0);
+ assert.deepEqual(h.final,[]);
+ assert.match(h.render().issue,/permiso de micrófono/);
+ assert.doesNotMatch(h.render().issue,/modelo local compatible/);
+ h.setPermissionFailure(false);
+ assert.equal(await h.render().start('permission-retry'),true);
+ h.emit('end');
+});
+
+test('incoming call or background transition prevents late ASR grading until native end',async()=>{
+ const h=setup({routeSupport:true});await h.flush();await h.flush();
+ assert.equal(await h.render().start('before-interruption'),true);
+ h.emit('audiostart',{timestamp:1780000100000});
+ await tick();
+ assert.equal(h.hasRouteWatcher(),true);
+ h.setAppState('inactive');
+ assert.equal(h.aborts(),1);
+ assert.equal(h.hasRouteWatcher(),false);
+ h.emit('result',{isFinal:true,results:[{transcript:'obsolete',confidence:1}]});
+ assert.deepEqual(h.final,[]);
+ assert.equal(await h.render().start('not-in-foreground'),false);
+ h.setAppState('active');
+ assert.equal(await h.render().start('before-end'),false);
+ h.emit('end');
+ assert.equal(await h.render().start('after-recovery'),true);
+ h.emit('end');
 });
