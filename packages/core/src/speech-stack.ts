@@ -98,7 +98,16 @@ export interface PackFile {path:string;packId:string;kind:'download'|'staging'|'
  * Only paths inside `root` are ever returned; installed files are never returned. */
 export function temporaryFilesToDelete(files:readonly PackFile[],journal:Readonly<Record<string,PackInstallState|undefined>>,root:string):string[]{
  if(!root.endsWith('/')||!((root.startsWith('/')&&root.length>1)||(root.startsWith('file:///')&&root.length>8))||root.split('/').some(p=>p==='.'||p==='..'))throw new Error('Root must be an absolute local directory ending in /');
- return files.filter(f=>f.kind!=='installed'&&f.path.startsWith(root)&&!f.path.includes('/../')&&!f.path.endsWith('/..'))
+ return files.filter(f=>{
+  if(f.kind!=='download'&&f.kind!=='staging')return false;
+  if(!f.path.startsWith(root)||f.path===root||f.path.endsWith('/'))return false;
+  const content=root.startsWith('file:///')?f.path.slice('file://'.length):f.path;
+  try{
+   const decoded=decodeURIComponent(content);
+   if(decoded.includes('//')||decoded.split('/').some(segment=>segment==='.'||segment==='..'))return false;
+  }catch{return false;}
+  return true;
+ })
   .filter(f=>{const phase=journal[f.packId]?.phase;return phase!=='staging'&&phase!=='verified';}).map(f=>f.path);
 }
 /** Consistency check for a speech catalog, reusing the pack planner for identities and dependencies. */
