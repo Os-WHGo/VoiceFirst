@@ -202,6 +202,19 @@ test('actual A0 mobile hook loads one verified snapshot and commits against it',
  assert.equal(JSON.parse(raw).revision,2);
 });
 
+test('actual A0 hook refuses to show a presentation differing from its verified catalog',async()=>{
+ const source=JSON.parse(readFileSync(new URL('../../../mobile/assets/VoiceFirst_A0_Functional_6Langs_v0.2.json',import.meta.url),'utf8'));
+ const old=core.loadA0CandidateCatalog(source).lessons,scoped=old.filter(l=>l.targetLanguage==='fr-CA');
+ const mismatched=scoped.map((lesson,i)=>i===0?{...lesson,options:[...lesson.options.slice(1),{...lesson.options[0],text:'different unreviewed answer'}]}:lesson);
+ let reads=0,writes=0;
+ const port={read:async()=>{reads++;return null;},write:async()=>{writes++;},compareAndWrite:async()=>{writes++;return true;}};
+ const h=a0HookHarness(port,{lessons:mismatched,preflight:{input:source,previousLessons:old}});
+ h.render();h.mount();await tick();await tick();
+ assert.equal(h.render().status,'blocked');
+ assert.equal(h.render().journal,null);
+ assert.equal(reads,1);assert.equal(writes,0);
+});
+
 function elements(node){
  if(node===null||node===undefined||typeof node==='boolean')return [];
  if(Array.isArray(node))return node.flatMap(elements);
