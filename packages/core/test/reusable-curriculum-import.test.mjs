@@ -106,3 +106,19 @@ test('same-level and cross-level cycles fail closed, without recursion into lear
  assert.equal(ordered.acceptedForReview,true);
  assert.equal(ordered.coverage.length,2);
 });
+
+test('untrusted oversized curriculum packs fail fast before graph or pair expansion',()=>{
+ const items=Array.from({length:1501},(_,i)=>({...concept,id:'concept.size.'+i}));
+ const oversized=inspectReusableCurriculumImport({concepts:items,units:[],supports:[]});
+ assert.equal(oversized.acceptedForReview,false);
+ assert.deepEqual(oversized.errors,['Curriculum candidate exceeds local review limits']);
+ assert.deepEqual(oversized.coverage,[]);
+ assert.equal(oversized.readyForPublicRelease,false);
+ for(const key of ['units','supports']){
+  const packageData={concepts:[concept],units:[],supports:[]};
+  packageData[key]=Array.from({length:9001},()=>null);
+  const report=inspectReusableCurriculumImport(packageData);
+  assert.deepEqual(report.errors,['Curriculum candidate exceeds local review limits']);
+  assert.equal(report.acceptedForReview,false);
+ }
+});
