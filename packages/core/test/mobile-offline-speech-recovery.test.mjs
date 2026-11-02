@@ -320,3 +320,69 @@ test('incoming call or background transition prevents late ASR grading until nat
  assert.equal(await h.render().start('after-recovery'),true);
  h.emit('end');
 });
+
+test('an authorized guided second turn waits for native end without asking permission early',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('first'),true);
+ h.emit('result',{isFinal:true,results:[{transcript:'hello',confidence:0.89}]});
+ assert.equal(h.final.length,1);
+ const before=h.permissions();
+ assert.equal(await h.render().start('confirmed-next',{waitForNativeEnd:true}),false);
+ assert.equal(h.starts.length,1);
+ assert.equal(h.permissions(),before,'no new permission request before native termination');
+ assert.match(h.render().issue,/Terminando la escucha anterior/);
+ h.emit('end');await tick();
+ assert.equal(h.starts.length,2,'one authorized retry begins after native end');
+ assert.equal(h.permissions(),before+1);
+ assert.deepEqual(h.final,[{id:'first',r:{text:'hello',confidence:'high'}}]);
+ h.emit('result',{isFinal:true,results:[{transcript:'next response',confidence:0.7}]});
+ assert.equal(h.final.at(-1).id,'confirmed-next');
+ h.emit('end');
+});
+test('stop cancels a waiting guided turn, including late final result and terminal end',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('first'),true);
+ h.emit('result',{isFinal:true,results:[{transcript:'Hello',confidence:1}]});
+ assert.equal(await h.render().start('next',{waitForNativeEnd:true}),false);
+ h.render().stop();
+ h.emit('result',{isFinal:true,results:[{transcript:'stale',confidence:1}]});
+ h.emit('end');await tick();
+ assert.equal(h.starts.length,1);
+ assert.equal(h.final.length,1);
+ assert.equal(await h.render().start('later-manual'),true);
+ h.emit('end');
+});
+test('background and lock-screen transition revoke a deferred request before native end',async()=>{
+ for(const background of ['inactive','background']){
+  const h=setup();await h.flush();await h.flush();
+  assert.equal(await h.render().start('first'),true);
+  h.emit('result',{isFinal:true,results:[{transcript:'bonjour',confidence:1}]});
+  assert.equal(await h.render().start('second',{waitForNativeEnd:true}),false);
+  h.setAppState(background);
+  h.emit('end');await tick();
+  assert.equal(h.starts.length,1);
+  assert.equal(h.permissions(),1);
+  assert.equal(h.final.length,1);
+ }
+});
+test('manual microphone requests never queue behind a retiring native turn',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('old'),true);
+ h.emit('result',{isFinal:true,results:[{transcript:'first',confidence:1}]});
+ assert.equal(await h.render().start('manual'),false);
+ assert.equal(h.starts.length,1);
+ h.emit('end');await tick();
+ assert.equal(h.starts.length,1,'there is no hidden pending manual request');
+ assert.equal(await h.render().start('manual'),true);
+ h.emit('end');
+});
+test('model missing while queued prevents the replacement from requesting permissions',async()=>{
+ const h=setup();await h.flush();await h.flush();
+ assert.equal(await h.render().start('old'),true);
+ h.emit('result',{isFinal:true,results:[{transcript:'hello',confidence:1}]});
+ assert.equal(await h.render().start('guided',{waitForNativeEnd:true}),false);
+ h.setInstalled(false);await h.render().checkModel();await h.flush();
+ h.emit('end');await tick();
+ assert.equal(h.starts.length,1,'new recording never starts with a missing local model');
+ assert.equal(h.permissions(),1,'new OS permission is never sought for missing model');
+});
