@@ -99,8 +99,13 @@ export function matchesAuthoredAnswer(exercise:CourseExercise, text:string, lang
 /** Two independent successful recalls including a checkpoint, with unlimited time and no negative streaks. */
 export function recordCourseAttempt(progress:CourseProgress, exercise:CourseExercise, result:Evaluation, todayISO:string):CourseProgress {
   if(result.kind==='uncertain') return progress;
-  const canonical=lessonsFor(progress.language).flatMap(lesson=>lesson.exercises).find(item=>item.id===exercise.id);
-  if(!canonical)return progress;
+  const owner=lessonsFor(progress.language).find(lesson=>lesson.exercises.some(item=>item.id===exercise.id));
+  if(!owner)return progress;
+  // Do not collect mastery evidence for a locked lesson. Completion already checked
+  // prerequisites, but attempts previously could be preloaded before unlocking.
+  if(owner.prerequisite&&!progress.completed.includes(owner.prerequisite))return progress;
+  const canonical=owner.exercises.find(item=>item.id===exercise.id)!;
+  if(canonical.type!==exercise.type)return progress;
   // Listen and repeat provide exposure and imitation, never scored retrieval.
   // Disallow fabricated success events on these steps even if their text matches.
   if(canonical.type!=='recall'&&canonical.type!=='checkpoint')return progress;
