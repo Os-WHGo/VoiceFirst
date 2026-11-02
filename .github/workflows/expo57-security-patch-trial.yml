@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/expo57-security-patch-trial.yml'
       - 'scripts/expo57-security-trial.mjs'
+      - 'scripts/expo57-lock-delta.mjs'
       - 'packages/core/test/expo57-security-trial.test.mjs'
   workflow_dispatch:
 permissions:
@@ -41,6 +42,8 @@ jobs:
           git diff --stat -- package-lock.json
       - name: Compare advisories and enforce Expo 57 / React Native 0.86 bounds
         run: node scripts/expo57-security-trial.mjs after
+      - name: Print checksum-verified candidate lockfile delta for inspection (no commit)
+        run: node scripts/expo57-lock-delta.mjs
       - name: Reinstall resulting trial lockfile without third-party scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Core and security regression tests under trial dependency tree
