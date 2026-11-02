@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {a1AudioBaseline,a1AudioExpectedIds,auditA1AudioAssets,a1AccentMatchesTarget} from '../dist/index.js';
-test('24 A1 dialogue turns are absent until recordings are verified',()=>{assert.equal(a1AudioExpectedIds.length,24);assert.equal(new Set(a1AudioExpectedIds).size,24);assert.equal(a1AudioBaseline.expected,24);assert.equal(a1AudioBaseline.verified,0);assert.equal(a1AudioBaseline.missing.length,24);assert.equal(a1AudioBaseline.readyForEditorialPlayback,false);assert.equal(a1AudioBaseline.readyForPublicRelease,false);});
+test('48 A1 dialogue turns are absent until recordings are verified',()=>{assert.equal(a1AudioExpectedIds.length,48);assert.equal(new Set(a1AudioExpectedIds).size,48);assert.equal(a1AudioBaseline.expected,48);assert.equal(a1AudioBaseline.verified,0);assert.equal(a1AudioBaseline.missing.length,48);assert.equal(a1AudioBaseline.readyForEditorialPlayback,false);assert.equal(a1AudioBaseline.readyForPublicRelease,false);});
 test('rejects incomplete and repeated manifest entries',()=>{assert.equal(auditA1AudioAssets([{id:a1AudioExpectedIds[0]}]).verified,0);assert.ok(auditA1AudioAssets([{id:a1AudioExpectedIds[0]}]).errors.length>0);assert.equal(auditA1AudioAssets([null]).readyForEditorialPlayback,false);});
 
 test('A1 manifests cannot assign another language accent to a dialogue',()=>{
  const ids=a1AudioExpectedIds.filter(id=>id.endsWith('/dialogue-first'));
- assert.equal(ids.length,12);
+ assert.equal(ids.length,24);
  for(const id of ids){
   const [targetLanguage,unitId,role]=id.split('/');
   const asset={id,targetLanguage,unitId,role,uri:'a1/audio.wav',sha256:'a'.repeat(64),bytes:128,reviewerId:'editor-01',rightsReference:'original-audio-license',accentTag:targetLanguage};
