@@ -13,6 +13,7 @@ export * from './course.js';
 
 export * from './learning-paths.js';
 export * from './course-content-a1-drafts.js';
+export * from './a2-editorial-contract.js';
 
 export * from './guided-dialogues.js';
 export * from './free-resources.js';
