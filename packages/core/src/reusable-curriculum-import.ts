@@ -24,14 +24,41 @@ export function inspectReusableCurriculumImport(candidate:unknown):ReusableImpor
   return {acceptedForReview:false,errors:['Missing concepts, units or supports array'],coverage:[],readyForPublicRelease:false};
  if(concepts.length===0)errors.push('No shared concepts');
  const seenConcepts=new Set<string>(),seenUnits=new Set<string>(),seenSupports=new Set<string>();
+ const verifiedConcepts=new Map<string,{level:string;prerequisites:readonly string[]}>();
  for(const c of concepts){
   if(!record(c)||typeof c.id!=='string'||!c.id.trim()||typeof c.goal!=='string'||!c.goal.trim()||!levels.has(String(c.level))||
    !Array.isArray(c.skills)||!c.skills.length||c.skills.some((s:unknown)=>!skills.has(String(s)))||
    !Array.isArray(c.prerequisites)||c.prerequisites.some((p:unknown)=>typeof p!=='string'||!p.trim()||p===c.id)||
    new Set(c.prerequisites).size!==c.prerequisites.length){errors.push('Invalid shared concept');continue;}
   if(seenConcepts.has(c.id))errors.push('Duplicate concept '+c.id);
+  else verifiedConcepts.set(c.id,{level:c.level,prerequisites:c.prerequisites});
   seenConcepts.add(c.id);
  }
+ // Prerequisites must resolve within this self-contained offline candidate pack.
+ // A missing or future-level dependency must not leave an untraversable course
+ // masquerading as a valid import. Same-level dependencies are legal if acyclic.
+ const levelOrder=['A0','A1','A2','B1','B2','C1','C2'];
+ for(const [id,concept] of verifiedConcepts){
+  for(const prerequisite of concept.prerequisites){
+   const other=verifiedConcepts.get(prerequisite);
+   if(!other){errors.push('Missing prerequisite '+id+' -> '+prerequisite);continue;}
+   if(levelOrder.indexOf(other.level)>levelOrder.indexOf(concept.level))
+    errors.push('Future-level prerequisite '+id+' -> '+prerequisite);
+  }
+ }
+ const visiting=new Set<string>(),visited=new Set<string>();
+ const visit=(id:string):void=>{
+  if(visited.has(id)||visiting.has(id))return;
+  visiting.add(id);
+  const concept=verifiedConcepts.get(id);
+  for(const prior of concept?.prerequisites??[]){
+   if(!verifiedConcepts.has(prior))continue;
+   if(visiting.has(prior)){errors.push('Cyclic prerequisite '+id+' -> '+prior);continue;}
+   visit(prior);
+  }
+  visiting.delete(id);visited.add(id);
+ };
+ for(const id of verifiedConcepts.keys())visit(id);
  for(const u of units){
   if(!record(u)||typeof u.conceptId!=='string'||!seenConcepts.has(u.conceptId)||!locales.has(String(u.targetLanguage))||
    !Array.isArray(u.dialogue)||u.dialogue.some((s:unknown)=>typeof s!=='string'||!s.trim())||
