@@ -15,6 +15,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Cancel only obsolete PR builds of this workflow. Manual runs are never
+# automatically canceled. The PR number prevents cross-PR interference.
+concurrency:
+  group: voicefirst-native-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   expo-config:
     runs-on: ubuntu-latest
