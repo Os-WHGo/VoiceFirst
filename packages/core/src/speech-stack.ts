@@ -40,7 +40,11 @@ export const defaultRamShare=0.25;
 export function assessModelFit(entry:SpeechModelEntry,device:DeviceProfile,options:{ramShare?:number}={}):ModelFit{
  const problems:FitProblem[]=[];
  if(!entry.platforms.includes(device.platform))problems.push('platform');
- if(entry.peakRamMb>device.totalRamMb*(options.ramShare??defaultRamShare))problems.push('memory');
+ if(!Number.isFinite(device.totalRamMb)||device.totalRamMb<=0||
+    !Number.isFinite(entry.peakRamMb)||entry.peakRamMb<=0||
+    !Number.isFinite(options.ramShare??defaultRamShare)||
+    (options.ramShare??defaultRamShare)<=0||(options.ramShare??defaultRamShare)>1||
+    entry.peakRamMb>device.totalRamMb*(options.ramShare??defaultRamShare))problems.push('memory');
  // Archive and extracted files coexist until promotion, plus a 5% margin.
  const requiredDiskBytes=Math.ceil((entry.pack.bytes+entry.installedBytes)*1.05);
  if(requiredDiskBytes>device.freeDiskBytes)problems.push('storage');
