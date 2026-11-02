@@ -10,7 +10,8 @@ export function evaluateA0Choice(lesson:A0LessonCandidate,attempt:A0Attempt):A0O
  const option=lesson.options.find(o=>o.id===attempt.selectedOptionId);
  if(!option)return null;
  const correct=attempt.selectedOptionId===lesson.correctOptionId;
- const fn=a0ConceptFunction(lesson.conceptId);
+ // Older in-memory lesson fixtures may lack a concept ID; do not crash during recovery.
+ const fn=typeof lesson.conceptId==='string'?a0ConceptFunction(lesson.conceptId):undefined;
  const alsoValid=!correct&&fn!==undefined&&servesFunction(lesson.targetLanguage,option.text,fn);
  return {lessonId:lesson.lessonId,correct,points:correct?1:0,mastered:correct&&attempt.attemptNumber===1,
   feedbackCode:correct?'correct':alsoValid?'also_valid':'review_context',publishable:false};
