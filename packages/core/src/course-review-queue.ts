@@ -14,6 +14,9 @@ export function courseReviewQueue(progress:CourseProgress,today:string):ReviewQu
  for(const lesson of lessonsFor(progress.language)){
   if(!progress.completed.includes(lesson.id))continue;
   for(const exercise of lesson.exercises){
+   // Hearing a model and practicing imitation are not retrieval evidence.
+   // Only authored recall/checkpoint steps can be scheduled as scored review.
+   if(exercise.type!=='recall'&&exercise.type!=='checkpoint')continue;
    const dueOn=progress.due[exercise.id];
    if(!dueOn||!validDay(dueOn)||dueOn>today)continue;
    result.push({lesson,exercise,dueOn,attempts:progress.attempts[exercise.id]??0,correct:progress.correct[exercise.id]??0});
