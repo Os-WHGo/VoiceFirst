@@ -43,3 +43,32 @@ test('mobile hook does not reopen native recognition from final or abort alone',
  assert.match(source,/native\.addListener\('end',\(\)=>\{[\s\S]*?nativeSessionGate\.end\(\)/);
  assert.match(source,/native\?\.abort\(\)/);
 });
+
+test('one-shot end notification cannot unlock native recognition before end',()=>{
+ const gate=new NativeSpeechSessionGate();
+ assert.equal(gate.begin(),true);
+ const received=[];
+ gate.onEnd(()=>received.push('one'));
+ gate.onEnd(()=>received.push('two'));
+ assert.deepEqual(received,[]);
+ assert.equal(gate.canStart(),false);
+ gate.end();
+ assert.deepEqual(received,['one','two']);
+ assert.equal(gate.canStart(),true);
+ gate.end();
+ assert.deepEqual(received,['one','two'],'duplicate end has no effects');
+});
+test('a cancelled listener never starts the next microphone turn',()=>{
+ const gate=new NativeSpeechSessionGate();gate.begin();
+ const received=[];const cancel=gate.onEnd(()=>received.push('unexpected'));
+ cancel();gate.end();
+ assert.deepEqual(received,[]);
+});
+test('an end listener throwing does not strand other notified clients',()=>{
+ const gate=new NativeSpeechSessionGate();gate.begin();
+ const received=[];
+ gate.onEnd(()=>{throw Error('detached view');});
+ gate.onEnd(()=>received.push('still-notified'));
+ gate.end();
+ assert.deepEqual(received,['still-notified']);
+});
