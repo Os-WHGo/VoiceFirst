@@ -98,6 +98,12 @@ export function matchesAuthoredAnswer(exercise:CourseExercise, text:string, lang
 }
 /** Two independent successful recalls including a checkpoint, with unlimited time and no negative streaks. */
 export function recordCourseAttempt(progress:CourseProgress, exercise:CourseExercise, result:Evaluation, todayISO:string):CourseProgress {
+  // Native, storage and UI boundaries can supply malformed runtime values even
+  // though TypeScript callers compile. Never convert them into scored attempts.
+  if(!exercise||typeof exercise.id!=='string'||!result||
+     (result.kind!=='match'&&result.kind!=='retry'&&result.kind!=='uncertain')||
+     (result.kind==='match'&&typeof result.recognized!=='string')||
+     (result.kind==='retry'&&typeof result.hint!=='string'))return progress;
   if(result.kind==='uncertain') return progress;
   const owner=lessonsFor(progress.language).find(lesson=>lesson.exercises.some(item=>item.id===exercise.id));
   if(!owner)return progress;
