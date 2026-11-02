@@ -3,7 +3,7 @@
  */
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {AppState,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
-import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,spokenCommandApproval,voiceCommandProposalPrompt,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,resolveSessionVoiceCommand,fasterSessionPlaybackRate,effectivePlaybackRate,voiceChoiceIndex,voiceChoiceConfirmation,voiceChoiceCommandHint,voiceChoiceLabel,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
+import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,spokenCommandApproval,voiceCommandProposalPrompt,voiceCommandRetryPrompt,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,resolveSessionVoiceCommand,fasterSessionPlaybackRate,effectivePlaybackRate,voiceChoiceIndex,voiceChoiceConfirmation,voiceChoiceCommandHint,voiceChoiceLabel,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
 import {useLearningSession} from './use-learning-session';
 import {useOnDeviceAnswer} from './use-on-device-answer';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
@@ -276,7 +276,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
      !session||session.status!=='active'||pendingCommand)return;
   const token=++epoch.current;
   setNarrating(true);
-  void narrator.run([{text:voiceChoiceCommandHint(known),language:known,purpose:'instruction'}],playbackRate).then(result=>{
+  void narrator.run([{text:voiceCommandRetryPrompt(known),language:known,purpose:'instruction'}],playbackRate).then(result=>{
    if(!live.current||token!==epoch.current)return;
    setNarrating(false);
    if(result.kind==='failed'){setAudioIssue(guideCopy[known].unavailable);return;}
