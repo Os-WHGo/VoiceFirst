@@ -5,6 +5,8 @@ on:
       - 'mobile/**'
       - 'scripts/check-expo-config.mjs'
       - 'scripts/native-ci-change-gate.mjs'
+      # Only an explicit edit to this small marker requests an accumulated B0 native batch.
+      - 'docs/ci/native-batch-request.md'
       - 'scripts/check-android-prebuild.mjs'
       - 'scripts/check-android-release-wiring.mjs'
       - 'scripts/inspect-android-release-signing.mjs'
