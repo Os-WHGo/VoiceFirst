@@ -2,11 +2,11 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {View,Text,Pressable,StyleSheet} from 'react-native';
 import {a0LessonRoutes,nextA0LessonId,evaluateA0Choice,alsoValidNote,type A0LessonCandidate,type TargetLanguage} from '@voicefirst/core';
-import {useA0Session} from './use-a0-session';
+import {useA0Session,type A0CatalogPreflight} from './use-a0-session';
 const palette={background:'#142339',text:'#F2F7FC',secondary:'#A6BBD0',accent:'#89D4C5'};
-export function A0CandidatePreview({target,nativeLanguage,lessons}:{target:TargetLanguage;nativeLanguage:TargetLanguage;lessons:readonly A0LessonCandidate[]}){
+export function A0CandidatePreview({target,nativeLanguage,lessons,preflight}:{target:TargetLanguage;nativeLanguage:TargetLanguage;lessons:readonly A0LessonCandidate[];preflight:A0CatalogPreflight}){
  const eligible=useMemo(()=>lessons.filter(l=>l.targetLanguage===target&&l.publishable===false&&l.humanReviewRequired===true).sort((a,b)=>a.sequence-b.sequence),[target,lessons]);
- const session=useA0Session(target,eligible);
+ const session=useA0Session(target,eligible,preflight);
  const [chosen,setChosen]=useState<string|null>(null);
  const [feedback,setFeedback]=useState('');
  const [pending,setPending]=useState(false);
