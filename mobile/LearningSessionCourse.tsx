@@ -222,15 +222,15 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    if(session.current?.pendingConfirmation){
     // Open a separate local command turn only after the answer proposal and
     // its confirmation instructions have finished playing.
-    if(commandMic.available)void commandMic.start(commandState.current.id);
+    if(commandMic.available)void commandMic.start(commandState.current.id,{waitForNativeEnd:true});
     return;
    }
    const nextPrompt=outputs.find(o=>o.kind==='prompt')??followUp;
    if(!nextPrompt||nextPrompt.kind!=='prompt')return;
    // One explicit foreground turn. An uncertain result is proposed, never auto-graded.
    if(nextPrompt.activityKind==='listen'||nextPrompt.activityKind==='choice'){
-    if(commandMic.available&&commandMic.model!=='missing')void commandMic.start(commandState.current.id);
-   }else if(mic.available&&mic.model!=='missing')void mic.start(`${activity?.id}:${revision}`);
+    if(commandMic.available&&commandMic.model!=='missing')void commandMic.start(commandState.current.id,{waitForNativeEnd:true});
+   }else if(mic.available&&mic.model!=='missing')void mic.start(`${activity?.id}:${revision}`,{waitForNativeEnd:true});
   });
  },[runtime.outputs,runtime.busy,guided]);
  // A separately heard, explicit numbered choice is only a *proposal*.
@@ -249,7 +249,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    if(result.kind==='failed'){setAudioIssue(guideCopy[known].unavailable);return;}
    if(result.kind==='completed'&&guidedRef.current&&current.current.ready&&
       current.current.revision===proposedChoice.revision&&commandMic.available&&commandMic.model!=='missing')
-      void commandMic.start(commandState.current.id);
+      void commandMic.start(commandState.current.id,{waitForNativeEnd:true});
   });
  },[proposedChoice]);
  // A separate, audible confirmation round permits genuine touch-free course
@@ -268,7 +268,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    if(result.kind==='completed'&&guidedRef.current&&foreground&&
       session.sessionId===pendingCommand.sessionId&&current.current.revision===pendingCommand.revision&&
       commandMic.available&&commandMic.model!=='missing')
-    void commandMic.start(commandState.current.id);
+    void commandMic.start(commandState.current.id,{waitForNativeEnd:true});
   });
  },[pendingCommand]);
  useEffect(()=>{
@@ -282,7 +282,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    if(result.kind==='failed'){setAudioIssue(guideCopy[known].unavailable);return;}
    if(result.kind==='completed'&&guidedRef.current&&current.current.ready&&
       current.current.revision===session.revision&&commandMic.available&&commandMic.model!=='missing')
-    void commandMic.start(commandState.current.id);
+    void commandMic.start(commandState.current.id,{waitForNativeEnd:true});
   });
  },[commandRetry]);
  useEffect(()=>{
@@ -296,7 +296,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
    if(result.kind==='failed'){setAudioIssue(guideCopy[known].unavailable);return;}
    if(result.kind==='completed'&&guidedRef.current&&current.current.ready&&
       current.current.revision===session.revision&&commandMic.available&&commandMic.model!=='missing')
-      void commandMic.start(commandState.current.id);
+      void commandMic.start(commandState.current.id,{waitForNativeEnd:true});
   });
  },[choiceRetry]);
  const action=(label:string,fn:()=>void,disabled=runtime.busy||runtime.blocked||!foreground)=><Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} style={[s.button,disabled&&s.disabled]} onPress={fn}><Text style={s.text}>{label}</Text></Pressable>;
