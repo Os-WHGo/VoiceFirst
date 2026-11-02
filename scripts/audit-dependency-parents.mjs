@@ -6,7 +6,9 @@ import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 const lock=JSON.parse(readFileSync(new URL('../package-lock.json',import.meta.url),'utf8'));
 const reverse=(name)=>Object.entries(lock.packages||{}).filter(([path,p])=>path && Object.hasOwn(p.dependencies||{},name)).map(([path,p])=>({parentPath:path,parentVersion:p.version||null,required:p.dependencies[name]}));
-const names=['braces','node-forge','uuid','micromatch','metro-transform-worker','@expo/code-signing-certificates'];
+// Include all currently observed vulnerable advisory roots, not only the
+// original October list. Tracing packages never authorizes an override.
+const names=['deepmerge','glob','minimatch','uuid','zod','braces','node-forge','micromatch','metro-transform-worker','@expo/code-signing-certificates'];
 for(const name of names){
  const run=spawnSync('npm',['explain',name,'--json'],{encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
  if(run.status!==0){console.error('npm explain failed for '+name+': '+(run.stderr||run.stdout||'').slice(-1500));process.exitCode=1;continue;}
