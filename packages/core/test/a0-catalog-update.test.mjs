@@ -47,11 +47,23 @@ test('A0 update rejects changed keys, labels, removed options, and missing old b
   assert.ok(result.progressIssues.some(issue=>issue.code===code),code);
  }
  const missing=reviewA0CatalogUpdate(pack([make()]),[saved],[]);
- assert.equal(missing.reason,'INCOMPATIBLE_PROGRESS');
- assert.ok(missing.progressIssues.some(issue=>issue.code==='MISSING_PREVIOUS_LESSON'));
+ assert.equal(missing.reason,'INVALID_SAVED_HISTORY','the old journal cannot be authenticated against a missing original catalog');
 });
 function load(){
  const result=reviewA0CatalogUpdate(pack([make()]),[]);
  assert.equal(result.kind,'compatible_candidate');
  return result.lessons[0];
 }
+
+test('A0 update blocks corrupt saved revisions and altered history rather than reinterpreting them',()=>{
+ const old=load();
+ const saved=appendA0JournalEvent(newA0Journal('en-CA'),old,{eventId:'done',lessonId:old.lessonId,selectedOptionId:'yes',attemptNumber:1});
+ const request=pack([make()]);
+ const verify=journal=>reviewA0CatalogUpdate(request,[journal],[old]);
+ assert.equal(verify(saved).kind,'compatible_candidate');
+ assert.equal(verify({...saved,revision:99}).reason,'INVALID_SAVED_HISTORY');
+ assert.equal(verify({...saved,events:[...saved.events,saved.events[0]]}).reason,'INVALID_SAVED_HISTORY');
+ assert.equal(verify({...saved,events:[{...saved.events[0],selectedOptionId:'unknown'}]}).reason,'INVALID_SAVED_HISTORY');
+ const afterCompleted={...saved,revision:2,events:[...saved.events,{eventId:'late',lessonId:old.lessonId,selectedOptionId:'no',attemptNumber:2}]};
+ assert.equal(verify(afterCompleted).reason,'INVALID_SAVED_HISTORY');
+});
