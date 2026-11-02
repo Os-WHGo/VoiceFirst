@@ -15,7 +15,7 @@ import { PragmaticsPractice } from './PragmaticsPractice';
 import { VoicePackImporter } from './VoicePackImporter';
 import {stopCuratedVoice} from './curated-voice-output';
 import { useLearningPreferences } from './use-learning-preferences';
-import { missionsFor, languageNames, targetLanguages, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus, type A0LessonCandidate } from '@voicefirst/core';
+import { missionsFor, languageNames, targetLanguages, firstReleaseLanguages, canSelectFirstReleaseLanguage, canSelectFirstReleasePair, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus, type A0LessonCandidate } from '@voicefirst/core';
 
 const C = { bg:'#0B1421', surface:'#142339', border:'#2B435A', text:'#F2F7FC', secondary:'#A6BBD0', mint:'#89D4C5', gold:'#E1BD83' };
 const a0Catalog=readA0CatalogSource({id:'VoiceFirst_A0_Functional_6Langs_v0.2',read:()=>a0CandidateJson});
@@ -69,15 +69,27 @@ export default function App() {
         <View style={styles.card}>
           <View style={styles.orbitOuter}><View style={styles.orbitMid}><View style={styles.orbitInner}><Text style={styles.orbitIcon}>{speaking ? '♫' : '◦'}</Text></View></View></View>
           <Text style={styles.centerHeading}>{speaking ? 'Reproduciendo ejemplo' : 'Tu espacio de aprendizaje'}</Text>
-          <Text style={styles.centerSub}>Seis idiomas combinables. Los diálogos pueden usar reconocimiento local en primer plano si el dispositivo lo admite; falta validar pantalla bloqueada.</Text>
+          <Text style={styles.centerSub}>Beta privada: inglés, francés y español. Portugués, alemán e italiano llegarán próximamente. El reconocimiento de voz sigue sujeto a las capacidades del dispositivo.</Text>
           <Pressable accessibilityRole="button" style={styles.primary} onPress={speaking ? stop : preview}>
             <Text style={styles.primaryText}>{speaking ? 'Detener audio' : 'Escuchar ejemplo'}</Text>
           </Pressable>
         </View>
         <Text style={styles.section}>Idioma que hablas</Text>
-        <View style={styles.row}>{targetLanguages.map(lang=><Chip key={lang} active={nativeLanguage===lang} label={languageNames[lang]} onPress={()=>{stop();setNativeLanguage(lang);if(lang===target){setTarget(targetLanguages.find(v=>v!==lang)!);}}}/>)}</View>
+        <View style={styles.row}>{targetLanguages.map(lang=>{
+          const available=canSelectFirstReleaseLanguage(lang);
+          return <Chip key={lang} active={nativeLanguage===lang} disabled={!available}
+            label={available?languageNames[lang]:languageNames[lang]+' · Próximamente'}
+            onPress={()=>{if(!available)return;stop();setNativeLanguage(lang);
+              if(lang===target)setTarget(firstReleaseLanguages.find(v=>v!==lang)!);}}/>;
+        })}</View>
         <Text style={styles.section}>Idioma que quieres aprender</Text>
-        <View style={styles.row}>{targetLanguages.filter(lang=>lang!==nativeLanguage).map(lang=><Chip key={lang} active={target===lang} label={languageNames[lang]} onPress={()=>{stop();setTarget(lang);}}/>)}</View>
+        <View style={styles.row}>{targetLanguages.filter(lang=>lang!==nativeLanguage).map(lang=>{
+          const available=canSelectFirstReleasePair(nativeLanguage,lang);
+          return <Chip key={lang} active={target===lang} disabled={!available}
+            label={available?languageNames[lang]:languageNames[lang]+' · Próximamente'}
+            onPress={()=>{if(!available)return;stop();setTarget(lang);}}/>;
+        })}</View>
+        <Text style={styles.note}>Beta privada: puedes probar clases incompletas de inglés, francés y español. Los otros idiomas permanecen visibles, pero aún no se pueden seleccionar. Lanzamiento público solo con los tres cursos completos hasta C2 y pruebas aprobadas.</Text>
         <Text style={styles.section}>Dificultad de la situación</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {bands.map(b=><Chip key={b} label={b} active={level===b} onPress={()=>{stop();setLevel(b);}} />)}
@@ -108,12 +120,12 @@ export default function App() {
         <FreeResources target={target}/>
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
         </>}
-        <Text style={styles.note}>Seis idiomas combinables y lecciones preparadas de muestra, no un curso completo C2. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio generativo es opcional y separado. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
+        <Text style={styles.note}>Tres idiomas seleccionables para la beta privada y tres marcados Próximamente. Ningún curso está completo hasta C2 ni aprobado para lanzamiento público. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio generativo es opcional y separado. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
-function Chip({label,active,onPress}:{label:string;active:boolean;onPress:()=>void}) {return <Pressable accessibilityRole="button" accessibilityState={{selected:active}} onPress={onPress} style={[styles.chip,active&&styles.chipActive]}><Text style={[styles.chipText,active&&styles.chipActiveText]}>{label}</Text></Pressable>}
+function Chip({label,active,onPress,disabled=false}:{label:string;active:boolean;onPress:()=>void;disabled?:boolean}) {return <Pressable accessibilityRole="button" accessibilityState={{selected:active,disabled}} disabled={disabled} onPress={onPress} style={[styles.chip,active&&styles.chipActive,disabled&&styles.chipDisabled]}><Text style={[styles.chipText,active&&styles.chipActiveText,disabled&&styles.chipDisabledText]}>{label}</Text></Pressable>}
 const styles=StyleSheet.create({
   safe:{flex:1,backgroundColor:C.bg},screen:{padding:22,paddingBottom:55,gap:12},
   eyebrow:{color:C.mint,fontSize:11,fontWeight:'700',letterSpacing:1.6},title:{color:C.text,fontSize:31,fontWeight:'700',marginTop:12},
@@ -125,7 +137,7 @@ const styles=StyleSheet.create({
   centerSub:{color:C.secondary,fontSize:12,lineHeight:18,textAlign:'center'},primary:{backgroundColor:C.mint,minHeight:49,paddingHorizontal:30,paddingVertical:13,borderRadius:16,justifyContent:'center',marginTop:10},
   primaryText:{color:'#0B2631',fontWeight:'800',textAlign:'center'},section:{color:C.text,fontSize:17,fontWeight:'700',marginTop:15},row:{flexDirection:'row',gap:8,flexWrap:'wrap'},
   chip:{borderColor:C.border,borderWidth:1,paddingHorizontal:14,paddingVertical:11,borderRadius:40,backgroundColor:C.surface,minHeight:43},
-  chipActive:{borderColor:C.mint,backgroundColor:'#203B40'},chipText:{color:C.secondary,fontSize:13},chipActiveText:{color:C.text,fontWeight:'700'},
+  chipActive:{borderColor:C.mint,backgroundColor:'#203B40'},chipDisabled:{opacity:0.58,borderColor:'#425165'},chipText:{color:C.secondary,fontSize:13},chipActiveText:{color:C.text,fontWeight:'700'},chipDisabledText:{color:'#AEC0D0'},
   mission:{borderWidth:1,borderColor:C.border,borderRadius:18,padding:20,backgroundColor:C.surface,gap:11,marginTop:8},
   missionName:{color:C.text,fontSize:20,fontWeight:'700'},prompt:{color:C.gold,fontSize:17,lineHeight:25,marginTop:4},
   note:{color:'#95A6B6',fontSize:12,lineHeight:19,marginTop:20}
