@@ -40,6 +40,9 @@ test('native change gate is required for all native jobs and unknown revisions c
  assert.match(workflow,/github\.event\.before/);
  assert.match(workflow,/fetch-depth: 0/);
  assert.equal(requiresNativeCompile(['packages/core/src/learning-session.ts']),false);
+ assert.equal(requiresNativeCompile(['docs/ci/native-batch-request.md']),true);
+ assert.equal(requiresNativeCompile(['docs/ci/notes-only.md']),false);
+ assert.match(workflow,/'docs\/ci\/native-batch-request\.md'/);
  assert.equal(requiresNativeCompile(['packages/core/test/learning-session.test.mjs']),false);
  assert.equal(requiresNativeCompile(['mobile/modules/voicefirst-audio-route/ios/VoiceFirstAudioRouteModule.swift']),true);
  assert.equal(requiresNativeCompile(['mobile/App.tsx']),true);
