@@ -5,6 +5,27 @@ const supported=new Set(['en-CA','fr-CA','es','pt-BR','de','it']);
 const skillsRequired=['listening','speaking','reading','writing','interaction','mediation'];
 // Historical source IDs include CEFR paths such as C1.01.fr-CA. IDs are data, never file paths.
 const validId=(x:unknown):x is string=>typeof x==='string'&&/^[a-z0-9][a-z0-9._:-]{2,100}$/i.test(x)&&!x.includes('..')&&!x.endsWith('.');
+/** Evidence levels for untrusted historical packs. A text draft is still
+ * unreviewed and cannot be played, assessed, published or credited to mastery.
+ * Placeholder IDs, skills and level labels are NOT proof of authored material.
+ */
+export type ExternalDraftEvidence='outline-only'|'text-draft-unreviewed';
+const authoredText=(item:unknown):boolean=>{
+ if(typeof item==='string')return item.trim().length>0;
+ if(!item||typeof item!=='object'||Array.isArray(item))return false;
+ const record=item as {text?:unknown;prompt?:unknown;instructions?:unknown;utterance?:unknown};
+ return [record.text,record.prompt,record.instructions,record.utterance].some(value=>typeof value==='string'&&value.trim().length>0);
+};
+export function classifyExternalDraftEvidence(unit:unknown):ExternalDraftEvidence {
+ if(!unit||typeof unit!=='object'||Array.isArray(unit))return 'outline-only';
+ const item=unit as {dialogue?:unknown;activities?:unknown;utterances?:unknown};
+ const evidence=[item.dialogue,item.activities,item.utterances];
+ if(evidence.some(field=>Array.isArray(field)&&field.some(authoredText)))return 'text-draft-unreviewed';
+ // A single utterance object is accepted as a draft signal, not as a validated activity.
+ if(item.utterances!==null&&typeof item.utterances==='object'&&!Array.isArray(item.utterances)&&
+    Object.values(item.utterances).some(authoredText))return 'text-draft-unreviewed';
+ return 'outline-only';
+}
 export function auditExternalCurriculumCandidate(candidate:unknown):ExternalCurriculumAudit {
  const errors:string[]=[],duplicates:string[]=[],collisions:string[]=[];
  const doc=candidate&&typeof candidate==='object'&&!Array.isArray(candidate)?candidate as {units?:unknown;metadata?:unknown}:null;
