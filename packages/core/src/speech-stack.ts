@@ -106,9 +106,9 @@ export function planPackRemoval(catalog:readonly LanguagePack[],installedIds:rea
  // report misleading disk savings. No files are touched by this planner.
  if(!Array.isArray(catalog)||catalog.some(p=>!p||typeof p.id!=='string'||!p.id||
     !Number.isSafeInteger(p.bytes)||p.bytes<=0||
-    !Array.isArray(p.dependencies)||p.dependencies.some(d=>typeof d!=='string')))
+    !Array.isArray(p.dependencies)||p.dependencies.some((d:unknown)=>typeof d!=='string')))
   return {status:'blocked',reason:'invalid-catalog',ids:[]};
- const byId=new Map(catalog.map(p=>[p.id,p]));
+ const byId=new Map<string,LanguagePack>(catalog.map(p=>[p.id,p]));
  if(byId.size!==catalog.length)return {status:'blocked',reason:'invalid-catalog',ids:[]};
  const uniqueRemove=[...new Set(remove)];
  const unknown=uniqueRemove.filter(id=>!byId.has(id)||!installedIds.includes(id));
