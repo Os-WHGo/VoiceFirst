@@ -4,6 +4,7 @@ on:
     paths:
       - 'mobile/**'
       - 'scripts/check-expo-config.mjs'
+      - 'scripts/native-ci-change-gate.mjs'
       - 'scripts/check-android-prebuild.mjs'
       - 'scripts/check-android-release-wiring.mjs'
       - 'scripts/inspect-android-release-signing.mjs'
@@ -19,7 +20,24 @@ concurrency:
   group: voicefirst-native-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  native-change-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.native.outputs.required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: native
+        name: Inspect only files from latest PR update (unknown means compile)
+        env:
+          PR_ACTION: ${{ github.event.action }}
+          PR_BEFORE: ${{ github.event.before }}
+          PR_AFTER: ${{ github.event.after }}
+        run: node scripts/native-ci-change-gate.mjs
   expo-config:
+    needs: native-change-gate
+    if: needs.native-change-gate.outputs.required == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -32,6 +50,8 @@ jobs:
       - run: npm run build:core
       - run: npm run check:expo-config
   android-native-source:
+    needs: native-change-gate
+    if: needs.native-change-gate.outputs.required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     steps:
@@ -68,6 +88,8 @@ jobs:
           fi
           echo 'Android Kotlin compilation only; packaging is reserved for an authorized B1 candidate.'
   ios-native-source:
+    needs: native-change-gate
+    if: needs.native-change-gate.outputs.required == 'true'
     # Standard macOS runner in this public repository. No EAS, signing, IPA,
     # App Store upload, hardware microphone or paid Apple account.
     runs-on: macos-26
