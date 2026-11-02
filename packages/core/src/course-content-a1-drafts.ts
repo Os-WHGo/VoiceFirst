@@ -5,14 +5,20 @@
 import {targetLanguages,type TargetLanguage} from './types.js';
 import {auditCurriculumProduction,courseSkills, type ProductionUnit} from './learning-paths.js';
 import {extraA1Topics,extraA1Authoring,type ExtraA1Seed} from './a1-extra-topic-seeds.js';
+import {remainingA1Topics,type RemainingA1Topic,a1RemainingWestern} from './a1-remaining-western-seeds.js';
+import {a1RemainingOther} from './a1-remaining-other-seeds.js';
 
-export const a1DraftTopics=['greetings-and-introductions','personal-information',...extraA1Topics] as const;
+export const a1DraftTopics=['greetings-and-introductions','personal-information',...extraA1Topics,...remainingA1Topics] as const;
 export type A1DraftTopic=(typeof a1DraftTopics)[number];
 export const a1VocabularyConcepts={
  'greetings-and-introductions':['hello','state-name','meet-someone','farewell'],
  'personal-information':['state-origin','state-residence','state-language','ask-repeat'],
  'numbers-time-and-dates':['ask-time','say-hour','state-day','confirm-date'],
- 'family-and-people':['introduce-family','state-relationship','describe-person','ask-who']
+ 'family-and-people':['introduce-family','state-relationship','describe-person','ask-who'],
+ 'daily-routines':['wake-up','have-breakfast','commute','morning'],
+ 'food-and-shopping':['ask-price','request-item','state-price','thank-shop'],
+ 'places-and-directions':['ask-place','go-straight','turn-left','nearby-place'],
+ 'basic-needs-and-help':['ask-help','need-help','ask-slower','thank-helper']
 } as const satisfies Record<A1DraftTopic,readonly string[]>;
 type TopicSeed={
  outcome:string;
@@ -218,10 +224,14 @@ export interface A1EditorialDraft extends ProductionUnit {
  rightsStatus:'pending-editorial-clearance';
  editorialStatus:'not-human-reviewed';
 }
+const remainingA1Authoring={...a1RemainingWestern,...a1RemainingOther} as
+ Readonly<Record<TargetLanguage,Readonly<Record<RemainingA1Topic,ExtraA1Seed>>>>;
 export const a1EditorialDrafts:readonly A1EditorialDraft[]=targetLanguages.flatMap(targetLanguage=>
  a1DraftTopics.map((unitId):A1EditorialDraft=>{
   const part:TopicSeed|ExtraA1Seed=unitId==='greetings-and-introductions'?authoring[targetLanguage].greeting:
-   unitId==='personal-information'?authoring[targetLanguage].personal:extraA1Authoring[targetLanguage][unitId];
+   unitId==='personal-information'?authoring[targetLanguage].personal:
+   unitId==='numbers-time-and-dates'||unitId==='family-and-people'?extraA1Authoring[targetLanguage][unitId]:
+   remainingA1Authoring[targetLanguage][unitId];
   return {
    targetLanguage,level:'A1',unitId,revision:'0.1.0',status:'draft',
    outcomes:[part.outcome],
