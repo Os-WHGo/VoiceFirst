@@ -32,3 +32,27 @@ test('Metro still checks both platforms on core and mobile changes, without nati
  assert.doesNotMatch(jsWorkflow,/gradlew|xcodebuild|assembleRelease|upload-artifact/);
  assert.match(jsWorkflow,/cancel-in-progress:.*github\.event_name == 'pull_request'/);
 });
+
+test('native change gate is required for all native jobs and unknown revisions compile conservatively',async()=>{
+ const {requiresNativeCompile,inspectNativeChange}=await import('../../../scripts/native-ci-change-gate.mjs');
+ assert.match(workflow,/native-change-gate:/);
+ assert.equal((workflow.match(/needs: native-change-gate/g)||[]).length,3);
+ assert.match(workflow,/github\.event\.before/);
+ assert.match(workflow,/fetch-depth: 0/);
+ assert.equal(requiresNativeCompile(['packages/core/src/learning-session.ts']),false);
+ assert.equal(requiresNativeCompile(['packages/core/test/learning-session.test.mjs']),false);
+ assert.equal(requiresNativeCompile(['mobile/modules/voicefirst-audio-route/ios/VoiceFirstAudioRouteModule.swift']),true);
+ assert.equal(requiresNativeCompile(['mobile/App.tsx']),true);
+ assert.equal(requiresNativeCompile(['package-lock.json']),true);
+ assert.equal(requiresNativeCompile(['.github/workflows/expo-native-readiness.yml']),true);
+ assert.equal(requiresNativeCompile(['scripts/native-ci-change-gate.mjs']),true);
+ assert.equal(requiresNativeCompile(null),true);
+ const before='a'.repeat(40),after='b'.repeat(40);
+ const env={eventName:'pull_request',action:'synchronize',before,after};
+ const fake=paths=>args=>args[0]==='diff'?paths:'';
+ assert.deepEqual(inspectNativeChange(env,fake('packages/core/src/course.ts\n')),{required:false,reason:'validated-commit-diff',changed:1});
+ assert.deepEqual(inspectNativeChange(env,fake('mobile/App.tsx\n')),{required:true,reason:'validated-commit-diff',changed:1});
+ assert.equal(inspectNativeChange({...env,before:''},fake('')).required,true);
+ assert.equal(inspectNativeChange({...env,eventName:'workflow_dispatch'},fake('')).required,true);
+ assert.deepEqual(inspectNativeChange(env,()=>{throw Error('git unavailable');}),{required:true,reason:'unavailable-history'});
+});
