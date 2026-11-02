@@ -7,6 +7,7 @@ import {View,Text,Pressable,TextInput,StyleSheet} from 'react-native';
 import {useOnDeviceAnswer,type DictationResult} from './use-on-device-answer';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 import Storage from 'expo-sqlite/kv-store';
+import {readOfflineCourseRaw,writeOfflineCourseCAS} from './offline-course-storage';
 import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
   chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,courseReviewQueue,courseReviewSummary,voluntaryCourseReview,
   type CourseProgress,type TargetLanguage,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences,
@@ -36,6 +37,9 @@ export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,
   const mounted=useRef(true);
   const playbackEpoch=useRef(0);
   const writeQueue=useRef(Promise.resolve());
+  const savedRawByTarget=useRef(new Map<TargetLanguage,string|null>());
+  const shownTarget=useRef(target);
+  shownTarget.current=target;
   const onDictation=useRef<(r:DictationResult,id:string)=>void>(()=>undefined);
   const mic=useOnDeviceAnswer(target,(result,id)=>onDictation.current(result,id));
   const lesson=lessons.find(x=>x.id===chosenId)??lessons[0];
@@ -51,10 +55,11 @@ export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,
   useEffect(()=>{
     mounted.current=true;let valid=true;setShowOptional(false);
     playbackEpoch.current++;setProgress(null);setLocked('');setStep(0);setReviewExerciseId(null);setActive(false);setAnswer('');setPassed(false);setSessionSummary('');deferred.current=[];
-    void Promise.all([Storage.getItem(storeKey(target)),Storage.getItem(cursorKey(target))]).then(([raw,cursor])=>{
+    void Promise.all([readOfflineCourseRaw(target),Storage.getItem(cursorKey(target))]).then(([raw,cursor])=>{
       if(!valid)return;
       const result=raw===null?{kind:'ok',progress:newCourseProgress(target)} as const:loadCourseState(raw,target);
       if(result.kind!=='ok'){setLocked('Los datos de este curso no pueden leerse. No se han borrado; continúa sin reemplazarlos.');return;}
+      savedRawByTarget.current.set(target,raw);
       setProgress(result.progress);
       const suggested=chooseCourseLesson(result.progress,localDay())?.id??lessons[0]?.id??null;
       let resume: {lessonId:string;step:number;active:boolean;reviewExerciseId:string|null}|null=null;
@@ -88,8 +93,13 @@ export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,
     setProgress(next);
     // Serialize writes. This screen persists no audio, transcripts or personal profiles.
     const raw=courseStateToJSON(next);
-    writeQueue.current=writeQueue.current.catch(()=>undefined).then(()=>Storage.setItem(storeKey(target),raw));
-    void writeQueue.current.catch(()=>{if(mounted.current){setLocked('No se pudo guardar el progreso. Se detuvo el curso para proteger tus datos.');setActive(false);}});
+    writeQueue.current=writeQueue.current.catch(()=>undefined).then(async()=>{
+      if(!savedRawByTarget.current.has(target))throw new Error('COURSE_BASELINE_MISSING');
+      const expected=savedRawByTarget.current.get(target)??null;
+      await writeOfflineCourseCAS(target,expected,raw);
+      savedRawByTarget.current.set(target,raw);
+    });
+    void writeQueue.current.catch(()=>{if(mounted.current&&shownTarget.current===target){setLocked('El progreso local cambió o no pudo guardarse. Se detuvo el curso para evitar sobrescribir respuestas.');setActive(false);}});
   };
   const play=(thenListen=false)=>{
     if(!lesson||!current||!active||locked)return;
