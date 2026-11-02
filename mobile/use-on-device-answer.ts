@@ -57,6 +57,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
  const requesting=useRef(false);
  const mounted=useRef(true);
  const owner=useRef<Owner|null>(null);
+ const pendingEndRetry=useRef<(()=>void)|null>(null);
  const callbacks=useRef({onFinal,onPartial});
  callbacks.current={onFinal,onPartial};
  useEffect(()=>{setNative(getRecognizer());},[]);
@@ -87,7 +88,13 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   observedInput.current=null;
   try{unsubscribe?.();}catch{/* Native cleanup must not hold a turn open. */}
  },[]);
+ const cancelPendingEndRetry=useCallback(()=>{
+  const cancel=pendingEndRetry.current;
+  pendingEndRetry.current=null;
+  try{cancel?.();}catch{/* The OS listener may already be removed. */}
+ },[]);
  const stop=useCallback(()=>{
+  cancelPendingEndRetry();
   releaseRouteWatch();
   epoch.current++;
   const wasListening=active.current!==null;
@@ -104,7 +111,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   }
   owner.current=null;
   if(mounted.current)setListening(false);
- },[native,releaseRouteWatch]);
+ },[native,releaseRouteWatch,cancelPendingEndRetry]);
  const startRouteWatch=useCallback(async(token:number)=>{
   // Observe AFTER audiostart so the expected HFP switch during startup
   // is not counted as a mid-turn interruption.
@@ -237,7 +244,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   ];
   return()=>subs.forEach(sub=>sub.remove());
  },[native,language,stop,startRouteWatch,releaseRouteWatch]);
- const start=useCallback(async(exerciseId:string):Promise<boolean>=>{
+ const start=useCallback(async(exerciseId:string,options?:{waitForNativeEnd?:boolean}):Promise<boolean>=>{
   if(!mounted.current||languageRef.current!==language||AppState.currentState!=='active')return false;
   if(!native){setIssue('Este dispositivo no dispone de reconocimiento local compatible.');return false;}
   if(Platform.OS==='android'&&model==='missing'){
@@ -249,6 +256,39 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   // learner view may cancel our pending request, which must then fail closed.
   if(microphoneOwner&&microphoneOwner!==owner.current)microphoneOwner.stop();
   if(!nativeSessionGate.canStart()){
+   // Only a foreground, learner-enabled voice guide may request one deferred
+   // turn. The gate stays closed until the OS emits the terminal native 'end'.
+   // Manual starts are never re-attempted unexpectedly.
+   if(options?.waitForNativeEnd){
+    cancelPendingEndRetry();
+    const token=epoch.current,requestedLanguage=language;
+    let settled=false,unsubscribe=()=>{};
+    const finish=()=>{
+     if(settled)return false;
+     settled=true;
+     unsubscribe();clearTimeout(timeout);
+     pendingEndRetry.current=null;
+     return true;
+    };
+    const timeout=setTimeout(()=>{
+     if(!finish())return;
+     if(mounted.current&&epoch.current===token&&languageRef.current===requestedLanguage&&
+        AppState.currentState==='active')
+      setIssue('La escucha anterior no terminó a tiempo. Puedes volver a intentarlo o responder por texto.');
+    },5000);
+    pendingEndRetry.current=()=>{
+     if(settled)return;
+     settled=true;unsubscribe();clearTimeout(timeout);
+    };
+    unsubscribe=nativeSessionGate.onEnd(()=>{
+     if(!finish())return;
+     if(!mounted.current||epoch.current!==token||languageRef.current!==requestedLanguage||
+        AppState.currentState!=='active')return;
+     void start(exerciseId); // A single new turn; no recursive waiting.
+    });
+    if(!settled)setIssue('Terminando la escucha anterior antes del siguiente turno…');
+    return false;
+   }
    setIssue('El reconocimiento anterior todavía se está cerrando. Espera a que termine e inténtalo de nuevo.');
    return false;
   }
@@ -291,7 +331,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     microphoneOwner=null;owner.current=null;
    }
   }
- },[native,language,stop,model]);
+ },[native,language,stop,model,cancelPendingEndRetry]);
  const downloadModel=useCallback(async()=>{
   if(Platform.OS!=='android'||!native?.androidTriggerOfflineModelDownload)return;
   try{
