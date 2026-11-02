@@ -5,7 +5,7 @@
 import {type A0Journal} from './a0-attempt-journal.js';
 import {type A0LessonCandidate} from './a0-functional-candidate-import.js';
 export interface A0CompatibilityIssue {eventId:string;lessonId:string;code:
- 'REMOVED_LESSON'|'CHANGED_ANSWER_OPTIONS'|'CHANGED_CORRECT_OPTION'|'MISSING_PREVIOUS_LESSON'|'INVALID_ATTEMPT_SEQUENCE'}
+ 'REMOVED_LESSON'|'CHANGED_ANSWER_OPTIONS'|'CHANGED_CORRECT_OPTION'|'MISSING_PREVIOUS_LESSON'|'CHANGED_LESSON_CONCEPT'|'INVALID_ATTEMPT_SEQUENCE'}
 function sameOptions(a:A0LessonCandidate,b:A0LessonCandidate):boolean {
  if(a.options.length!==b.options.length)return false;
  const old=new Map(a.options.map(option=>[option.id,option.text]));
@@ -27,6 +27,8 @@ export function auditA0JournalCompatibility(journal:A0Journal,lessons:readonly A
    const prior=previous.get(event.lessonId);
    if(!prior)issues.push({eventId:event.eventId,lessonId:event.lessonId,code:'MISSING_PREVIOUS_LESSON'});
    else {
+    if(prior.conceptId!==lesson.conceptId||prior.skill!==lesson.skill)
+     issues.push({eventId:event.eventId,lessonId:event.lessonId,code:'CHANGED_LESSON_CONCEPT'});
     if(prior.correctOptionId!==lesson.correctOptionId)issues.push({eventId:event.eventId,lessonId:event.lessonId,code:'CHANGED_CORRECT_OPTION'});
     if(!sameOptions(prior,lesson))issues.push({eventId:event.eventId,lessonId:event.lessonId,code:'CHANGED_ANSWER_OPTIONS'});
    }
