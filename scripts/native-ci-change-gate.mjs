@@ -13,6 +13,8 @@ export function requiresNativeCompile(files){
  if(!Array.isArray(files)||!files.every(f=>typeof f==='string'&&f.length>0))return true;
  return files.some(f=>
   f.startsWith('mobile/')||
+  // Explicit batching marker: request one native compile without touching source.
+  f==='docs/ci/native-batch-request.md'||
   f==='package.json'||f==='package-lock.json'||
   f==='.github/workflows/expo-native-readiness.yml'||
   f==='scripts/native-ci-change-gate.mjs'||
