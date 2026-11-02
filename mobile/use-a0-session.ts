@@ -21,7 +21,16 @@ export function useA0Session(target:TargetLanguage,lessons:readonly A0LessonCand
   // Preserve write ordering across target switches. A previous write must not mutate a new session.
   void queue.current.catch(()=>undefined).then(async()=>{
    if(!preflight)return restoreA0Session(a0DeviceStorage,target,lessons);
-   return restoreA0CatalogSession(a0DeviceStorage,preflight.input,target,preflight.previousLessons);
+   const checked=await restoreA0CatalogSession(a0DeviceStorage,preflight.input,target,preflight.previousLessons);
+   if(checked.kind!=='ok')return checked;
+   // The UI must show exactly the lessons validated against the historical
+   // catalog. Do not allow a stale or independently transformed option list.
+   const normalize=(items:readonly A0LessonCandidate[])=>JSON.stringify(
+    [...items].sort((a,b)=>a.lessonId.localeCompare(b.lessonId)));
+   const fromCatalog=checked.lessons.filter(l=>l.targetLanguage===target);
+   if(normalize(fromCatalog)!==normalize(lessons))
+    return {kind:'invalid' as const,reason:'A0_CATALOG_PRESENTATION_MISMATCH'};
+   return checked;
   }).then(result=>{
    if(epoch.current!==session)return;
    if(result.kind!=='ok'){setError('El historial A0 no puede leerse. No se sobrescribirá.');setStatus('blocked');return;}
