@@ -3,7 +3,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {auditExternalCurriculumCandidate,catalogueExternalCurriculum} from '../dist/index.js';
+import {auditExternalCurriculumCandidate,catalogueExternalCurriculum,classifyExternalDraftEvidence} from '../dist/index.js';
 
 const languages=['en-CA','fr-CA','es','pt-BR','de','it'];
 const skills=Object.fromEntries(['listening','speaking','reading','writing','interaction','mediation'].map(s=>[s,{}]));
@@ -56,4 +56,42 @@ test('C1/C2 review-only inventory does not assert that historical draft activiti
  assert.equal(catalogue.acceptedForReview,true);
  assert.equal(catalogue.entries[0].publicAvailable,false);
  assert.equal('activities' in catalogue.entries[0],false);
+});
+
+test('metadata-only C1/C2 objectives are accounted for as outlines, not authored lessons',()=>{
+ const units=['C1','C2'].flatMap(level=>languages.map(language=>example(level,1,language)));
+ const result=catalogueExternalCurriculum({units});
+ assert.equal(result.acceptedForReview,true);
+ assert.equal(result.entries.length,12);
+ assert.equal(result.outlineOnlyCount,12);
+ assert.equal(result.textDraftCount,0);
+ assert.ok(result.entries.every(x=>x.contentEvidence==='outline-only'&&x.publicAvailable===false));
+});
+test('real text is distinguishable from a skeleton but never earns publication or mastery',()=>{
+ const outline=example('C2',1,'it');
+ const authored={...example('C1',1,'fr-CA'),activities:[
+  {kind:'listening',prompt:'Explain which claim the speaker qualifies'},
+  {kind:'interaction',instructions:'Ask for clarification politely'}
+ ]};
+ const dialogue={...example('B2',2,'en-CA'),dialogue:[{text:'I can accept the proposal with conditions.'}]};
+ const utterances={...example('B1',4,'de'),utterances:{model:'Das verstehe ich nicht.',interlocutor_prompt:'Können Sie das erklären?'}};
+ const fake={...example('A2',3,'es'),activities:[{kind:'listening',id:'a1'}],dialogue:['  ']};
+ const result=catalogueExternalCurriculum({units:[outline,authored,dialogue,utterances,fake]});
+ assert.equal(result.acceptedForReview,true);
+ assert.equal(result.outlineOnlyCount,2);
+ assert.equal(result.textDraftCount,3);
+ assert.deepEqual(result.entries.map(x=>x.contentEvidence),[
+  'outline-only','text-draft-unreviewed','text-draft-unreviewed',
+  'text-draft-unreviewed','outline-only'
+ ]);
+ assert.ok(result.entries.every(x=>x.publicAvailable===false&&x.reviewState==='candidate-only'));
+ assert.equal(classifyExternalDraftEvidence({activities:[{title:'Plan to write a lesson'}]}),'outline-only');
+ assert.equal(classifyExternalDraftEvidence({activities:[{prompt:'   '}]}),'outline-only');
+});
+test('malformed external curriculum returns no fake editorial evidence statistics',()=>{
+ const result=catalogueExternalCurriculum({units:[{...example('C2',1,'it'),status:{publishable:true},activities:['Hello']}]});
+ assert.equal(result.acceptedForReview,false);
+ assert.equal(result.entries.length,0);
+ assert.equal(result.textDraftCount,0);
+ assert.equal(result.outlineOnlyCount,0);
 });
