@@ -1,18 +1,33 @@
-/** A native speech-recognition event stream contains no turn identifier.
- * Never start a new turn while result/error/abort events from a previous
- * native session can still arrive. Per the module contract, "end" is terminal.
- *
- * If the platform omits "end", this deliberately fails closed rather than
- * attributing an obsolete transcript to a later lesson.
+/** Native recognition events have no turn identifiers.
+ * Final result, error and abort never release the native turn. Only the OS
+ * terminal 'end' is authoritative. Missing 'end' fails closed.
  */
 export class NativeSpeechSessionGate {
  private sessionOpen=false;
+ private readonly onTerminal=new Set<()=>void>();
  canStart():boolean{return !this.sessionOpen;}
- begin():boolean{
+ begin():boolean {
   if(this.sessionOpen)return false;
   this.sessionOpen=true;
   return true;
  }
- /** Final transcript and abort do NOT unlock this gate. */
- end():void{this.sessionOpen=false;}
+ /** Wait for a currently open native session to finish; cancellation is
+  * mandatory when the caller leaves foreground, changes lesson or stops.
+  * Not a start request and never captures audio by itself.
+  */
+ onEnd(listener:()=>void):()=>void {
+  if(!this.sessionOpen){listener();return ()=>{};}
+  this.onTerminal.add(listener);
+  return ()=>{this.onTerminal.delete(listener);};
+ }
+ /** Notifies once; a callback still must acquire begin() independently. */
+ end():void {
+  if(!this.sessionOpen)return;
+  this.sessionOpen=false;
+  const callbacks=[...this.onTerminal];
+  this.onTerminal.clear();
+  for(const callback of callbacks){
+   try{callback();}catch{/* A failed listener must not strand other waiters. */}
+  }
+ }
 }
