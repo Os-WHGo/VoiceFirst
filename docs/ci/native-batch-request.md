@@ -18,6 +18,10 @@ El último resultado favorable del runner no sustituye una prueba de audio físi
 
 ## Solicitud de lote
 
-Lote: B0-ci-2026-11-01-01.
+Lote: B0-ci-2026-11-02-02.
 Motivo: reducir deuda de validación acumulada de las correcciones de VoiceFirst.
 Resultado: consultar la ejecución de GitHub Actions correspondiente al último HEAD de la PR; no anotar «aprobada» antes de que los jobs terminen.
+
+## Validación acumulada B0 · traspaso seguro de ASR · 02-11-2026 UTC
+
+Motivo del lote agrupado: se acumularon varios macrobloques reales de navegación por voz, selección de idiomas y turnos de reconocimiento sin actualización de la compilación nativa desde el SHA da5d95d4. El núcleo ahora espera el evento terminal nativo del turno anterior antes de un único reintento foreground, con cancelación por pausa/cambio de idioma/background, límite de 5 segundos y comprobación actualizada de modelo. Se solicita ejecutar en esta rama los trabajos nativos de código Android Kotlin debug/release e iOS Simulator, sin generar APK/AAB/IPA, sin firma o publicación, sin permiso de audio de fondo, gastos externos o pruebas físicas simuladas. Solo registrar PASS al terminar los jobs correspondientes al HEAD real.
