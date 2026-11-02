@@ -104,7 +104,8 @@ export function temporaryFilesToDelete(files:readonly PackFile[],journal:Readonl
   const content=root.startsWith('file:///')?f.path.slice('file://'.length):f.path;
   try{
    const decoded=decodeURIComponent(content);
-   if(decoded.includes('//')||decoded.split('/').some(segment=>segment==='.'||segment==='..'))return false;
+   if(decoded.includes('//')||decoded.split('/').some(segment=>segment==='.'||segment==='..')||
+      /%(?:2e|2f|5c|25)/i.test(decoded)||decoded.includes('?')||decoded.includes('#'))return false;
   }catch{return false;}
   return true;
  })
