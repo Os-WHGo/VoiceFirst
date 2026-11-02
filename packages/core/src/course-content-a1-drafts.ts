@@ -3,13 +3,16 @@
  * authoring prompt, not a functional assessment until its media/UI are built.
  */
 import {targetLanguages,type TargetLanguage} from './types.js';
-import {auditCurriculumProduction,courseSkills, type ProductionUnit, type CourseSkill} from './learning-paths.js';
+import {auditCurriculumProduction,courseSkills, type ProductionUnit} from './learning-paths.js';
+import {extraA1Topics,extraA1Authoring,type ExtraA1Seed} from './a1-extra-topic-seeds.js';
 
-export const a1DraftTopics=['greetings-and-introductions','personal-information'] as const;
+export const a1DraftTopics=['greetings-and-introductions','personal-information',...extraA1Topics] as const;
 export type A1DraftTopic=(typeof a1DraftTopics)[number];
 export const a1VocabularyConcepts={
  'greetings-and-introductions':['hello','state-name','meet-someone','farewell'],
- 'personal-information':['state-origin','state-residence','state-language','ask-repeat']
+ 'personal-information':['state-origin','state-residence','state-language','ask-repeat'],
+ 'numbers-time-and-dates':['ask-time','say-hour','state-day','confirm-date'],
+ 'family-and-people':['introduce-family','state-relationship','describe-person','ask-who']
 } as const satisfies Record<A1DraftTopic,readonly string[]>;
 type TopicSeed={
  outcome:string;
@@ -217,7 +220,8 @@ export interface A1EditorialDraft extends ProductionUnit {
 }
 export const a1EditorialDrafts:readonly A1EditorialDraft[]=targetLanguages.flatMap(targetLanguage=>
  a1DraftTopics.map((unitId):A1EditorialDraft=>{
-  const part=authoring[targetLanguage][unitId==='greetings-and-introductions'?'greeting':'personal'];
+  const part:TopicSeed|ExtraA1Seed=unitId==='greetings-and-introductions'?authoring[targetLanguage].greeting:
+   unitId==='personal-information'?authoring[targetLanguage].personal:extraA1Authoring[targetLanguage][unitId];
   return {
    targetLanguage,level:'A1',unitId,revision:'0.1.0',status:'draft',
    outcomes:[part.outcome],
