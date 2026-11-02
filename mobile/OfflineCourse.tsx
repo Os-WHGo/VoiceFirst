@@ -10,7 +10,7 @@ import Storage from 'expo-sqlite/kv-store';
 import {readOfflineCourseRaw,writeOfflineCourseCAS} from './offline-course-storage';
 import {lessonsFor,newCourseProgress,loadCourseState,courseStateToJSON,
   chooseCourseLesson,checkUtterance,recordCourseAttempt,finishLesson,courseLessonStatus,courseReviewQueue,courseReviewSummary,voluntaryCourseReview,
-  type CourseProgress,type TargetLanguage,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences,
+  type CourseProgress,type TargetLanguage,MAX_COURSE_RESPONSE_CHARS,voiceCueById,type ExperiencePreferences,defaultExperiencePreferences,
   currentVoiceTurn,voiceTranscriptDisposition,lessonDisplayPolicy,pronunciationReadingFor,readingAidCopy} from '@voicefirst/core';
 
 const localDay=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -221,7 +221,7 @@ export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,
       </>:<>
         {experience.instructionFormat==='full-context'&&<Text style={s.muted}>Responde en {target}. Recuerda una frase apropiada para esta situación:</Text>}
         <Text style={s.phrase}>{current?.meaning[nativeLanguage]}</Text>
-        <TextInput accessibilityLabel="Respuesta de recuperación en el idioma objetivo" value={answer} onChangeText={setAnswer} style={s.input} placeholder="Tu respuesta aquí" placeholderTextColor="#9FB4C6" autoCorrect={false}/>
+        <TextInput accessibilityLabel="Respuesta de recuperación en el idioma objetivo" maxLength={MAX_COURSE_RESPONSE_CHARS} value={answer} onChangeText={setAnswer} style={s.input} placeholder="Tu respuesta aquí" placeholderTextColor="#9FB4C6" autoCorrect={false}/>
         <View style={s.row}>{!passed&&<Action label="Comprobar y guardar" onPress={()=>verify()}/>}<Action label="Escuchar pista" onPress={()=>play()}/>{passed&&<Action label="Continuar al siguiente paso" onPress={forward}/>}</View>
         <View style={s.row}>
           {!passed&&<Action label={mic.listening?'Detener micrófono':'Responder hablando (offline)'} onPress={()=>{
