@@ -34,7 +34,9 @@ export function inspectReusableCurriculumImport(candidate:unknown):ReusableImpor
  }
  for(const u of units){
   if(!record(u)||typeof u.conceptId!=='string'||!seenConcepts.has(u.conceptId)||!locales.has(String(u.targetLanguage))||
-   !Array.isArray(u.dialogue)||!u.dialogue.length||u.dialogue.some((s:unknown)=>typeof s!=='string'||!s.trim())||
+   !Array.isArray(u.dialogue)||u.dialogue.some((s:unknown)=>typeof s!=='string'||!s.trim())||
+   (u.activities!==undefined&&(!Array.isArray(u.activities)||u.activities.some((s:unknown)=>typeof s!=='string'||!s.trim())))||
+   (!u.dialogue.length&&(!Array.isArray(u.activities)||!u.activities.length))||
    !Array.isArray(u.vocabulary)||!u.vocabulary.length||u.vocabulary.some((s:unknown)=>typeof s!=='string'||!s.trim())||
    !['candidate','reviewed'].includes(String(u.editorialStatus))||typeof u.rightsCleared!=='boolean'||typeof u.audioReviewed!=='boolean'){
    errors.push('Invalid target-language unit');continue;
