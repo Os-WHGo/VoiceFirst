@@ -3,7 +3,7 @@
  */
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {AppState,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
-import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,resolveSessionVoiceCommand,fasterSessionPlaybackRate,effectivePlaybackRate,voiceChoiceIndex,voiceChoiceConfirmation,voiceChoiceCommandHint,voiceChoiceLabel,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
+import {courseLessonStatus,defaultExperiencePreferences,deviceLocalDay,dueObjectiveReviews,lessonsFor,parseVoiceCommand,spokenCommandApproval,voiceCommandProposalPrompt,pronunciationReadingFor,readingAidCopy,sessionOpening,sessionNarration,SessionNarrator,resolveSessionVoiceCommand,fasterSessionPlaybackRate,effectivePlaybackRate,voiceChoiceIndex,voiceChoiceConfirmation,voiceChoiceCommandHint,voiceChoiceLabel,summarizeSession,type ExperiencePreferences,type LearningSessionEvent,type TargetLanguage,type VoiceCommand} from '@voicefirst/core';
 import {useLearningSession} from './use-learning-session';
 import {useOnDeviceAnswer} from './use-on-device-answer';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
@@ -76,6 +76,7 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
  const [pendingCommand,setPendingCommand]=useState<{command:VoiceCommand;text:string;sessionId:string;revision:number}|null>(null);
  const [proposedChoice,setProposedChoice]=useState<{sessionId:string;revision:number;activityId:string;optionId:string;optionText:string;index:number}|null>(null);
  const [choiceRetry,setChoiceRetry]=useState(0);
+ const [commandRetry,setCommandRetry]=useState(0);
  const [guided,setGuided]=useState(false),[narrating,setNarrating]=useState(false);
  const [playbackRate,setPlaybackRate]=useState(()=>effectivePlaybackRate(rate));
  useEffect(()=>setPlaybackRate(effectivePlaybackRate(rate)),[rate]);
@@ -101,6 +102,26 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   if(!commandState.current.enabled||id!==commandState.current.id)return;
   if(!session)return;
   const command=parseVoiceCommand(result.text);
+  // The current navigation proposal requires a second, deliberate spoken act.
+  // This is distinct from confirming a pending learning answer.
+  if(pendingCommand&&pendingCommand.sessionId===session.sessionId&&
+     pendingCommand.revision===session.revision){
+   const approval=spokenCommandApproval(result.text,known);
+   if(approval==='cancel'){commandMic.stop();setPendingCommand(null);setCommandRetry(n=>n+1);return;}
+   if(approval==='approve'){
+    const decision=resolveSessionVoiceCommand(pendingCommand.command,session.status,deviceLocalDay(),
+     !!session.current?.pendingConfirmation);
+    if(decision.kind==='unsupported'){setPendingCommand(null);setCommandRetry(n=>n+1);return;}
+    setPendingCommand(null);
+    switch(decision.kind){
+     case 'event':send(decision.event);return;
+     case 'speed-up':stop();setPlaybackRate(previous=>fasterSessionPlaybackRate(previous));setCommandRetry(n=>n+1);return;
+     case 'play-summary':if(summary)play(summary.statements.join(' '),known);return;
+     case 'play-current':if(activity)play(activity.cue??activity.model,target);return;
+    }
+   }
+   return; // Unknown words, bare yes/no and answer confirmations are inert.
+  }
   const proposed=proposedChoice&&proposedChoice.sessionId===session.sessionId&&
     proposedChoice.revision===session.revision&&proposedChoice.activityId===activity?.id&&
     session.status==='active'&&heardActivity===activity.id;
@@ -137,11 +158,11 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
   live.current=true;
   const sub=AppState.addEventListener('change',state=>{
    const active=state==='active';setForeground(active);
-   if(!active){epoch.current++;guidedRef.current=false;setGuided(false);setNarrating(false);narrator.cancel();mic.stop();commandMic.stop();setPendingCommand(null);setProposedChoice(null);setChoiceRetry(0);}
+   if(!active){epoch.current++;guidedRef.current=false;setGuided(false);setNarrating(false);narrator.cancel();mic.stop();commandMic.stop();setPendingCommand(null);setProposedChoice(null);setChoiceRetry(0);setCommandRetry(0);}
   });
   return()=>{live.current=false;epoch.current++;guidedRef.current=false;narrator.cancel();mic.stop();commandMic.stop();sub.remove();};
  },[mic.stop,commandMic.stop,narrator]);
- useEffect(()=>{stop();setAnswer('');setSpeechAnswer(false);setShowReading(false);setHeardActivity(null);setPendingCommand(null);setProposedChoice(null);setChoiceRetry(0);},[activity?.id,session?.sessionId,nativeLanguage]);
+ useEffect(()=>{stop();setAnswer('');setSpeechAnswer(false);setShowReading(false);setHeardActivity(null);setPendingCommand(null);setProposedChoice(null);setChoiceRetry(0);setCommandRetry(0);},[activity?.id,session?.sessionId,nativeLanguage]);
  // A just-committed transition can finish after the app moved to the background.
  useEffect(()=>{if(!foreground&&!runtime.busy&&session?.status==='active')void runtime.transition({type:'pause'});},[foreground,runtime.busy,session?.revision]);
  const send=(event:LearningSessionEvent)=>{stop();requestedNarration.current=['replay','slower','hint'].includes(event.type);setPendingCommand(null);setProposedChoice(null);setChoiceRetry(0);setAnswer('');setSpeechAnswer(false);void runtime.transition(event);};
@@ -231,6 +252,39 @@ export function LearningSessionCourse({nativeLanguage,target,guideLocale=null,ra
       void commandMic.start(commandState.current.id);
   });
  },[proposedChoice]);
+ // A separate, audible confirmation round permits genuine touch-free course
+ // navigation while rejecting uncalibrated ASR commands as learning evidence.
+ useEffect(()=>{
+  if(!pendingCommand||!guidedRef.current||!foreground||runtime.busy||runtime.blocked||
+     !session||session.sessionId!==pendingCommand.sessionId||
+     session.revision!==pendingCommand.revision||session.status==='finished')return;
+  const token=++epoch.current;
+  commandMic.stop();mic.stop();setNarrating(true);
+  void narrator.run([{text:voiceCommandProposalPrompt(known,pendingCommand.command),
+   language:known,purpose:'instruction'}],playbackRate).then(result=>{
+   if(!live.current||token!==epoch.current)return;
+   setNarrating(false);
+   if(result.kind==='failed'){setAudioIssue(guideCopy[known].unavailable);return;}
+   if(result.kind==='completed'&&guidedRef.current&&foreground&&
+      session.sessionId===pendingCommand.sessionId&&current.current.revision===pendingCommand.revision&&
+      commandMic.available&&commandMic.model!=='missing')
+    void commandMic.start(commandState.current.id);
+  });
+ },[pendingCommand]);
+ useEffect(()=>{
+  if(!commandRetry||!guidedRef.current||!foreground||runtime.busy||runtime.blocked||
+     !session||session.status!=='active'||pendingCommand)return;
+  const token=++epoch.current;
+  setNarrating(true);
+  void narrator.run([{text:voiceChoiceCommandHint(known),language:known,purpose:'instruction'}],playbackRate).then(result=>{
+   if(!live.current||token!==epoch.current)return;
+   setNarrating(false);
+   if(result.kind==='failed'){setAudioIssue(guideCopy[known].unavailable);return;}
+   if(result.kind==='completed'&&guidedRef.current&&current.current.ready&&
+      current.current.revision===session.revision&&commandMic.available&&commandMic.model!=='missing')
+    void commandMic.start(commandState.current.id);
+  });
+ },[commandRetry]);
  useEffect(()=>{
   if(!choiceRetry||!guidedRef.current||!foreground||runtime.busy||runtime.blocked||
      !session||session.status!=='active'||activity?.kind!=='choice')return;
