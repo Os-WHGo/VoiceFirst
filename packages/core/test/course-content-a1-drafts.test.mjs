@@ -6,10 +6,10 @@ import {
  lessonsFor
 } from '../dist/index.js';
 
-test('six launch languages have two substantive A1 drafts each without claiming a completed course',()=>{
- assert.equal(a1EditorialDrafts.length,12);
+test('six launch languages have four substantive A1 drafts each without claiming a completed course',()=>{
+ assert.equal(a1EditorialDrafts.length,24);
  assert.deepEqual(auditA1EditorialDrafts(),{
-  valid:true,errors:[],plannedUnits:288,actualDrafts:12
+  valid:true,errors:[],plannedUnits:288,actualDrafts:24
  });
  for(const language of targetLanguages){
   const rows=a1EditorialDrafts.filter(x=>x.targetLanguage===language);
@@ -35,11 +35,11 @@ test('six launch languages have two substantive A1 drafts each without claiming 
   assert.equal(lessonsFor(language).length,14);
  }
 });
-test('six-language semantic concept inventory has 48 authored phrase patterns',()=>{
+test('six-language semantic concept inventory has 96 authored phrase patterns',()=>{
  const cards=a1EditorialDrafts.flatMap(u=>u.lexemes.map(x=>({
   id:[u.targetLanguage,u.unitId,x.conceptId].join('/'),form:x.form
  })));
- assert.equal(cards.length,48);
+ assert.equal(cards.length,96);
  assert.equal(new Set(cards.map(x=>x.id)).size,48);
  for(const unit of a1EditorialDrafts){
   assert.deepEqual(unit.lexemes.map(x=>x.conceptId),
@@ -47,18 +47,20 @@ test('six-language semantic concept inventory has 48 authored phrase patterns',(
   assert.ok(unit.lexemes.every(x=>x.form.trim()===x.form&&x.form.length>2));
  }
  for(const concept of ['hello','state-name','meet-someone','farewell',
-  'state-origin','state-residence','state-language','ask-repeat']){
+  'state-origin','state-residence','state-language','ask-repeat',
+  'ask-time','say-hour','state-day','confirm-date',
+  'introduce-family','state-relationship','describe-person','ask-who']){
   assert.equal(a1EditorialDrafts.flatMap(x=>x.lexemes).filter(x=>x.conceptId===concept).length,6);
  }
 });
-test('production board identifies only 12 A1 draft plans and retains 276 missing units',()=>{
+test('production board identifies only 24 A1 draft plans and retains 264 missing units',()=>{
  const audit=auditCurriculumProduction(a1EditorialDrafts);
  assert.equal(audit.valid,true);
  assert.equal(audit.levels.length,targetLanguages.length*officialCefrBands.length);
  assert.equal(audit.levels.reduce((n,x)=>n+x.plannedUnits,0),288);
- assert.equal(audit.levels.reduce((n,x)=>n+x.drafts,0),12);
+ assert.equal(audit.levels.reduce((n,x)=>n+x.drafts,0),24);
  assert.equal(audit.levels.reduce((n,x)=>n+x.documentedReviews,0),0);
- assert.equal(audit.levels.reduce((n,x)=>n+x.missingUnits,0),276);
+ assert.equal(audit.levels.reduce((n,x)=>n+x.missingUnits,0),264);
  assert.ok(audit.levels.every(x=>x.allUnitsDocumentedAsReviewed===false));
 });
 test('audit refuses premature signoff, missing six skills or incomplete lexical metadata',()=>{
