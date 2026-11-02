@@ -128,10 +128,10 @@ test('late load failures from the previous target do not block the selected cour
 
 const a0Lesson={lessonId:'a0.fr.1',conceptId:'a0.greeting',targetLanguage:'fr-CA',sequence:1,prerequisites:[],skill:'reading',contextByKnownLanguage:{},promptByKnownLanguage:{},options:[{id:'a',text:'Bonjour'},{id:'b',text:'Bonsoir'}],correctOptionId:'a',publishable:false,humanReviewRequired:true};
 const a0Lessons=[a0Lesson];
-function a0HookHarness(port){
+function a0HookHarness(port,options={}){
  const h=hooks();
  const api=compile('../../../mobile/use-a0-session.ts',{react:h.react,'@voicefirst/core':core,'./a0-device-storage':{a0DeviceStorage:port}});
- return {render:()=>h.render(()=>api.useA0Session('fr-CA',a0Lessons)),mount:()=>h.mount()};
+ return {render:()=>h.render(()=>api.useA0Session('fr-CA',options.lessons??a0Lessons,options.preflight)),mount:()=>h.mount()};
 }
 test('A0 hook stops already queued writes after a storage failure, including stale submit closures',async()=>{
  let writes=0;
@@ -159,6 +159,49 @@ test('A0 hook passes exact snapshots across concurrent instances and recovers on
  assert.equal(await reopened.render().submit(a0Lesson,{eventId:'reopened',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:2}),true);
  assert.equal(JSON.parse(raw).events.length,2);
 });
+test('actual A0 mobile hook rejects a changed catalog before mounting saved answers',async()=>{
+ const source=JSON.parse(readFileSync(new URL('../../../mobile/assets/VoiceFirst_A0_Functional_6Langs_v0.2.json',import.meta.url),'utf8'));
+ const original=core.loadA0CandidateCatalog(source).lessons;
+ const lessons=original.filter(l=>l.targetLanguage==='fr-CA');
+ const first=lessons[0];
+ const journal=core.appendA0JournalEvent(core.newA0Journal('fr-CA'),first,{eventId:'historical',lessonId:first.lessonId,selectedOptionId:first.correctOptionId,attemptNumber:1});
+ const raw=JSON.stringify(journal);
+ const changed=structuredClone(source);
+ const item=changed.lessons.find(l=>l.lesson_id===first.lessonId);
+ item.activity.prompt_by_known_language.es+=' Cambio de sentido.';
+ let reads=0,writes=0;
+ const port={read:async()=>{reads++;return raw;},write:async()=>{writes++;},compareAndWrite:async()=>{writes++;return true;}};
+ const h=a0HookHarness(port,{lessons,preflight:{input:changed,previousLessons:original}});
+ h.render();h.mount();await tick();await tick();
+ const view=h.render();
+ assert.equal(view.status,'blocked');
+ assert.equal(view.journal,null,'historical answers must not appear under a changed prompt');
+ assert.equal(await view.submit(first,{eventId:'later',lessonId:first.lessonId,selectedOptionId:first.correctOptionId,attemptNumber:2}),false);
+ assert.equal(reads,1);assert.equal(writes,0,'invalid upgrade must preserve original bytes');
+});
+test('actual A0 mobile hook loads one verified snapshot and commits against it',async()=>{
+ const source=JSON.parse(readFileSync(new URL('../../../mobile/assets/VoiceFirst_A0_Functional_6Langs_v0.2.json',import.meta.url),'utf8'));
+ const original=core.loadA0CandidateCatalog(source).lessons;
+ const lessons=original.filter(l=>l.targetLanguage==='fr-CA'),first=lessons[0];
+ const previous=core.appendA0JournalEvent(core.newA0Journal('fr-CA'),first,{eventId:'old',lessonId:first.lessonId,selectedOptionId:'3',attemptNumber:1});
+ let raw=JSON.stringify(previous),reads=0,writes=0;
+ const port={
+  read:async()=>{reads++;return raw;},
+  write:async()=>assert.fail('blind persistence is forbidden'),
+  compareAndWrite:async(_key,expected,next)=>{assert.equal(expected,raw);writes++;raw=next;return true;}
+ };
+ const h=a0HookHarness(port,{lessons,preflight:{input:source,previousLessons:original}});
+ h.render();h.mount();await tick();await tick();
+ const result=h.render();
+ assert.equal(result.status,'ready');
+ assert.deepEqual(result.journal,previous);
+ assert.equal(reads,1,'preflight and recovery must share a single SQLite snapshot');
+ const event={eventId:'new',lessonId:first.lessonId,selectedOptionId:first.correctOptionId,attemptNumber:2};
+ assert.equal(await result.submit(first,event),true);
+ assert.equal(writes,1);
+ assert.equal(JSON.parse(raw).revision,2);
+});
+
 function elements(node){
  if(node===null||node===undefined||typeof node==='boolean')return [];
  if(Array.isArray(node))return node.flatMap(elements);
