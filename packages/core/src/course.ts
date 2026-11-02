@@ -6,6 +6,7 @@ import { extendedOfflineLessons } from './extended-course.js';
 import { matchesAnswerPattern } from './answer-patterns.js';
 
 export type CourseStage = 'listen' | 'repeat' | 'recall' | 'checkpoint';
+export const MAX_COURSE_RESPONSE_CHARS = 2048; // cap untrusted typed/ASR text before regex and pattern matching
 export type RecognitionConfidence = 'high' | 'low' | 'unknown';
 export type Evidence = 'not-observed' | 'recognized-phrase' | 'manual-confirmed';
 export interface LocalizedText { 'en-CA': string; 'fr-CA': string; es: string; 'pt-BR': string; de: string; it: string }
@@ -79,10 +80,12 @@ export function newCourseProgress(language: TargetLanguage): CourseProgress {ret
 export function availableLessons(progress: CourseProgress): OfflineLesson[] {return lessonsFor(progress.language).filter(l=>!l.prerequisite || progress.completed.includes(l.prerequisite));}
 /** A transcript matcher, NOT a pronunciation or CEFR assessment. Real ASR uncertainty must not count as failure. */
 export function normalizedUtterance(input:string, language:TargetLanguage): string {
+  if(input.length>MAX_COURSE_RESPONSE_CHARS)return ''; // never normalize unbounded input
   const locale = language === 'en-CA' ? 'en' : language === 'fr-CA' ? 'fr' : language;
   return input.toLocaleLowerCase(locale).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}\s]/gu,' ').trim().replace(/\s+/g,' ');
 }
 export function checkUtterance(exercise:CourseExercise, spoken:string, language:TargetLanguage, confidence:RecognitionConfidence):Evaluation {
+  if(spoken.length>MAX_COURSE_RESPONSE_CHARS)return {kind:'uncertain',hint:'Response exceeds the local limit. Shorten it or try again without penalty.'};
   if(confidence!=='high' || !spoken.trim())return {kind:'uncertain',hint:'Audio uncertain. Repeat when ready, or skip without penalty.'};
   return matchesAuthoredAnswer(exercise,spoken,language) ? {kind:'match',recognized:spoken} : {kind:'retry',hint:'Try the example again, or ask to hear it more slowly.'};
 }
