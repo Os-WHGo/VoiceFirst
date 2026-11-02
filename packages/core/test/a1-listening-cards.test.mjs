@@ -5,6 +5,6 @@ test('A1 listening cards never expose editorial audio to public playback or asse
  const empty=a1ListeningCards({expected:48,verified:0,missing:a1AudioExpectedIds,rejected:[],readyForEditorialPlayback:false,readyForPublicRelease:false});
  assert.equal(empty.length,24);
  assert.ok(empty.every(card=>card.state==='missing-audio'&&card.canPlayInPublicApp===false&&card.canAssessListening===false));
- const all=a1ListeningCards({expected:24,verified:48,missing:[],rejected:[],readyForEditorialPlayback:true,readyForPublicRelease:false});
+ const all=a1ListeningCards({expected:48,verified:48,missing:[],rejected:[],readyForEditorialPlayback:true,readyForPublicRelease:false});
  assert.ok(all.every(card=>card.state==='editorial-preview-only'&&card.canPlayInPublicApp===false&&card.canAssessListening===false));
 });
