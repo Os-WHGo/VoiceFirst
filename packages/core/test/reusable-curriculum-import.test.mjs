@@ -61,3 +61,48 @@ test('import blocks empty and malformed activity-only drafts rather than inventi
   assert.equal(inspectReusableCurriculumImport(packageOf([malformed],[support('es')])).acceptedForReview,false);
  }
 });
+
+test('prerequisite graph accepts an ordered A0–C2 path without inventing authored lessons',()=>{
+ const levels=['A0','A1','A2','B1','B2','C1','C2'];
+ const chain=levels.map((level,index)=>({
+  ...concept,id:'concept.path.'+level,level,goal:'Practice skill at '+level,
+  prerequisites:index===0?[]:['concept.path.'+levels[index-1]]
+ }));
+ const items=chain.flatMap(c=>targetLanguages.map(targetLanguage=>({
+  ...unit(targetLanguage),conceptId:c.id,dialogue:[],
+  activities:['Recognize and respond in a practice situation']
+ })));
+ const helps=chain.flatMap(c=>targetLanguages.map(knownLanguage=>({
+  ...support(knownLanguage),conceptId:c.id
+ })));
+ const report=inspectReusableCurriculumImport({concepts:chain,units:items,supports:helps});
+ assert.equal(report.acceptedForReview,true,JSON.stringify(report.errors));
+ assert.equal(report.coverage.length,7);
+ assert.ok(report.coverage.every(c=>c.candidatePairs===30&&c.missingPairs===0));
+ assert.equal(report.readyForPublicRelease,false);
+});
+test('an unavailable or future-level prerequisite cannot be imported as a usable path',()=>{
+ const a={...concept,id:'concept.root',level:'A1'};
+ const b={...concept,id:'concept.advanced',level:'C2'};
+ for(const [dependency,expected] of [
+  [{...a,prerequisites:['concept.unknown']},'Missing prerequisite'],
+  [{...a,prerequisites:['concept.advanced']},'Future-level prerequisite'],
+ ]){
+  const report=inspectReusableCurriculumImport({concepts:[dependency,b],units:[],supports:[]});
+  assert.equal(report.acceptedForReview,false);
+  assert.equal(report.coverage.length,0,'no partial coverage should be endorsed');
+  assert.ok(report.errors.some(e=>e.includes(expected)),JSON.stringify(report.errors));
+  assert.equal(report.readyForPublicRelease,false);
+ }
+});
+test('same-level and cross-level cycles fail closed, without recursion into learners data',()=>{
+ const root={...concept,id:'concept.a1.first',level:'A1',prerequisites:['concept.a1.second']};
+ const same={...concept,id:'concept.a1.second',level:'A1',prerequisites:['concept.a1.first']};
+ const result=inspectReusableCurriculumImport({concepts:[root,same],units:[],supports:[]});
+ assert.equal(result.acceptedForReview,false);
+ assert.ok(result.errors.some(e=>e.startsWith('Cyclic prerequisite')));
+ const rootOk={...root,prerequisites:[]};
+ const ordered=inspectReusableCurriculumImport({concepts:[rootOk,same],units:[],supports:[]});
+ assert.equal(ordered.acceptedForReview,true);
+ assert.equal(ordered.coverage.length,2);
+});
