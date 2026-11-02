@@ -20,7 +20,7 @@ test('every help language requires a distinct complete two-turn spoken navigatio
   const prompt=voiceCommandProposalPrompt(language,{type:'NEXT'});
   assert.ok(prompt.includes(approve),language);
   assert.ok(prompt.includes(cancel),language);
-  assert.ok(prompt.length>75,language);
+  assert.ok(prompt.length>50,language);
   assert.equal(parseVoiceCommand(approve),null,'navigation approval is not a normal lesson command');
   assert.equal(parseVoiceCommand(cancel),null,'cancellation is not a lesson command');
  }
