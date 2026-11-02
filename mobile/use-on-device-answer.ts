@@ -258,6 +258,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
   owner.current=ours;microphoneOwner=ours;
   requesting.current=true;
   let begun=false;
+  let failurePhase:'permission'|'recognition'='permission';
   try{
    const permission=await native.requestMicrophonePermissionsAsync();
    if(epoch.current!==token||owner.current!==ours||microphoneOwner!==ours||
@@ -268,6 +269,7 @@ export function useOnDeviceAnswer(language:TargetLanguage,
     return false;
    }
    begun=true;
+   failurePhase='recognition';
    active.current={id:exerciseId,token};captureEvidence.current=newNativeCaptureEvidence();
    setListening(true);setCapturePhase('requested');
    native.start({lang:locale[language],requiresOnDeviceRecognition:true,interimResults:true,continuous:false,maxAlternatives:1,recordingOptions:{persist:false},
@@ -278,7 +280,9 @@ export function useOnDeviceAnswer(language:TargetLanguage,
    if(epoch.current===token){
     releaseRouteWatch();
     active.current=null;captureEvidence.current=null;setListening(false);setCapturePhase('idle');
-    setIssue('Este idioma necesita un modelo local compatible. Puedes continuar por texto.');
+    setIssue(failurePhase==='permission'
+     ?'No se pudo comprobar el permiso de micrófono. Revisa los ajustes del dispositivo y vuelve a intentarlo.'
+     :'No se pudo iniciar el reconocimiento local. Comprueba que el modelo del idioma esté disponible o continúa por texto.');
    }
    return false;
   }finally{
