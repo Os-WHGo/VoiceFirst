@@ -25,7 +25,9 @@ test('trial snapshot validates lockfile and root advisory schema without countin
  assert.throws(()=>snapshot({lockfileVersion:2,packages:{}},audit()),/lockfile v3/);
  assert.throws(()=>snapshot(lock(),{metadata:{}}),/Invalid audit/);
  const missing=lock();delete missing.packages['node_modules/zod'];
- assert.throws(()=>snapshot(missing,audit()),/Missing monitored/);
+ assert.equal(snapshot(missing,audit()).installed.zod,null,'removed transitive advisory packages may be beneficial');
+ const missingEssential=lock();delete missingEssential.packages['node_modules/expo'];
+ assert.throws(()=>snapshot(missingEssential,audit()),/Missing essential SDK/);
  const invalid=audit();invalid.vulnerabilities.zod.via[0].url='https://wrong.example';
  assert.throws(()=>snapshot(lock(),invalid),/Unknown npm security advisory/);
 });
@@ -41,6 +43,11 @@ test('non-breaking Expo SDK 57 patch trial reports which advisories truly cleare
  assert.deepEqual(out.resolved,['https://github.com/advisories/GHSA-glob']);
  assert.equal(out.delta.total,-1);
  assert.equal(out.remaining.length,1);
+ const withoutUuid=lock(next);
+ delete withoutUuid.packages['node_modules/uuid'];
+ const removal=compareSnapshots(before,snapshot(withoutUuid,audit({critical:0,high:2,moderate:10,low:2,total:14},['zod'])));
+ assert.ok(removal.changed.some(x=>x.package==='uuid'&&x.after===null));
+ assert.equal(removal.regression,false);
 });
 test('trial refuses major Expo and React Native migration or false security improvement',()=>{
  const before=snapshot(lock(),audit());
