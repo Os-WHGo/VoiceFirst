@@ -1,0 +1,175 @@
+name: Expo native configuration readiness
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'scripts/check-expo-config.mjs'
+      - 'scripts/native-ci-change-gate.mjs'
+      # Only an explicit edit to this small marker requests an accumulated B0 native batch.
+      - 'docs/ci/native-batch-request.md'
+      - 'scripts/check-android-prebuild.mjs'
+      - 'scripts/check-android-release-wiring.mjs'
+      - 'scripts/inspect-android-release-signing.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/expo-native-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+# Core-only edits run core/TS/Metro checks in separate workflows without native builds.
+# Keep ongoing native compile-only runs alive when a PR receives a later
+# documentation/source-only commit. PR identity isolates repositories' workflows;
+# SHA identity ensures a distinct request cannot cancel a still-valid long build.
+# Only a duplicate run for the SAME SHA can cancel its predecessor.
+concurrency:
+  group: voicefirst-native-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  native-change-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.native.outputs.required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: native
+        name: Inspect only files from latest PR update (unknown means compile)
+        env:
+          PR_ACTION: ${{ github.event.action }}
+          PR_BEFORE: ${{ github.event.before }}
+          PR_AFTER: ${{ github.event.after }}
+        run: node scripts/native-ci-change-gate.mjs
+  expo-config:
+    needs: native-change-gate
+    if: needs.native-change-gate.outputs.required == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build:core
+      - run: npm run check:expo-config
+  android-native-source:
+    needs: native-change-gate
+    if: needs.native-change-gate.outputs.required == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build:core
+      - run: npm run check:android-prebuild
+      - run: node scripts/check-android-autolinking.mjs
+      - name: Check Android release bundling wiring
+        run: node scripts/check-android-release-wiring.mjs
+      - name: Inspect release signing configuration without building
+        run: node scripts/inspect-android-release-signing.mjs
+      - name: Compile Android debug and release Kotlin only (B0, no APK/AAB)
+        run: |
+          cd mobile/android
+          chmod +x gradlew
+          ./gradlew :app:compileDebugKotlin :app:compileReleaseKotlin --no-daemon --max-workers=2 --stacktrace
+      - name: Assert no Android installable was generated in this compile-only job
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -d mobile/android/app/build/outputs ]] && \
+             find mobile/android/app/build/outputs -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .; then
+            echo '::error::B0 native readiness must not produce an APK or AAB.'
+            exit 1
+          fi
+          echo 'Android Kotlin compilation only; packaging is reserved for an authorized B1 candidate.'
+  ios-native-source:
+    needs: native-change-gate
+    if: needs.native-change-gate.outputs.required == 'true'
+    # Standard macOS runner in this public repository. No EAS, signing, IPA,
+    # App Store upload, hardware microphone or paid Apple account.
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_NO_GIT_STATUS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build:core
+      - name: Select Expo SDK 57-compatible Xcode 26.6 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          XCODE=/Applications/Xcode_26.6.app
+          if [[ ! -d "$XCODE" ]]; then
+            echo '::error::Expected Xcode 26.6 on macos-26 runner; refusing unverified toolchain.'
+            exit 1
+          fi
+          sudo xcode-select --switch "$XCODE/Contents/Developer"
+          xcodebuild -version
+          xcrun swift --version
+      - name: Generate native iOS source without EAS or signing
+        run: |
+          cd mobile
+          npx --no-install expo prebuild --platform ios --no-install --clean
+      - name: Install native CocoaPods from pinned source
+        working-directory: mobile/ios
+        run: pod install
+      - name: Compile local Swift route observer for iOS Simulator
+        run: |
+          test -f mobile/ios/Pods/Pods.xcodeproj/project.pbxproj
+          xcodebuild -list -project mobile/ios/Pods/Pods.xcodeproj
+          xcodebuild -project mobile/ios/Pods/Pods.xcodeproj \
+            -target VoiceFirstAudioRoute -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Compile complete VoiceFirst iOS Simulator app (no IPA, no signing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKSPACE=$(find mobile/ios -maxdepth 1 -name '*.xcworkspace' -type d | head -n 1)
+          test -n "$WORKSPACE"
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          xcodebuild -list -workspace "$WORKSPACE"
+          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/voicefirst-ios-simulator" \
+            CODE_SIGNING_ALLOWED=NO build
+          APP=$(find "$RUNNER_TEMP/voicefirst-ios-simulator/Build/Products/Release-iphonesimulator" \
+            -maxdepth 1 -name '*.app' -type d | head -n 1)
+          test -n "$APP"
+          test -f "$APP/Info.plist"
+          python3 - "$APP/Info.plist" <<'PY'
+          import plistlib
+          import sys
+          with open(sys.argv[1], 'rb') as source:
+              info = plistlib.load(source)
+          for key in ('NSMicrophoneUsageDescription', 'NSSpeechRecognitionUsageDescription'):
+              value = info.get(key)
+              if not isinstance(value, str) or len(value.strip()) < 20:
+                  raise SystemExit('Missing or inadequate packaged iOS privacy text: ' + key)
+          if 'audio' in info.get('UIBackgroundModes', []):
+              raise SystemExit('Background audio unexpectedly enabled in the packaged iOS app')
+          if info.get('CFBundleIdentifier') != 'com.oswhgo.voicefirst':
+              raise SystemExit('Unexpected packaged iOS bundle identifier')
+          print('Packaged simulator Info.plist checked: permissions, foreground audio and bundle identifier.')
+          PY
+          echo 'Simulator .app built and validated locally. Not an installable iPhone IPA or a hardware test.'

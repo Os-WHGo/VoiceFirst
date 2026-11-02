@@ -1,0 +1,22 @@
+{
+  "name": "voicefirst-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/core",
+    "mobile"
+  ],
+  "scripts": {
+    "build:core": "tsc -p packages/core/tsconfig.json",
+    "test": "npm run build:core && node --test packages/core/test/*.test.mjs backend/test/*.test.mjs",
+    "start": "npm run build:core && npm --workspace mobile run start",
+    "check": "npm test",
+    "backend:dev": "node backend/src/server.mjs",
+    "check:mobile": "npm run build:core && tsc -p mobile/tsconfig.json --noEmit",
+    "voices:plan": "npm run build:core && node scripts/voice-cue-plan.mjs",
+    "voices:pack": "npm run build:core && node scripts/voice-pack.mjs",
+    "check:expo-config": "node scripts/check-expo-config.mjs",
+    "check:android-prebuild": "node scripts/check-android-prebuild.mjs",
+    "check:mobile-bundle": "node scripts/check-mobile-bundle.mjs"
+  }
+}

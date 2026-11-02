@@ -1,0 +1,564 @@
+/** Exercises the actual TS/TSX adapters with deterministic hook/native boundaries.
+ * Does not emulate SQLite, an OS microphone, React Native layout or a physical device.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+import * as core from '../dist/index.js';
+
+function hooks(){
+ const slots=[],effects=[];let cursor=0;
+ const react={
+  createElement:(type,props,...children)=>({type,props:{...props,children}}),Fragment:'Fragment',
+  useState(initial){const id=cursor++;if(!(id in slots))slots[id]=typeof initial==='function'?initial():initial;return [slots[id],v=>{slots[id]=typeof v==='function'?v(slots[id]):v;}];},
+  useRef(initial){const id=cursor++;return slots[id]??(slots[id]={current:initial});},
+  useMemo(fn,deps){const id=cursor++,old=slots[id];if(!old||!deps||deps.some((v,i)=>v!==old.deps?.[i]))slots[id]={deps,value:fn()};return slots[id].value;},
+  useCallback(fn,deps){return react.useMemo(()=>fn,deps);},
+  useEffect(fn,deps){const id=cursor++,old=slots[id];if(!old||!deps||deps.some((v,i)=>v!==old.deps?.[i])){const entry={deps,cleanup:old?.cleanup};slots[id]=entry;effects.push(()=>{entry.cleanup?.();entry.cleanup=fn();return entry.cleanup;});}},
+ };
+ return {react:{__esModule:true,default:react,...react},render(fn){cursor=0;return fn();},mount(){return effects.splice(0).map(fn=>fn());}};
+}
+function compile(path,modules){
+ const code=ts.transpileModule(readFileSync(new URL(path,import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
+ const module={exports:{}};
+ new Function('require','module','exports',code)(name=>{assert.ok(name in modules,`unknown module ${name}`);return modules[name];},module,module.exports);
+ return module.exports;
+}
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
+test('course control vocabulary covers Portuguese, German and Italian with strict matching',()=>{
+ for(const [type,phrases] of Object.entries({PAUSE:['pausar aula','Lektion pausieren','metti in pausa'],RESUME:['retomar aula','Lektion fortsetzen','riprendi la lezione'],STOP:['encerrar aula','Lektion beenden','termina la lezione'],SLOWER:['mais devagar','langsamer bitte','più lentamente'],HELP:['uma dica','gib mir einen Hinweis','dammi un indizio'],SUMMARY:['o que aprendi','Zusammenfassung','cosa ho imparato']})){
+  for(const phrase of phrases){assert.equal(core.parseVoiceCommand(phrase)?.type,type);assert.equal(core.parseVoiceCommand(`I said ${phrase}`),null);}
+ }
+});
+test('actual hook serializes rapid start taps and never advances UI before durable save',async()=>{
+ const h=hooks();let saves=0,release;
+ const pending=new Promise(resolve=>{release=resolve;});
+ const api=compile('../../../mobile/use-learning-session.ts',{
+  react:h.react,'@voicefirst/core':core,'./learning-checkpoint-storage':{
+   loadLearningCheckpoint:async()=>({checkpoint:core.newLearningCheckpoint('en-CA'),raw:null}),
+   saveLearningCheckpoint:async value=>{saves++;await pending;return core.learningCheckpointToJSON(value);},
+  },
+ });
+ const render=()=>h.render(()=>api.useLearningSession('en-CA','es',core.defaultExperiencePreferences));
+ render();h.mount();await tick();let view=render();
+ const first=view.transition('start');await view.transition('start');
+ assert.equal(saves,1);assert.equal(render().value.session,null);assert.equal(render().busy,true);
+ release();await first;view=render();assert.equal(view.value.session.status,'active');assert.equal(view.busy,false);
+});
+test('actual hook keeps last committed snapshot and blocks writes after storage failure',async()=>{
+ const h=hooks();let saves=0;
+ const api=compile('../../../mobile/use-learning-session.ts',{react:h.react,'@voicefirst/core':core,'./learning-checkpoint-storage':{
+  loadLearningCheckpoint:async()=>({checkpoint:core.newLearningCheckpoint('de'),raw:null}),
+  saveLearningCheckpoint:async()=>{saves++;throw Error('storage unavailable');},
+ }});
+ const render=()=>h.render(()=>api.useLearningSession('de','it',core.defaultExperiencePreferences));
+ render();h.mount();await tick();await render().transition('start');
+ assert.equal(render().blocked,true);assert.equal(render().value.session,null);
+ await render().transition('start');assert.equal(saves,1);
+});
+test('changing the target before a checkpoint read completes never loads the former language',async()=>{
+ const h=hooks(),pending=new Map();
+ const api=compile('../../../mobile/use-learning-session.ts',{
+  react:h.react,'@voicefirst/core':core,'./learning-checkpoint-storage':{
+   loadLearningCheckpoint:target=>new Promise((resolve,reject)=>pending.set(target,{resolve,reject})),
+   saveLearningCheckpoint:async()=>assert.fail('no writes before target is loaded'),
+  },
+ });
+ const render=target=>h.render(()=>api.useLearningSession(target,'es',core.defaultExperiencePreferences));
+ render('en-CA');h.mount();
+ let stale=render('fr-CA');
+ assert.equal(stale.value,null,'a render for another target cannot show an old checkpoint');
+ await stale.transition('start');
+ h.mount();
+ pending.get('fr-CA').resolve({checkpoint:core.newLearningCheckpoint('fr-CA'),raw:null});
+ await tick();
+ assert.equal(render('fr-CA').value.target,'fr-CA');
+ pending.get('en-CA').resolve({checkpoint:core.newLearningCheckpoint('en-CA'),raw:null});
+ await tick();
+ assert.equal(render('fr-CA').value.target,'fr-CA','late original read cannot replace new language');
+ assert.equal(render('fr-CA').blocked,false);
+});
+test('a previous target checkpoint disappears before effects and its old save cannot overwrite the new target',async()=>{
+ const h=hooks();let finishOldSave;const saved=[];
+ const api=compile('../../../mobile/use-learning-session.ts',{
+  react:h.react,'@voicefirst/core':core,'./learning-checkpoint-storage':{
+   loadLearningCheckpoint:async target=>({checkpoint:core.newLearningCheckpoint(target),raw:null}),
+   saveLearningCheckpoint:async checkpoint=>{
+    saved.push(checkpoint.target);
+    if(checkpoint.target==='en-CA')return new Promise(resolve=>{finishOldSave=()=>resolve(core.learningCheckpointToJSON(checkpoint));});
+    return core.learningCheckpointToJSON(checkpoint);
+   },
+  },
+ });
+ const render=target=>h.render(()=>api.useLearningSession(target,'es',core.defaultExperiencePreferences));
+ render('en-CA');h.mount();await tick();
+ const old=render('en-CA').transition('start');
+ assert.deepEqual(saved,['en-CA']);
+ const staleView=render('fr-CA');
+ assert.equal(staleView.value,null,'synchronous render must hide previous language');
+ await staleView.transition('start');
+ assert.deepEqual(saved,['en-CA'],'new target cannot write using previous checkpoint');
+ h.mount();await tick();
+ assert.equal(render('fr-CA').value.target,'fr-CA');
+ finishOldSave();await old;
+ assert.equal(render('fr-CA').value.target,'fr-CA');
+ assert.equal(render('fr-CA').busy,false);
+ assert.equal(render('fr-CA').blocked,false);
+ await render('fr-CA').transition('start');
+ assert.equal(render('fr-CA').value.session.target,'fr-CA');
+ assert.deepEqual(saved,['en-CA','fr-CA']);
+});
+test('late load failures from the previous target do not block the selected course',async()=>{
+ const h=hooks(),pending=new Map();
+ const api=compile('../../../mobile/use-learning-session.ts',{
+  react:h.react,'@voicefirst/core':core,'./learning-checkpoint-storage':{
+   loadLearningCheckpoint:target=>new Promise((resolve,reject)=>pending.set(target,{resolve,reject})),
+   saveLearningCheckpoint:async()=>assert.fail('no writes expected'),
+  },
+ });
+ const render=target=>h.render(()=>api.useLearningSession(target,'es',core.defaultExperiencePreferences));
+ render('de');h.mount();
+ render('it');h.mount();
+ pending.get('it').resolve({checkpoint:core.newLearningCheckpoint('it'),raw:null});await tick();
+ pending.get('de').reject(Error('old disk error'));await tick();
+ assert.equal(render('it').value.target,'it');
+ assert.equal(render('it').blocked,false);
+});
+
+const a0Lesson={lessonId:'a0.fr.1',conceptId:'a0.greeting',targetLanguage:'fr-CA',sequence:1,prerequisites:[],skill:'reading',contextByKnownLanguage:{},promptByKnownLanguage:{},options:[{id:'a',text:'Bonjour'},{id:'b',text:'Bonsoir'}],correctOptionId:'a',publishable:false,humanReviewRequired:true};
+const a0Lessons=[a0Lesson];
+function a0HookHarness(port,options={}){
+ const h=hooks();
+ const api=compile('../../../mobile/use-a0-session.ts',{react:h.react,'@voicefirst/core':core,'./a0-device-storage':{a0DeviceStorage:port}});
+ return {render:()=>h.render(()=>api.useA0Session('fr-CA',options.lessons??a0Lessons,options.preflight)),mount:()=>h.mount()};
+}
+test('A0 hook stops already queued writes after a storage failure, including stale submit closures',async()=>{
+ let writes=0;
+ const port={read:async()=>null,write:async()=>assert.fail('blind write'),compareAndWrite:async()=>{writes++;throw Error('disk full');}};
+ const h=a0HookHarness(port);h.render();h.mount();await tick();
+ const ready=h.render();assert.equal(ready.status,'ready');
+ const first=ready.submit(a0Lesson,{eventId:'first',lessonId:a0Lesson.lessonId,selectedOptionId:'b',attemptNumber:1});
+ const queued=ready.submit(a0Lesson,{eventId:'queued',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:2});
+ assert.equal(await first,false);assert.equal(await queued,false);
+ assert.equal(writes,1);assert.equal(h.render().status,'blocked');assert.equal(h.render().journal.revision,0);
+ assert.equal(await ready.submit(a0Lesson,{eventId:'stale',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:1}),false);
+ assert.equal(writes,1);
+});
+test('A0 hook passes exact snapshots across concurrent instances and recovers only by a new read',async()=>{
+ let raw=null;
+ const port={read:async()=>raw,write:async()=>assert.fail('blind write'),compareAndWrite:async(_key,expected,next)=>{if(expected!==raw)return false;raw=next;return true;}};
+ const first=a0HookHarness(port),second=a0HookHarness(port);
+ first.render();second.render();first.mount();second.mount();await tick();
+ assert.equal(await first.render().submit(a0Lesson,{eventId:'first',lessonId:a0Lesson.lessonId,selectedOptionId:'b',attemptNumber:1}),true);
+ const saved=raw;
+ assert.equal(await second.render().submit(a0Lesson,{eventId:'other',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:1}),false);
+ assert.equal(second.render().status,'blocked');assert.equal(raw,saved);
+ const reopened=a0HookHarness(port);reopened.render();reopened.mount();await tick();
+ assert.equal(reopened.render().journal.revision,1);
+ assert.equal(await reopened.render().submit(a0Lesson,{eventId:'reopened',lessonId:a0Lesson.lessonId,selectedOptionId:'a',attemptNumber:2}),true);
+ assert.equal(JSON.parse(raw).events.length,2);
+});
+test('actual A0 mobile hook rejects a changed catalog before mounting saved answers',async()=>{
+ const source=JSON.parse(readFileSync(new URL('../../../mobile/assets/VoiceFirst_A0_Functional_6Langs_v0.2.json',import.meta.url),'utf8'));
+ const original=core.loadA0CandidateCatalog(source).lessons;
+ const lessons=original.filter(l=>l.targetLanguage==='fr-CA');
+ const first=lessons[0];
+ const journal=core.appendA0JournalEvent(core.newA0Journal('fr-CA'),first,{eventId:'historical',lessonId:first.lessonId,selectedOptionId:first.correctOptionId,attemptNumber:1});
+ const raw=JSON.stringify(journal);
+ const changed=structuredClone(source);
+ const item=changed.lessons.find(l=>l.lesson_id===first.lessonId);
+ item.activity.prompt_by_known_language.es+=' Cambio de sentido.';
+ let reads=0,writes=0;
+ const port={read:async()=>{reads++;return raw;},write:async()=>{writes++;},compareAndWrite:async()=>{writes++;return true;}};
+ const h=a0HookHarness(port,{lessons,preflight:{input:changed,previousLessons:original}});
+ h.render();h.mount();await tick();await tick();
+ const view=h.render();
+ assert.equal(view.status,'blocked');
+ assert.equal(view.journal,null,'historical answers must not appear under a changed prompt');
+ assert.equal(await view.submit(first,{eventId:'later',lessonId:first.lessonId,selectedOptionId:first.correctOptionId,attemptNumber:2}),false);
+ assert.equal(reads,1);assert.equal(writes,0,'invalid upgrade must preserve original bytes');
+});
+test('actual A0 mobile hook loads one verified snapshot and commits against it',async()=>{
+ const source=JSON.parse(readFileSync(new URL('../../../mobile/assets/VoiceFirst_A0_Functional_6Langs_v0.2.json',import.meta.url),'utf8'));
+ const original=core.loadA0CandidateCatalog(source).lessons;
+ const lessons=original.filter(l=>l.targetLanguage==='fr-CA'),first=lessons[0];
+ const previous=core.appendA0JournalEvent(core.newA0Journal('fr-CA'),first,{eventId:'old',lessonId:first.lessonId,selectedOptionId:'3',attemptNumber:1});
+ let raw=JSON.stringify(previous),reads=0,writes=0;
+ const port={
+  read:async()=>{reads++;return raw;},
+  write:async()=>assert.fail('blind persistence is forbidden'),
+  compareAndWrite:async(_key,expected,next)=>{assert.equal(expected,raw);writes++;raw=next;return true;}
+ };
+ const h=a0HookHarness(port,{lessons,preflight:{input:source,previousLessons:original}});
+ h.render();h.mount();await tick();await tick();
+ const result=h.render();
+ assert.equal(result.status,'ready');
+ assert.deepEqual(result.journal,previous);
+ assert.equal(reads,1,'preflight and recovery must share a single SQLite snapshot');
+ const event={eventId:'new',lessonId:first.lessonId,selectedOptionId:first.correctOptionId,attemptNumber:2};
+ assert.equal(await result.submit(first,event),true);
+ assert.equal(writes,1);
+ assert.equal(JSON.parse(raw).revision,2);
+});
+
+test('actual A0 hook refuses to show a presentation differing from its verified catalog',async()=>{
+ const source=JSON.parse(readFileSync(new URL('../../../mobile/assets/VoiceFirst_A0_Functional_6Langs_v0.2.json',import.meta.url),'utf8'));
+ const old=core.loadA0CandidateCatalog(source).lessons,scoped=old.filter(l=>l.targetLanguage==='fr-CA');
+ const mismatched=scoped.map((lesson,i)=>i===0?{...lesson,options:[...lesson.options.slice(1),{...lesson.options[0],text:'different unreviewed answer'}]}:lesson);
+ let reads=0,writes=0;
+ const port={read:async()=>{reads++;return null;},write:async()=>{writes++;},compareAndWrite:async()=>{writes++;return true;}};
+ const h=a0HookHarness(port,{lessons:mismatched,preflight:{input:source,previousLessons:old}});
+ h.render();h.mount();await tick();await tick();
+ assert.equal(h.render().status,'blocked');
+ assert.equal(h.render().journal,null);
+ assert.equal(reads,1);assert.equal(writes,0);
+});
+
+function elements(node){
+ if(node===null||node===undefined||typeof node==='boolean')return [];
+ if(Array.isArray(node))return node.flatMap(elements);
+ if(typeof node!=='object')return [];
+ return [node,...elements(node.props?.children)];
+}
+function textOf(node){return typeof node==='string'?node:Array.isArray(node)?node.map(textOf).join(''):node&&typeof node==='object'?textOf(node.props?.children):'';}
+function voiceHarness(options={}){
+ const h=hooks(),activities=core.courseActivities('en-CA');
+ let checkpoint=core.newLearningCheckpoint('en-CA');
+ const session=core.planLearningSession({sessionId:'guided-ui',target:'en-CA',known:'es',today:'2026-10-31',activities,model:checkpoint.model,completedLessons:[],preferences:core.defaultSessionPreferences});
+ checkpoint=core.checkpointWithSession(checkpoint,session);
+ const events=[],audio=[],answerStarts=[],commandStarts=[],callbacks=new Map();let appStateCallback;
+ const runtime={value:checkpoint,activities,outputs:core.sessionOpening(session,activities),busy:false,blocked:false,
+  async transition(event){events.push(event);const next=core.stepLearningCheckpoint(runtime.value,event,activities);runtime.value=next.checkpoint;runtime.outputs=next.outputs;}};
+ const modelActions=[];
+ const mic={available:true,listening:false,model:options.answerModel??'unknown',canDownload:options.canDownload??false,issue:options.answerIssue??'',
+  stop(){mic.listening=false;},async start(id){answerStarts.push(id);mic.listening=true;return true;},
+  async downloadModel(){modelActions.push('download-answer');},async checkModel(){modelActions.push('check-answer');}};
+ const commandMic={available:true,listening:false,model:options.commandModel??'unknown',canDownload:options.canDownload??false,issue:options.commandIssue??'',
+  stop(){commandMic.listening=false;},async start(id){commandStarts.push(id);commandMic.listening=true;return true;},
+  async downloadModel(){modelActions.push('download-command');},async checkModel(){modelActions.push('check-command');}};
+ const appState={currentState:'active',addEventListener:(_name,cb)=>{appStateCallback=cb;return {remove(){}};}};
+ const api=compile('../../../mobile/LearningSessionCourse.tsx',{
+  react:h.react,'react-native':{AppState:appState,Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:x=>x}},
+  '@voicefirst/core':core,'./use-learning-session':{useLearningSession:()=>runtime},
+  './use-on-device-answer':{useOnDeviceAnswer:(language,cb)=>{callbacks.set(language,cb);return language==='en-CA'?mic:commandMic;}},
+  './curated-voice-output':{stopCuratedVoice:async()=>{},playCuratedVoice:async(cue,rate,done,error)=>{audio.push({cue,rate,done,error,settled:false});}},
+ });
+ const render=()=>h.render(()=>api.LearningSessionCourse({target:'en-CA',nativeLanguage:'es'}));
+ const flush=async()=>{const tree=render();h.mount();await tick();return tree;};
+ const press=(tree,label)=>{
+  const button=elements(tree).find(e=>e.type==='Pressable'&&textOf(e)===label);
+  assert.ok(button,`missing button ${label}`);assert.equal(button.props.disabled,false,`disabled button ${label}`);button.props.onPress();
+ };
+ const drain=async()=>{
+  for(let n=0;n<50;n++){
+   const call=audio.find(c=>!c.settled);if(!call){await tick();return;}
+   call.settled=true;call.done();await tick();
+  }
+  assert.fail('unbounded narration');
+ };
+ return {runtime,events,audio,answerStarts,commandStarts,modelActions,callbacks,render,flush,press,drain,
+  background:()=>{appState.currentState='background';appStateCallback('background');}};
+}
+test('guided voice session warns that Bluetooth and glasses microphone provenance is not verified',async()=>{
+ const h=voiceHarness();
+ const tree=await h.flush();
+ assert.match(textOf(tree),/Fuente del micrófono sin verificar/);
+ assert.match(textOf(tree),/no se ha comprobado audio de lentes inteligentes/);
+ assert.equal(h.events.length,0,'a source warning does not affect progress');
+ assert.equal(h.answerStarts.length,0,'warning does not start recognition');
+ assert.equal(h.commandStarts.length,0);
+});
+test('missing command-language ASR model has visible actionable offline recovery without changing learning evidence',async()=>{
+ const h=voiceHarness({canDownload:true,answerModel:'installed',commandModel:'missing',
+  commandIssue:'El reconocimiento local para comandos no está disponible.'});
+ const tree=await h.flush();
+ const rendered=elements(tree);
+ const voiceButton=rendered.find(e=>e.type==='Pressable'&&textOf(e)==='Comando de voz');
+ assert.equal(voiceButton.props.disabled,true,'do not start unavailable command recognizer');
+ assert.ok(textOf(tree).includes('Voz para responder (en-CA): modelo local instalado'));
+ assert.ok(textOf(tree).includes('Voz para comandos (es): falta modelo local'));
+ assert.ok(textOf(tree).includes('El reconocimiento local para comandos no está disponible.'));
+ h.press(tree,'Preparar modelo para comandos');
+ h.press(tree,'Comprobar modelo para comandos');
+ h.press(tree,'Preparar modelo local (Android)');
+ h.press(tree,'Comprobar modelo local');
+ assert.deepEqual(h.modelActions,['download-command','check-command','download-answer','check-answer']);
+ assert.deepEqual(h.events,[],'checking/downloading models never submits an answer');
+ assert.deepEqual(h.answerStarts,[]);
+ assert.deepEqual(h.commandStarts,[]);
+});
+async function reachVoiceChoice(h){
+ let tree=await h.flush();
+ h.press(tree,'Activar guía de voz');
+ await h.flush();await h.drain();
+ assert.equal(h.commandStarts.length,1,'first listening stage opens command microphone');
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ await h.flush();await h.drain();
+ assert.equal(h.runtime.value.session.current.activityId,'en-CA-a0-greeting-comprehension');
+ assert.equal(h.commandStarts.length,2,'choice starts a new known-language command turn');
+ const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
+ const activity=h.runtime.activities.find(a=>a.id===prompt.activityId);
+ const selectedIndex=prompt.options.findIndex(o=>o.id===activity.correctOptionId);
+ assert.ok(selectedIndex>=0);
+ const spoken=['Elijo la primera opción','Elijo la segunda opción','Elijo la tercera opción'][selectedIndex];
+ const before=h.runtime.value.session.results.length;
+ // The hook harness has no automatic React render; commit the heard-cue state
+ // before delivering the subsequent native ASR callback.
+ await h.flush();
+ h.callbacks.get('es')({text:spoken,confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();
+ assert.equal(h.runtime.value.session.results.length,before,'proposing a choice must not score it');
+ assert.equal(h.events.at(-1).type,'skip','original explicit skip only');
+ assert.ok(textOf(tree).includes(core.voiceChoiceConfirmation('es',selectedIndex,prompt.options[selectedIndex].text)));
+ await h.drain();
+ assert.equal(h.commandStarts.length,3,'confirmation must be a new, separate recognition turn');
+ return {before,prompt,selectedIndex};
+}
+test('hands-free course comprehension lets learner propose numbered answer and confirm by voice',async()=>{
+ const h=voiceHarness(),{before,prompt,selectedIndex}=await reachVoiceChoice(h);
+ h.callbacks.get('es')({text:'confirmar mi respuesta',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.at(-1).type,'choose');
+ assert.equal(h.events.at(-1).optionId,prompt.options[selectedIndex].id);
+ assert.equal(h.runtime.value.session.results.length,before+1,'only explicit confirmation submits evidence');
+ const tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('hands-free comprehension rejects the proposed option and listens for a new selection',async()=>{
+ const h=voiceHarness(),{before}=await reachVoiceChoice(h);
+ h.callbacks.get('es')({text:'rechazar mi respuesta',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.runtime.value.session.results.length,before,'rejection does not score an answer');
+ await h.drain();
+ assert.equal(h.commandStarts.length,4,'a new listening turn follows spoken rejection');
+ const tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('bare yes/no and incidental option words cannot select or confirm a comprehension answer',async()=>{
+ const h=voiceHarness(),{before}=await reachVoiceChoice(h);
+ const n=h.events.length;
+ h.callbacks.get('es')({text:'sí',confidence:'high'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.length,n);
+ assert.equal(h.runtime.value.session.results.length,before);
+ const tree=await h.flush();
+ h.press(tree,'Confirmar respuesta propuesta');
+ assert.equal(h.events.at(-1).type,'choose','visual fallback remains available');
+});
+test('guided mobile session narrates before capture, waits for choices and never auto-confirms ASR',async()=>{
+ const h=voiceHarness();let tree=await h.flush();
+ assert.equal(h.audio.length,0,'guide is opt-in');
+ h.press(tree,'Activar guía de voz');await h.flush();
+ assert.equal(h.audio[0].cue.language,'es');assert.equal(h.commandStarts.length,0);
+ await h.drain();assert.equal(h.commandStarts.length,1,'listen stage accepts a separate command turn');
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},h.commandStarts[0]);
+ tree=await h.flush();assert.equal(h.events.length,0,'uncalibrated command waits for confirmation');
+ h.press(tree,'Confirmar respuesta propuesta');await h.flush();await h.drain();
+ assert.equal(h.runtime.value.session.current.activityId,'en-CA-a0-greeting-comprehension');
+ assert.equal(h.answerStarts.length,0,'choice is never auto-scored by an uncertain recognizer');
+ const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
+ const activity=h.runtime.activities.find(a=>a.id===prompt.activityId);
+ const option=prompt.options.find(o=>o.id===activity.correctOptionId);
+ tree=await h.flush();h.press(tree,`${core.voiceChoiceLabel('es',prompt.options.indexOf(option))}: ${option.text}`);await h.flush();
+ assert.equal(h.answerStarts.length,0,'target microphone must wait for narration');
+ await h.drain();assert.equal(h.answerStarts.length,1);
+ const before=h.runtime.value.session.results.length;
+ h.callbacks.get('en-CA')({text:'Hello!',confidence:'high'},h.answerStarts[0]);
+ tree=await h.flush();await h.drain();
+ assert.deepEqual(h.events.at(-1).source,{kind:'speech',confidence:'unknown'});
+ assert.equal(h.runtime.value.session.results.length,before);
+ assert.equal(h.runtime.value.session.current.pendingConfirmation,'Hello!');
+ assert.equal(h.answerStarts.length,1,'confirmation narration must not reopen capture');
+ tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ assert.equal(h.runtime.value.session.results.at(-1).achievement,'learner-confirmed');
+ // Dispose the last pending utterance before the test exits.
+ tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('mobile voice commands change playback speed and listen without submitting an answer',async()=>{
+ const h=voiceHarness();let tree=await h.flush();
+ h.press(tree,'Comando de voz');
+ h.callbacks.get('es')({text:'reanudar clase',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();
+ assert.equal(elements(tree).some(e=>e.type==='Pressable'&&textOf(e)==='Confirmar respuesta propuesta'),false,
+  'resume during an active session must not act as next');
+ assert.equal(h.events.length,0);
+
+ h.press(tree,'Comando de voz');
+ h.callbacks.get('es')({text:'más rápido',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ tree=await h.flush();
+ assert.equal(h.events.length,0,'speed control does not create learning evidence');
+ assert.ok(textOf(tree).includes('0.98×'),'playback rate is visible');
+
+ h.press(tree,'Comando de voz');
+ h.callbacks.get('es')({text:'solo escuchar',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ await tick();
+ assert.equal(h.audio.length,1);
+ assert.equal(h.audio[0].rate,0.98);
+ assert.equal(h.audio[0].cue.language,'en-CA');
+ assert.equal(h.events.length,0,'listen-only never submits an answer or advances course');
+ tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+
+
+async function reachPendingVoiceAnswer(h){
+ let tree=await h.flush();
+ h.press(tree,'Activar guía de voz');
+ await h.flush();await h.drain();
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},h.commandStarts.at(-1));
+ tree=await h.flush();
+ h.press(tree,'Confirmar respuesta propuesta');
+ await h.flush();await h.drain();
+ const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
+ const activity=h.runtime.activities.find(a=>a.id===prompt.activityId);
+ const correct=prompt.options.find(o=>o.id===activity.correctOptionId);
+ tree=await h.flush();h.press(tree,`${core.voiceChoiceLabel('es',prompt.options.indexOf(correct))}: ${correct.text}`);
+ await h.flush();await h.drain();
+ assert.equal(h.answerStarts.length,1);
+ const before=h.runtime.value.session.results.length;
+ h.callbacks.get('en-CA')({text:'Hello!',confidence:'high'},h.answerStarts.at(-1));
+ await h.flush();
+ assert.equal(h.runtime.value.session.results.length,before,'first ASR result is only a proposal');
+ assert.equal(h.runtime.value.session.current.pendingConfirmation,'Hello!');
+ await h.drain();
+ assert.equal(h.commandStarts.length,3,'guided choice and later answer confirmation use separate command turns');
+ return before;
+}
+test('guided learner can explicitly confirm a proposed answer by voice, without screen taps',async()=>{
+ const h=voiceHarness(),before=await reachPendingVoiceAnswer(h);
+ const id=h.commandStarts.at(-1);
+ h.callbacks.get('es')({text:'confirmar mi respuesta',confidence:'unknown'},id);
+ await h.flush();
+ assert.equal(h.events.at(-1).type,'confirm');
+ assert.equal(h.runtime.value.session.results.length,before+1);
+ assert.equal(h.runtime.value.session.results.at(-1).achievement,'learner-confirmed');
+ const tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('guided learner can reject a proposed answer by voice and receive a fresh listening turn',async()=>{
+ const h=voiceHarness(),before=await reachPendingVoiceAnswer(h);
+ h.callbacks.get('es')({text:'rechazar mi respuesta',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.at(-1).type,'reject');
+ assert.equal(h.runtime.value.session.results.length,before,'rejected proposal is not evidence');
+ assert.equal(h.runtime.value.session.current.pendingConfirmation,null);
+ await h.drain();
+ assert.equal(h.answerStarts.length,2,'rejection restates the question and reopens the target mic');
+ const tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('ordinary yes, no and incidental speech cannot confirm an uncertain guided answer',async()=>{
+ const h=voiceHarness(),before=await reachPendingVoiceAnswer(h);
+ const n=h.events.length;
+ h.callbacks.get('es')({text:'sí',confidence:'high'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.length,n,'a bare affirmative is not a valid confirmation command');
+ assert.equal(h.runtime.value.session.results.length,before);
+ assert.equal(h.runtime.value.session.current.pendingConfirmation,'Hello!');
+ const tree=await h.flush();h.press(tree,'Confirmar respuesta propuesta');
+ assert.equal(h.runtime.value.session.results.length,before+1,'visual fallback remains available');
+});
+test('background during guided narration revokes queued audio and prevents a late microphone start',async()=>{
+ const h=voiceHarness();let tree=await h.flush();h.press(tree,'Activar guía de voz');await h.flush();
+ const late=h.audio[0];h.background();await h.flush();
+ late.done();await tick();await h.flush();
+ assert.equal(h.answerStarts.length,0);assert.equal(h.commandStarts.length,0);
+ assert.equal(h.audio.length,1);assert.equal(h.runtime.value.session.status,'paused');
+ assert.ok(elements(h.render()).some(e=>e.type==='Pressable'&&textOf(e)==='Activar guía de voz'),'foreground permission is not silently restored');
+});
+test('stopping a guided utterance cannot unlock comprehension via a late callback',async()=>{
+ const h=voiceHarness();let tree=await h.flush();h.press(tree,'Continuar');await h.flush();
+ tree=await h.flush();h.press(tree,'Activar guía de voz');await h.flush();
+ const late=h.audio[0];tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+ late.done();await tick();tree=await h.flush();
+ const prompt=core.sessionOpening(h.runtime.value.session,h.runtime.activities).find(o=>o.kind==='prompt');
+ const option=prompt.options[0];
+ const button=elements(tree).find(e=>e.type==='Pressable'&&textOf(e)===`${core.voiceChoiceLabel('es',0)}: ${option.text}`);
+ assert.equal(button.props.disabled,true);assert.equal(h.answerStarts.length,0);
+});
+test('actual course UI requires completed listening before a comprehension choice and preserves uncertain ASR source',async()=>{
+ const h=hooks();const activities=core.courseActivities('en-CA');
+ let cp=core.newLearningCheckpoint('en-CA');
+ const state=core.planLearningSession({sessionId:'ui-session',target:'en-CA',known:'es',today:'2026-10-30',activities,model:cp.model,completedLessons:[],preferences:core.defaultSessionPreferences});
+ cp=core.checkpointWithSession(cp,state);cp=core.stepLearningCheckpoint(cp,{type:'continue'},activities).checkpoint;
+ let onDictation,onDone;const events=[];
+ const runtime={value:cp,activities,outputs:core.sessionOpening(cp.session,activities),busy:false,blocked:false,transition:e=>events.push(e)};
+ const mic={stop(){},available:true,listening:false,issue:'',start:async()=>true};
+ const api=compile('../../../mobile/LearningSessionCourse.tsx',{
+  react:h.react,'react-native':{AppState:{currentState:'active',addEventListener:()=>({remove(){}})},Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:x=>x}},
+  '@voicefirst/core':core,'./use-learning-session':{useLearningSession:()=>runtime},
+  './use-on-device-answer':{useOnDeviceAnswer:(_target,cb)=>{if(_target==='en-CA')onDictation=cb;return mic;}},
+  './curated-voice-output':{stopCuratedVoice:async()=>{},playCuratedVoice:async(_cue,_rate,done)=>{onDone=done;}},
+ });
+ const render=()=>h.render(()=>api.LearningSessionCourse({target:'en-CA',nativeLanguage:'es'}));
+ let tree=render();
+ const button=(tree,label)=>elements(tree).find(e=>e.type==='Pressable'&&textOf(e)===label);
+ const option=`${core.voiceChoiceLabel('es',0)}: ${runtime.outputs.find(o=>o.kind==='prompt').options[0].text}`;
+ assert.equal(button(tree,option).props.disabled,true,'no listening evidence before playback');
+ button(tree,'Repetir').props.onPress();assert.equal(typeof onDone,'function');onDone();await tick();
+ tree=render();assert.equal(button(tree,option).props.disabled,false);
+ const a=activities.find(a=>a.id===cp.session.current.activityId);
+ const response=runtime.outputs.find(o=>o.kind==='prompt').options[0].text;
+ onDictation({text:response,confidence:'high'},`${a.id}:${cp.session.revision}`);
+ assert.equal(events.length,0,'native result never auto-grades');
+ tree=render();button(tree,'Comprobar').props.onPress();
+ assert.deepEqual(events[0].source,{kind:'speech',confidence:'unknown'});
+});
+
+test('guided next-exercise navigation requires two distinct spoken acts, not a screen tap',async()=>{
+ const h=voiceHarness();
+ let tree=await h.flush();
+ h.press(tree,'Activar guía de voz');await h.flush();await h.drain();
+ assert.equal(h.commandStarts.length,1);
+ const before=h.runtime.value.session.results.length;
+ const firstId=h.commandStarts.at(-1);
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},firstId);
+ tree=await h.flush();
+ assert.equal(h.events.length,0,'first ASR navigation is only a proposal');
+ assert.equal(h.runtime.value.session.results.length,before);
+ await h.drain();
+ assert.equal(h.commandStarts.length,2,'confirmation needs a distinct microphone turn');
+ assert.ok(h.audio.some(a=>a.cue.text.includes('confirmar comando de voz')));
+ const secondId=h.commandStarts.at(-1);
+ h.callbacks.get('es')({text:'sí',confidence:'high'},secondId);
+ await h.flush();
+ assert.equal(h.events.length,0,'bare yes must not skip');
+ h.callbacks.get('es')({text:'confirmar mi respuesta',confidence:'high'},secondId);
+ await h.flush();
+ assert.equal(h.events.length,0,'answer confirmation must not confirm navigation');
+ h.callbacks.get('es')({text:'confirmar comando de voz',confidence:'unknown'},secondId);
+ await h.flush();
+ assert.equal(h.events.at(-1).type,'skip');
+ assert.equal(h.runtime.value.session.current.activityId,'en-CA-a0-greeting-comprehension');
+ tree=await h.flush();h.press(tree,'Detener voz y micrófono');
+});
+test('guided navigation rejection restores a safe voice-command turn without advancing',async()=>{
+ const h=voiceHarness();let tree=await h.flush();
+ h.press(tree,'Activar guía de voz');await h.flush();await h.drain();
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();await h.drain();
+ const before=h.runtime.value.session.results.length;
+ h.callbacks.get('es')({text:'cancelar comando de voz',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();
+ assert.equal(h.events.length,0);
+ assert.equal(h.runtime.value.session.results.length,before);
+ await h.drain();
+ assert.equal(h.commandStarts.length,3,'cancelled navigation listens for a new command');
+ assert.ok(h.audio.some(a=>a.cue.text.includes('Comando cancelado')));
+ tree=await h.flush();
+ assert.equal(elements(tree).some(e=>e.type==='Pressable'&&textOf(e)==='Confirmar respuesta propuesta'),false);
+ h.press(tree,'Detener voz y micrófono');
+});
+test('background after proposing a navigation command must not reopen its confirmation microphone',async()=>{
+ const h=voiceHarness();let tree=await h.flush();
+ h.press(tree,'Activar guía de voz');await h.flush();await h.drain();
+ h.callbacks.get('es')({text:'siguiente ejercicio',confidence:'unknown'},h.commandStarts.at(-1));
+ await h.flush();
+ const pending=h.audio.find(a=>!a.settled);
+ assert.ok(pending);
+ h.background();await h.flush();
+ pending.done();await tick();await h.flush();
+ assert.equal(h.commandStarts.length,1);
+ assert.equal(h.events.length,1,'background transition only requests pause');
+ assert.equal(h.events[0].type,'pause');
+ assert.equal(h.runtime.value.session.status,'paused');
+});

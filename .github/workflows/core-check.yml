@@ -1,0 +1,20 @@
+name: Core unit checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  core-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - run: npm run check:mobile
+
+      - run: npm run check:expo-config
+      - run: node scripts/check-ios-introspection.mjs
+      - run: npm run check:android-prebuild

@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {assessAudit} from '../../../scripts/security-audit-policy.mjs';
+const known=['GHSA-vfj7-8cjw-p6xm','GHSA-86w9-cpqp-85rv','GHSA-w5hq-g745-h8pq'];
+const fixture=()=>({metadata:{vulnerabilities:{critical:0,high:15,moderate:7,low:0,total:22}},vulnerabilities:Object.fromEntries(known.map((id,i)=>['root'+i,{via:[{url:'https://github.com/advisories/'+id}]}]))});
+test('known audit baseline is accepted but not declared fixed',()=>{const r=assessAudit(fixture());assert.equal(r.ok,true);assert.equal(r.counts.total,22);});
+test('new advisory on existing package is rejected',()=>{const j=fixture();j.vulnerabilities.root0.via.push({url:'https://github.com/advisories/GHSA-new-risk'});assert.equal(assessAudit(j).ok,false);});
+test('severity increase fails even with unchanged advisory identities',()=>{const j=fixture();j.metadata.vulnerabilities.high=16;assert.match(assessAudit(j).reasons.join(' '),/high increased/);});
+test('lower severity counts are permitted',()=>{const j=fixture();j.metadata.vulnerabilities.high=12;j.metadata.vulnerabilities.total=19;assert.equal(assessAudit(j).ok,true);});
+test('invalid or missing audit data fails closed',()=>{assert.throws(()=>assessAudit({}));const j=fixture();delete j.metadata.vulnerabilities.total;assert.equal(assessAudit(j).ok,false);});
+test('unrecognized advisory URL fails closed',()=>{const j=fixture();j.vulnerabilities.root0.via=[{url:'http://example.com/advisory'}];assert.equal(assessAudit(j).ok,false);});

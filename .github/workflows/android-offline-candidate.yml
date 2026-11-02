@@ -1,0 +1,62 @@
+# Internal Android offline candidate. Never publish to an app store.
+# assembleRelease bundles JS/assets locally; the output uses a temporary test keystore
+# generated on the CI runner and is NOT a production-signed artifact.
+name: Android offline internal candidate
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  android-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Use installed Android SDK
+        run: |
+          test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate source and Expo configuration
+        run: |
+          npm run check
+          npm run check:mobile
+          npm run check:android-prebuild
+          node scripts/check-android-autolinking.mjs
+      - name: Generate temporary test signing key
+        run: |
+          keytool -genkeypair -v -keystore "$RUNNER_TEMP/voicefirst-test.jks" -alias voicefirst-test -keyalg RSA -keysize 2048 -validity 2 -storepass android -keypass android -dname "CN=VoiceFirst Internal Test"
+          echo "TEST_KEYSTORE=$RUNNER_TEMP/voicefirst-test.jks" >> "$GITHUB_ENV"
+      - name: Bundle JS and build standalone internal APK
+        working-directory: mobile/android
+        run: |
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace \
+            -Pandroid.injected.signing.store.file="$TEST_KEYSTORE" \
+            -Pandroid.injected.signing.store.password=android \
+            -Pandroid.injected.signing.key.alias=voicefirst-test \
+            -Pandroid.injected.signing.key.password=android
+      - name: Verify APK exists and includes bundle
+        run: |
+          APK=mobile/android/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          unzip -l "$APK" | grep -E 'assets/(index.android.bundle|.*\.hbc)' 
+          sha256sum "$APK" > mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
+      - name: Upload short-lived internal APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicefirst-offline-internal-${{ github.sha }}
+          path: |
+            mobile/android/app/build/outputs/apk/release/app-release.apk
+            mobile/android/app/build/outputs/apk/release/SHA256SUMS.txt
+          retention-days: 3
+          if-no-files-found: error

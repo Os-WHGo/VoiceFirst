@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {inspectReleaseApk} from '../../../scripts/android-release-artifact-policy.mjs';
+const good=()=>({entries:['assets/index.android.bundle','classes.dex'],signature:'Verified using v2 scheme (APK Signature Scheme v2): true',packageBadging:"package: name='com.oswhgo.voicefirst' versionCode='1'",manifest:'E: manifest\n E: application\n A: android:allowBackup(0x01010280)=(type 0x12)0x0'});
+test('valid release artifact evidence accepted',()=>assert.equal(inspectReleaseApk(good()).ok,true));
+test('Hermes bytecode accepted',()=>{const x=good();x.entries=['assets/index.android.hbc'];assert.equal(inspectReleaseApk(x).ok,true);});
+test('missing bundle rejected',()=>{const x=good();x.entries=['classes.dex'];assert.match(inspectReleaseApk(x).errors.join(),/bundle/);});
+test('unsigned artifact rejected',()=>{const x=good();x.signature='Verified using v2 scheme: false';assert.equal(inspectReleaseApk(x).ok,false);});
+test('wrong application ID rejected',()=>{const x=good();x.packageBadging="package: name='com.other.app'";assert.equal(inspectReleaseApk(x).ok,false);});
+test('debuggable true in binary manifest rejected',()=>{const x=good();x.manifest='E: manifest\n A: android:debuggable(0x0101000f)=(type 0x12)0xffffffff';assert.equal(inspectReleaseApk(x).ok,false);});
+test('debuggable false in binary manifest accepted',()=>{const x=good();x.manifest='E: manifest\n A: android:debuggable(0x0101000f)=(type 0x12)0x0';assert.equal(inspectReleaseApk(x).ok,true);});
+test('nonempty but unparseable manifest rejected',()=>{const x=good();x.manifest='aapt: error: failed to read manifest';assert.equal(inspectReleaseApk(x).ok,false);});
+test('missing manifest output rejected',()=>{const x=good();x.manifest='';assert.equal(inspectReleaseApk(x).ok,false);});

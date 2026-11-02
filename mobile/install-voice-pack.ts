@@ -1,0 +1,80 @@
+/** Explicit local folder import only. This is NOT a network download or signed publisher update.
+ * Import never overwrites a working pack. Validate permissions, reviewed source,
+ * bounded WAV bytes and per-clip digest, then copy to a staging directory and move.
+ * iOS/Android picker and storage semantics need physical device validation.
+ */
+import {Directory,File,Paths} from 'expo-file-system';
+import {preflightLocalWavPack,inspectPcmWav,sha256Bytes,type RecordedCue} from '@voicefirst/core';
+
+export type VoicePackImportResult=
+ |{kind:'installed';language:string;clips:number;missing:number}
+ |{kind:'rejected';reason:string}
+ |{kind:'cancelled'};
+
+async function checkedClip(root:Directory,entry:RecordedCue):Promise<void>{
+ if(entry.format!=='wav')throw Error('Solo se admiten clips WAV preparados y verificados.');
+ const audio=new File(root,...entry.path.split('/'));
+ if(!audio.exists||audio.size!==entry.bytes)throw Error('Clip ausente o con tamaño incorrecto.');
+ const bytes=await audio.bytes();
+ if(bytes.byteLength!==entry.bytes||!inspectPcmWav(bytes,entry.durationMs).valid||sha256Bytes(bytes).toLowerCase()!==entry.sha256.toLowerCase())
+   throw Error('El clip no coincide con el manifiesto o no es un WAV válido.');
+}
+export async function installVoicePackFromFolder(folder:Directory):Promise<VoicePackImportResult>{
+ let staging:Directory|null=null;
+ try{
+  const manifest=new File(folder,'pack.json');
+  if(!manifest.exists||manifest.size>1024*1024)throw Error('Falta pack.json o supera el tamaño permitido.');
+  let raw:unknown;
+  try{raw=JSON.parse(await manifest.text());}catch{throw Error('Manifiesto ilegible.');}
+  const inspection=preflightLocalWavPack(raw);
+  if(!inspection.valid)throw Error('Licencias, identidad o datos del paquete no válidos: '+inspection.errors.slice(0,2).join('; '));
+  const pack=inspection.pack;
+  const sourceClips=new Directory(folder,'clips');
+  if(!sourceClips.exists)throw Error('Falta la carpeta clips de las grabaciones.');
+  const expected=new Set(inspection.recordings.map(r=>r.path.slice('clips/'.length)));
+  const names=sourceClips.list().filter(f=>f.name!=='.DS_Store').map(f=>f.name);
+  if(names.length!==expected.size||names.some(n=>!expected.has(n)))
+    throw Error('Existen clips WAV ausentes, adicionales o subcarpetas no registradas.');
+  for(const recording of inspection.recordings)await checkedClip(folder,recording);
+  // The complete set of metadata and clips must be trusted by the learner.
+  // SHA-256 detects changes, not who produced the original manifest.
+  const root=new Directory(Paths.document,'voicefirst-voices');
+  if(!root.exists)root.create({intermediates:true,idempotent:true});
+  const dest=new Directory(root,pack.language);
+  if(dest.exists)throw Error('Ya existe un paquete instalado: no se reemplazará ni borrará.');
+  const incoming=new Directory(root,`.incoming-${pack.language}`);
+  if(incoming.exists)throw Error('Quedó una importación anterior sin finalizar. No sobrescribiremos sus archivos.');
+  incoming.create({intermediates:true});
+  staging=incoming;
+  for(const recording of inspection.recordings){
+   const segments=recording.path.split('/');
+   let dir=incoming;
+   for(const part of segments.slice(0,-1)){
+    dir=new Directory(dir,part);
+    if(!dir.exists)dir.create({intermediates:true,idempotent:true});
+   }
+   const clip=new File(folder,...segments);
+   await clip.copy(new File(incoming,...segments),{overwrite:false});
+   await checkedClip(incoming,recording);
+  }
+  await manifest.copy(new File(incoming,'pack.json'),{overwrite:false});
+  const copied=new File(incoming,'pack.json');
+  if(await copied.text()!==await manifest.text())throw Error('El manifiesto cambió durante la copia.');
+  await incoming.move(dest,{overwrite:false});
+  staging=null;
+  return {kind:'installed',language:pack.language,clips:inspection.recordings.length,missing:inspection.missing};
+ }catch(e){
+  if(staging?.exists){try{staging.delete();}catch{/* leave staging for explicit inspection; never touch installed packs */}}
+  return {kind:'rejected',reason:e instanceof Error?e.message:'No se pudo validar o copiar el paquete.'};
+ }
+}
+export async function selectAndInstallVoicePack():Promise<VoicePackImportResult>{
+ try{
+  const directory=await Directory.pickDirectoryAsync();
+  return await installVoicePackFromFolder(directory);
+ }catch(e){
+  const reason=e instanceof Error?e.message:'Selector de carpetas no disponible';
+  if(/cancel/i.test(reason))return {kind:'cancelled'};
+  return {kind:'rejected',reason:'No se pudo seleccionar una carpeta local. '+reason};
+ }
+}

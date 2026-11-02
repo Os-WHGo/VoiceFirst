@@ -1,0 +1,115 @@
+
+name: Android emulator APK smoke (manual, matched commit)
+
+# Explicit opt-in only. Never auto-run a costly emulator for code pushes.
+# GitHub exposes workflow_dispatch only when the workflow is on the default branch;
+# this source change does not launch an emulator or approve a production release.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: 'Successful Android standalone candidate run ID containing a current APK'
+        required: true
+        type: string
+      expected_sha:
+        description: 'Exact 40-character source commit SHA matching the APK producer'
+        required: true
+        type: string
+      confirm_internal_smoke:
+        description: 'Type RUN_OFFLINE_SMOKE to authorize emulator runner usage'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  emulator-smoke:
+    if: ${{ inputs.confirm_internal_smoke == 'RUN_OFFLINE_SMOKE' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha }}
+          persist-credentials: false
+
+      - name: Validate operator inputs
+        shell: bash
+        env:
+          INPUT_RUN_ID: ${{ inputs.candidate_run_id }}
+          INPUT_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$INPUT_RUN_ID" =~ ^[0-9]{1,20}$ ]] || { echo '::error::Invalid producer run ID'; exit 1; }
+          [[ "$INPUT_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::Expected source SHA must be full 40-character lowercase hex'; exit 1; }
+          test "$(git rev-parse HEAD)" = "$INPUT_SHA" || { echo '::error::Checkout source mismatch'; exit 1; }
+
+      - name: Validate emulator smoke script syntax
+        run: bash -n scripts/android-emulator-smoke.sh
+
+      - name: Download existing internal APK
+        uses: actions/download-artifact@v4
+        with:
+          name: voicefirst-android-release-candidate-unverified
+          run-id: ${{ inputs.candidate_run_id }}
+          github-token: ${{ github.token }}
+          path: candidate
+
+      - name: Verify candidate source provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.candidate_run_id }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID" > "$RUNNER_TEMP/voicefirst-producer.json"
+          node scripts/android-apk-producer-policy.mjs "$RUNNER_TEMP/voicefirst-producer.json" "$EXPECTED_SHA" "$RUN_ID" "$GITHUB_REPOSITORY"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA" || { echo '::error::Checked-out source does not match APK'; exit 1; }
+
+      - name: Verify APK checksum
+        run: |
+          set -eu
+          test -s candidate/app-release.apk
+          test -s candidate/SHA256SUMS.txt
+          sed 's|mobile/android/app/build/outputs/apk/release/app-release.apk|app-release.apk|' candidate/SHA256SUMS.txt > candidate/SHA256SUMS-local.txt
+          cd candidate
+          sha256sum -c SHA256SUMS-local.txt
+
+      - name: Enable KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install and launch on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash scripts/android-emulator-smoke.sh candidate/app-release.apk
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicefirst-android-emulator-smoke-${{ inputs.expected_sha }}
+          path: |
+            android-emulator-logcat.txt
+            voicefirst-online-logcat.txt
+            voicefirst-offline-logcat.txt
+            voicefirst-offline-connectivity.txt
+            voicefirst-ui-online.xml
+            voicefirst-ui-offline.xml
+            voicefirst-online.png
+            voicefirst-offline.png
+            voicefirst-offline-pid.txt
+            voicefirst-online-pid.txt
+            voicefirst-ui-scroll.xml
+            voicefirst-scrolled.png
+          if-no-files-found: ignore
+          retention-days: 7

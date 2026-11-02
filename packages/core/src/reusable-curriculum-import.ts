@@ -1,0 +1,91 @@
+/** Quarantined import diagnostics for reusable six-language curriculum packages.
+ * Does not mutate catalogues, install packages, or authorize release.
+ */
+import {targetLanguages,type TargetLanguage} from './types.js';
+import {auditConceptCoverage,type ConceptCoverageReport} from './curriculum-coverage.js';
+import {type SharedConcept,type TargetLanguageUnit,type KnownLanguageSupport} from './reusable-curriculum.js';
+
+export interface ReusableImportDiagnostic {
+ acceptedForReview:boolean;
+ errors:readonly string[];
+ coverage:readonly ConceptCoverageReport[];
+ readyForPublicRelease:false;
+}
+const record=(x:unknown):x is Record<string,unknown>=>Boolean(x)&&typeof x==='object'&&!Array.isArray(x);
+const locales=new Set<string>(targetLanguages);
+const levels=new Set(['A0','A1','A2','B1','B2','C1','C2']);
+const skills=new Set(['listening','speaking','reading','writing','interaction','mediation']);
+/** Import is all-or-nothing; never silently infer missing locales or synthesize content. */
+export function inspectReusableCurriculumImport(candidate:unknown):ReusableImportDiagnostic {
+ const errors:string[]=[];
+ if(!record(candidate))return {acceptedForReview:false,errors:['Invalid package object'],coverage:[],readyForPublicRelease:false};
+ const concepts=candidate.concepts,units=candidate.units,supports=candidate.supports;
+ if(!Array.isArray(concepts)||!Array.isArray(units)||!Array.isArray(supports))
+  return {acceptedForReview:false,errors:['Missing concepts, units or supports array'],coverage:[],readyForPublicRelease:false};
+ // Allow all six languages for the documented 648-objective curriculum, but
+ // cap resource usage before graph traversal and 30-pair coverage generation.
+ if(concepts.length>1500||units.length>9000||supports.length>9000)
+  return {acceptedForReview:false,errors:['Curriculum candidate exceeds local review limits'],coverage:[],readyForPublicRelease:false};
+ if(concepts.length===0)errors.push('No shared concepts');
+ const seenConcepts=new Set<string>(),seenUnits=new Set<string>(),seenSupports=new Set<string>();
+ const verifiedConcepts=new Map<string,{level:string;prerequisites:readonly string[]}>();
+ for(const c of concepts){
+  if(!record(c)||typeof c.id!=='string'||!c.id.trim()||typeof c.goal!=='string'||!c.goal.trim()||!levels.has(String(c.level))||
+   !Array.isArray(c.skills)||!c.skills.length||c.skills.some((s:unknown)=>!skills.has(String(s)))||
+   !Array.isArray(c.prerequisites)||c.prerequisites.some((p:unknown)=>typeof p!=='string'||!p.trim()||p===c.id)||
+   new Set(c.prerequisites).size!==c.prerequisites.length){errors.push('Invalid shared concept');continue;}
+  if(seenConcepts.has(c.id))errors.push('Duplicate concept '+c.id);
+  else verifiedConcepts.set(c.id,{level:String(c.level),prerequisites:c.prerequisites as string[]});
+  seenConcepts.add(c.id);
+ }
+ // Prerequisites must resolve within this self-contained offline candidate pack.
+ // A missing or future-level dependency must not leave an untraversable course
+ // masquerading as a valid import. Same-level dependencies are legal if acyclic.
+ const levelOrder=['A0','A1','A2','B1','B2','C1','C2'];
+ for(const [id,concept] of verifiedConcepts){
+  for(const prerequisite of concept.prerequisites){
+   const other=verifiedConcepts.get(prerequisite);
+   if(!other){errors.push('Missing prerequisite '+id+' -> '+prerequisite);continue;}
+   if(levelOrder.indexOf(other.level)>levelOrder.indexOf(concept.level))
+    errors.push('Future-level prerequisite '+id+' -> '+prerequisite);
+  }
+ }
+ const visiting=new Set<string>(),visited=new Set<string>();
+ const visit=(id:string):void=>{
+  if(visited.has(id)||visiting.has(id))return;
+  visiting.add(id);
+  const concept=verifiedConcepts.get(id);
+  for(const prior of concept?.prerequisites??[]){
+   if(!verifiedConcepts.has(prior))continue;
+   if(visiting.has(prior)){errors.push('Cyclic prerequisite '+id+' -> '+prior);continue;}
+   visit(prior);
+  }
+  visiting.delete(id);visited.add(id);
+ };
+ for(const id of verifiedConcepts.keys())visit(id);
+ for(const u of units){
+  if(!record(u)||typeof u.conceptId!=='string'||!seenConcepts.has(u.conceptId)||!locales.has(String(u.targetLanguage))||
+   !Array.isArray(u.dialogue)||u.dialogue.some((s:unknown)=>typeof s!=='string'||!s.trim())||
+   (u.activities!==undefined&&(!Array.isArray(u.activities)||u.activities.some((s:unknown)=>typeof s!=='string'||!s.trim())))||
+   (!u.dialogue.length&&(!Array.isArray(u.activities)||!u.activities.length))||
+   !Array.isArray(u.vocabulary)||!u.vocabulary.length||u.vocabulary.some((s:unknown)=>typeof s!=='string'||!s.trim())||
+   !['candidate','reviewed'].includes(String(u.editorialStatus))||typeof u.rightsCleared!=='boolean'||typeof u.audioReviewed!=='boolean'){
+   errors.push('Invalid target-language unit');continue;
+  }
+  const key=u.conceptId+'/'+u.targetLanguage;
+  if(seenUnits.has(key))errors.push('Duplicate target-language unit '+key);
+  seenUnits.add(key);
+ }
+ for(const s of supports){
+  if(!record(s)||typeof s.conceptId!=='string'||!seenConcepts.has(s.conceptId)||!locales.has(String(s.knownLanguage))||
+   typeof s.instructions!=='string'||!s.instructions.trim()||!['candidate','reviewed'].includes(String(s.editorialStatus))){
+   errors.push('Invalid known-language support');continue;
+  }
+  const key=s.conceptId+'/'+s.knownLanguage;
+  if(seenSupports.has(key))errors.push('Duplicate known-language support '+key);
+  seenSupports.add(key);
+ }
+ if(errors.length)return {acceptedForReview:false,errors,coverage:[],readyForPublicRelease:false};
+ const coverage=(concepts as SharedConcept[]).map(c=>auditConceptCoverage(c,units as TargetLanguageUnit[],supports as KnownLanguageSupport[]));
+ return {acceptedForReview:true,errors:[],coverage,readyForPublicRelease:false};
+}

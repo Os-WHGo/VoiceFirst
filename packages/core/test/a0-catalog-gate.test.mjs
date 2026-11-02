@@ -1,0 +1,79 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {loadA0CandidateCatalog} from '../dist/index.js';
+const langs=['fr-CA','es','pt-BR','de','it'];
+const local=Object.fromEntries(langs.map(x=>[x,'Choose the correct expression']));
+const lesson=(id,sequence,prerequisites=[])=>({
+ lesson_id:id,concept_id:id,target_language:'en-CA',sequence,prerequisites,
+ editorial_status:'candidate',publishable:false,human_review_required:true,
+ activity:{type:'single_choice',skill:'reading',audio_required:false,text_fallback:true,
+ context_by_known_language:local,prompt_by_known_language:local,
+ options:[{id:'yes',text:'Hello'},{id:'no',text:'Goodbye'}],correct_option_ids:['yes'],assessment:{scoring:'exact_match'}}
+});
+const pack=lessons=>({schema_version:'voicefirst.lesson-candidate.v0.2',lessons});
+test('candidate catalog loads valid dependencies but remains unpublished',()=>{
+ const result=loadA0CandidateCatalog(pack([lesson('one',1),lesson('two',2,['one'])]));
+ assert.equal(result.kind,'candidate');
+ assert.equal(result.publishable,false);
+ assert.equal(result.lessons.length,2);
+});
+test('catalog blocks all lessons when one lesson is malformed',()=>{
+ const invalid=lesson('bad',2,['one']);invalid.activity.options=[];
+ const result=loadA0CandidateCatalog(pack([lesson('one',1),invalid]));
+ assert.equal(result.kind,'blocked');assert.equal(result.lessons.length,0);
+ assert.ok(result.issues.some(x=>x.code==='INVALID_ACTIVITY'));
+});
+test('catalog blocks cyclic graph and empty input',()=>{
+ assert.equal(loadA0CandidateCatalog(pack([lesson('a',1,['b']),lesson('b',2,['a'])])).kind,'blocked');
+ assert.ok(loadA0CandidateCatalog(pack([])).issues.some(x=>x.code==='EMPTY_CATALOG'));
+});
+
+test('candidate catalog resolves authored concept prerequisites within the target language',()=>{
+ const first=lesson('first',1);
+ first.concept_id='concept.a0.first';
+ const second=lesson('second',2,['concept.a0.first']);
+ const result=loadA0CandidateCatalog(pack([first,second]));
+ assert.equal(result.kind,'candidate');
+ assert.deepEqual(result.lessons[1].prerequisites,['first']);
+});
+test('candidate catalog blocks ambiguous concept references rather than guessing',()=>{
+ const first=lesson('first',1);first.concept_id='concept.shared';
+ const duplicate=lesson('other',2);duplicate.concept_id='concept.shared';
+ const next=lesson('next',3,['concept.shared']);
+ const result=loadA0CandidateCatalog(pack([first,duplicate,next]));
+ assert.equal(result.kind,'blocked');
+ assert.ok(result.issues.some(x=>x.code==='MISSING_PREREQUISITE'));
+});
+
+test('catalog rejects cross-language prerequisite even when concept ID exists elsewhere',()=>{
+ const english=lesson('english',1);english.concept_id='concept.shared';
+ const spanish=lesson('spanish',1,['concept.shared']);spanish.target_language='es';
+ spanish.activity.context_by_known_language={...local,'en-CA':'Choose the correct expression'};
+ spanish.activity.prompt_by_known_language={...local,'en-CA':'Choose the correct expression'};
+ delete spanish.activity.context_by_known_language.es;
+ delete spanish.activity.prompt_by_known_language.es;
+ const result=loadA0CandidateCatalog(pack([english,spanish]));
+ assert.equal(result.kind,'blocked');
+ assert.ok(result.issues.some(x=>x.code==='MISSING_PREREQUISITE'));
+});
+test('catalog preserves explicit lesson prerequisite IDs over concept resolution',()=>{
+ const first=lesson('first',1);first.concept_id='shared';
+ const second=lesson('second',2,['first']);
+ const result=loadA0CandidateCatalog(pack([first,second]));
+ assert.equal(result.kind,'candidate');
+ assert.deepEqual(result.lessons[1].prerequisites,['first']);
+});
+
+test('catalog rejects self dependency expressed as concept ID',()=>{
+ const first=lesson('first',1,['concept.self']);first.concept_id='concept.self';
+ const result=loadA0CandidateCatalog(pack([first]));
+ assert.equal(result.kind,'blocked');
+ assert.ok(result.issues.some(x=>x.code==='SELF_PREREQUISITE'));
+});
+test('catalog rejects cycles expressed as concept IDs',()=>{
+ const first=lesson('first',1,['concept.second']);first.concept_id='concept.first';
+ const second=lesson('second',2,['concept.first']);second.concept_id='concept.second';
+ const result=loadA0CandidateCatalog(pack([first,second]));
+ assert.equal(result.kind,'blocked');
+ assert.ok(result.issues.some(x=>x.code==='CYCLIC_PREREQUISITE'));
+});
