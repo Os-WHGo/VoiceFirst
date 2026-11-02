@@ -17,7 +17,7 @@ const instructions:Readonly<Record<TargetLanguage,LocalCopy>>={
   proposed:'J’ai reconnu la commande {command}. Dites « {approve} » pour l’exécuter ou « {cancel} » pour l’annuler.'},
  'pt-BR':{approve:'confirmar comando de voz',cancel:'cancelar comando de voz',
   proposed:'Reconheci o comando {command}. Diga «{approve}» para executar ou «{cancel}» para descartar.'},
- de:{approve:'sprachbefehl bestätigen',cancel:'sprachbefehl abbrechen',
+ de:{approve:'Sprachbefehl bestätigen',cancel:'Sprachbefehl abbrechen',
   proposed:'Ich habe den Befehl {command} erkannt. Sage „{approve}“ zum Ausführen oder „{cancel}“ zum Abbrechen.'},
  it:{approve:'conferma comando vocale',cancel:'annulla comando vocale',
   proposed:'Ho riconosciuto il comando {command}. Di «{approve}» per eseguirlo o «{cancel}» per annullarlo.'}
