@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {targetLanguages,learningPairs,lessonsFor,offlineLessons,newCourseProgress,availableLessons,checkUtterance,recordCourseAttempt,finishLesson,normalizedUtterance,nextAudioStep,curriculumPlanFor,officialCefrBands} from '../dist/index.js';
+import {targetLanguages,learningPairs,lessonsFor,offlineLessons,newCourseProgress,availableLessons,checkUtterance,recordCourseAttempt,finishLesson,normalizedUtterance,matchesAuthoredAnswer,MAX_COURSE_RESPONSE_CHARS,nextAudioStep,curriculumPlanFor,officialCefrBands} from '../dist/index.js';
 const day='2026-10-16';
 test('84 authored lessons, fourteen for every language',()=>{ assert.equal(offlineLessons.length,12);for(const lang of targetLanguages)assert.equal(lessonsFor(lang).length,14); });
 test('30 directed language combinations can use localized help and authored target utterance',()=>{ for(const [native,target] of learningPairs()){const lesson=lessonsFor(target)[0];assert.equal(typeof lesson.goal[native],'string');assert.ok(lesson.exercises[0].meaning[native]);assert.equal(nextAudioStep(lesson,0,native).language,target); } });
@@ -20,5 +20,22 @@ test('content-first curriculum inventory covers 6 levels and 8 units for each of
   assert.equal(new Set(units.map(x=>x.level+':'+x.unitId)).size,48);
   assert.ok(units.every(x=>x.targetLanguage===language&&x.status==='planned'));
   for(const level of officialCefrBands)assert.equal(units.filter(x=>x.level===level).length,8);
+ }
+});
+
+test('oversized local ASR or typed answer never consumes an attempt or becomes mastery evidence',()=>{
+ for(const language of targetLanguages){
+  const lesson=lessonsFor(language)[0];
+  const recall=lesson.exercises.find(e=>e.type==='recall');
+  const huge=recall.alternatives[0]+'a'.repeat(MAX_COURSE_RESPONSE_CHARS+1);
+  const result=checkUtterance(recall,huge,language,'high');
+  assert.equal(result.kind,'uncertain',language);
+  assert.equal(normalizedUtterance(huge,language),'');
+  assert.equal(matchesAuthoredAnswer(recall,huge,language),false);
+  const original=newCourseProgress(language);
+  assert.equal(recordCourseAttempt(original,recall,result,'2026-11-01'),original);
+  assert.equal(recordCourseAttempt(original,recall,{kind:'match',recognized:huge},'2026-11-01'),original);
+  const valid=checkUtterance(recall,recall.alternatives[0],language,'high');
+  assert.equal(valid.kind,'match',language);
  }
 });
