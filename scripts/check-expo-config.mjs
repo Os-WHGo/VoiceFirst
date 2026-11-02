@@ -3,10 +3,19 @@
  * installing a device build, app-store publishing or EAS cloud usage.
  */
 import {spawnSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {auditVoiceFirstPrivacyConfig} from './voicefirst-privacy-config.mjs';
 import {join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 const mobile=join(root,'mobile');
+const source=JSON.parse(readFileSync(join(mobile,'app.json'),'utf8'));
+const privacy=auditVoiceFirstPrivacyConfig(source);
+if(!privacy.ok){
+ console.error('VoiceFirst privacy/background permission regression:',privacy.errors.join('; '));
+ process.exit(1);
+}
+
 const result=spawnSync('npx',['--no-install','expo','config','--type','public','--json'],
   {cwd:mobile,encoding:'utf8',timeout:120_000,maxBuffer:5*1024*1024});
 if(result.status!==0){
