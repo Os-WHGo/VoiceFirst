@@ -38,6 +38,8 @@ export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,
   const playbackEpoch=useRef(0);
   const writeQueue=useRef(Promise.resolve());
   const savedRawByTarget=useRef(new Map<TargetLanguage,string|null>());
+  // A failed CAS or disk write freezes both progress and cursor writes until reload.
+  const haltedTargets=useRef(new Set<TargetLanguage>());
   const shownTarget=useRef(target);
   shownTarget.current=target;
   const onDictation=useRef<(r:DictationResult,id:string)=>void>(()=>undefined);
@@ -60,6 +62,7 @@ export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,
       const result=raw===null?{kind:'ok',progress:newCourseProgress(target)} as const:loadCourseState(raw,target);
       if(result.kind!=='ok'){setLocked('Los datos de este curso no pueden leerse. No se han borrado; continúa sin reemplazarlos.');return;}
       savedRawByTarget.current.set(target,raw);
+      haltedTargets.current.delete(target);
       setProgress(result.progress);
       const suggested=chooseCourseLesson(result.progress,localDay())?.id??lessons[0]?.id??null;
       let resume: {lessonId:string;step:number;active:boolean;reviewExerciseId:string|null}|null=null;
@@ -86,7 +89,10 @@ export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,
   useEffect(()=>{
     if(!progress||!chosenId)return;
     const raw=JSON.stringify({lessonId:chosenId,step,active,reviewExerciseId});
-    writeQueue.current=writeQueue.current.catch(()=>undefined).then(()=>Storage.setItem(cursorKey(target),raw));
+    writeQueue.current=writeQueue.current.catch(()=>undefined).then(()=>{
+      if(haltedTargets.current.has(target))return;
+      return Storage.setItem(cursorKey(target),raw);
+    });
     void writeQueue.current.catch(()=>{if(mounted.current){setLocked('No se pudo guardar el punto de reanudación. El curso queda pausado.');setActive(false);}});
   },[target,progress===null,chosenId,step,active,reviewExerciseId]);
   const save=(next:CourseProgress)=>{
@@ -94,12 +100,27 @@ export function OfflineCourse({nativeLanguage,target,guideLocale=null,rate=0.88,
     // Serialize writes. This screen persists no audio, transcripts or personal profiles.
     const raw=courseStateToJSON(next);
     writeQueue.current=writeQueue.current.catch(()=>undefined).then(async()=>{
+      if(haltedTargets.current.has(target))throw new Error('COURSE_WRITES_HALTED');
       if(!savedRawByTarget.current.has(target))throw new Error('COURSE_BASELINE_MISSING');
       const expected=savedRawByTarget.current.get(target)??null;
       await writeOfflineCourseCAS(target,expected,raw);
       savedRawByTarget.current.set(target,raw);
     });
-    void writeQueue.current.catch(()=>{if(mounted.current&&shownTarget.current===target){setLocked('El progreso local cambió o no pudo guardarse. Se detuvo el curso para evitar sobrescribir respuestas.');setActive(false);}});
+    void writeQueue.current.catch(()=>{
+      haltedTargets.current.add(target);
+      if(mounted.current&&shownTarget.current===target){
+        // The visual completion was optimistic. Restore only the most recent
+        // *confirmed* local evidence, not an answer rejected by SQLite.
+        const confirmed=savedRawByTarget.current.get(target);
+        const restored=confirmed===null?{kind:'ok' as const,progress:newCourseProgress(target)}
+          :typeof confirmed==='string'?loadCourseState(confirmed,target):null;
+        setProgress(restored?.kind==='ok'?restored.progress:null);
+        setPassed(false);
+        setLocked('No se pudo confirmar el progreso local. Se conservó el último avance guardado y se detuvo la clase.');
+        setActive(false);
+        playbackEpoch.current++;mic.stop();void stopCuratedVoice();
+      }
+    });
   };
   const play=(thenListen=false)=>{
     if(!lesson||!current||!active||locked)return;
