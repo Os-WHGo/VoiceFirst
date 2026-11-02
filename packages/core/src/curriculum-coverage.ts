@@ -18,7 +18,23 @@ export interface ConceptCoverageReport {
  missingPairs:number;
  cells:readonly ConceptCoverageCell[];
 }
-/** Only actual matching, valid resources count. Synthetic pairing never implies authored content. */
+/** Check only genuine authored candidate resources. Do not manufacture a
+ * substitute dialogue or translation to infer whether a lesson exists.
+ * These predicates are structural; they never approve pedagogical quality.
+ */
+const availableUnit=(concept:SharedConcept,unit:TargetLanguageUnit|undefined):boolean=>
+ Boolean(unit&&unit.conceptId===concept.id&&targetLanguages.includes(unit.targetLanguage)&&
+  Array.isArray(unit.dialogue)&&unit.dialogue.every(line=>typeof line==='string'&&line.trim())&&
+  (!unit.activities||(Array.isArray(unit.activities)&&unit.activities.every(item=>typeof item==='string'&&item.trim())))&&
+  (unit.dialogue.length>0||Boolean(unit.activities?.length))&&
+  Array.isArray(unit.vocabulary)&&unit.vocabulary.length>0&&unit.vocabulary.every(word=>typeof word==='string'&&word.trim())&&
+  (unit.editorialStatus==='candidate'||unit.editorialStatus==='reviewed'));
+const availableSupport=(concept:SharedConcept,support:KnownLanguageSupport|undefined):boolean=>
+ Boolean(support&&support.conceptId===concept.id&&targetLanguages.includes(support.knownLanguage)&&
+  typeof support.instructions==='string'&&support.instructions.trim()&&
+  (support.editorialStatus==='candidate'||support.editorialStatus==='reviewed'));
+
+/** A coverage candidate requires the actual unit and the actual known-language support. */
 export function auditConceptCoverage(
  concept:SharedConcept,
  units:readonly TargetLanguageUnit[],
@@ -30,12 +46,8 @@ export function auditConceptCoverage(
   const unit=units.find(u=>u.conceptId===concept.id&&u.targetLanguage===targetLanguage);
   const support=supports.find(s=>s.conceptId===concept.id&&s.knownLanguage===knownLanguage);
   const composed=unit&&support?composeCurriculumCandidate(concept,unit,support):null;
-  const validUnit=unit?Boolean(composeCurriculumCandidate(concept,unit,{
-   conceptId:concept.id,knownLanguage:targetLanguages.find(l=>l!==targetLanguage)!,instructions:'Coverage validation only',editorialStatus:'candidate'
-  })):false;
-  const validSupport=support?Boolean(composeCurriculumCandidate(concept,{
-   conceptId:concept.id,targetLanguage:targetLanguages.find(l=>l!==knownLanguage)!,dialogue:['Coverage validation only'],vocabulary:['Coverage validation only'],editorialStatus:'candidate',rightsCleared:false,audioReviewed:false
-  },support)):false;
+  const validUnit=availableUnit(concept,unit);
+  const validSupport=availableSupport(concept,support);
   const state:CoverageState=composed?'candidate':!validUnit&&!validSupport?'missing-both':!validUnit?'missing-target':'missing-support';
   cells.push({knownLanguage,targetLanguage,state,structurallyComposable:Boolean(composed),readyForPublicRelease:false});
  }
