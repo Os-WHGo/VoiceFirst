@@ -12,7 +12,7 @@ import {join} from 'node:path';
 
 export const monitored=['expo','@expo/cli','@expo/config','@expo/config-plugins',
  '@expo/fingerprint','@expo/metro-config','react-native','zod','glob',
- 'minimatch','deepmerge','uuid'] as const;
+ 'minimatch','deepmerge','uuid'];
 
 export function versionNumbers(version){
  if(typeof version!=='string'||!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+].*)?$/.test(version))
