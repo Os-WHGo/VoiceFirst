@@ -111,3 +111,12 @@ test('legacy progress remains untouched; corrupt existing checkpoints never fall
  await assert.rejects(h.api.loadLearningCheckpoint('it'));
  assert.equal(h.values.get(h.api.learningCheckpointKey('it')),'corrupt');
 });
+
+test('foreground microcourse uses SQLite compare-and-write for progress',()=>{
+ const code=readFileSync(new URL('../../../mobile/offline-course-storage.ts',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../../../mobile/OfflineCourse.tsx',import.meta.url),'utf8');
+ assert.match(code,/COURSE_PROGRESS_CONFLICT/);
+ assert.match(code,/current!==expected/);
+ assert.match(ui,/writeOfflineCourseCAS\(target,expected,raw\)/);
+ assert.doesNotMatch(ui,/Storage\.setItem\(storeKey\(target\)/);
+});
