@@ -22,6 +22,10 @@ export function inspectReusableCurriculumImport(candidate:unknown):ReusableImpor
  const concepts=candidate.concepts,units=candidate.units,supports=candidate.supports;
  if(!Array.isArray(concepts)||!Array.isArray(units)||!Array.isArray(supports))
   return {acceptedForReview:false,errors:['Missing concepts, units or supports array'],coverage:[],readyForPublicRelease:false};
+ // Allow all six languages for the documented 648-objective curriculum, but
+ // cap resource usage before graph traversal and 30-pair coverage generation.
+ if(concepts.length>1500||units.length>9000||supports.length>9000)
+  return {acceptedForReview:false,errors:['Curriculum candidate exceeds local review limits'],coverage:[],readyForPublicRelease:false};
  if(concepts.length===0)errors.push('No shared concepts');
  const seenConcepts=new Set<string>(),seenUnits=new Set<string>(),seenSupports=new Set<string>();
  const verifiedConcepts=new Map<string,{level:string;prerequisites:readonly string[]}>();
