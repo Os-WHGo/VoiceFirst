@@ -79,3 +79,14 @@ revisión. PR #1 conserva el control rojo intencional; ninguna beta se
 considera aprobada por este documento. Próximo ensayo: comprobar rangos
 de cada dependencia transitiva de Expo 57 y evaluar una actualización
 compatible en rama reversible; documentar resultado positivo y negativo.
+
+
+## Consolidación de la rama histórica de seguridad · 2 noviembre 2026
+
+Fuente histórica preservada: rama `codex/voicefirst-security-triage-20261030`, cabeza `51379744ff09`. Inspección de contenido, no integración ciega de su historial. En el repositorio activo ya existen `scripts/audit-dependency-parents.mjs`, `scripts/audit-dependency-inventory.mjs` y comprobaciones de regresión; su cobertura reemplaza la necesidad de reimportar otro trazador de padres que solo examina el lockfile. No se borra ninguna rama ni archivo de su origen.
+
+La evidencia histórica identificó la cadena de `zod@3.25.76` desde `@expo/cli@57.0.31` con rango `^3.25.76`. El aviso `GHSA-mrhx-c7xc-m3w5` exigía en ese corte una versión 4.6.6 o posterior, por lo que un override de raíz a Zod 4 vulneraría el rango declarado por Expo y **no se aplicó**. También se identificaron `minimatch@10.2.6` en la cadena de `glob@13` / `@expo/fingerprint`, `deepmerge@4.3.1` en `@expo/config` y `uuid@7.0.3` desde `xcode@3.0.1`. Son versiones/rutas observadas en el análisis histórico: para una remediación nueva deben volverse a comprobar contra el lockfile, versiones upstream y avisos actuales. Fuentes originales: `docs/SECURITY_DEPENDENCY_PARENT_MATRIX_2026_10_30.md` y `docs/SECURITY_UPSTREAM_ADVISORIES_2026_10_30.md` en esa rama. Avisos: https://github.com/advisories/GHSA-mrhx-c7xc-m3w5 y https://github.com/advisories/GHSA-g3hv-75wg-m249 .
+
+El CI más reciente a esta fecha informa **15 paquetes afectados** (2 high, 11 moderate, 2 low). La auditoría continúa fallando tanto por nuevas fuentes como por agravamiento respecto a la referencia anterior. No aceptar automáticamente el riesgo, no silenciar avisos, no forzar cambios mayores de Expo/Metro/Zod por un resultado verde superficial. Este bloqueo impide fusionar responsablemente la PR #1 a `main` y distribuir una beta sin revisión de seguridad; sus 918+ commits y las pruebas del núcleo son evidencia diferente. Próximo experimento seguro: comprobar una actualización Expo 57 oficialmente compatible y sus cambios de rangos, regenerar el lockfile en una rama aislada y contrastar el inventario npm, TypeScript, Metro, regresiones y compilación nativa antes de adoptar cambios.
+
+La PR pedagógica histórica #2, todavía DRAFT sobre `codex/voicefirst-initial-source`, también se cotejó contra el árbol activo y no contiene archivos pedagógicos ausentes: sus aportes están preservados en la rama integrada. No se fusionan cambios desactualizados sobre 289 commits posteriores ni se eliminan ramas. Se mantienen el historial y la atribución de las contribuciones, sin reasignar trabajo a Claude/Codex inactivos.
