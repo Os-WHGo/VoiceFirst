@@ -17,9 +17,12 @@ on:
 permissions:
   contents: read
 # Core-only edits run core/TS/Metro checks in separate workflows without native builds.
-# Cancel only obsolete PR builds of this workflow. Manual runs use a unique run ID, so queued manual runs cannot replace each other. The PR number prevents cross-PR interference.
+# Keep ongoing native compile-only runs alive when a PR receives a later
+# documentation/source-only commit. PR identity isolates repositories' workflows;
+# SHA identity ensures a distinct request cannot cancel a still-valid long build.
+# Only a duplicate run for the SAME SHA can cancel its predecessor.
 concurrency:
-  group: voicefirst-native-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  group: voicefirst-native-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   native-change-gate:
