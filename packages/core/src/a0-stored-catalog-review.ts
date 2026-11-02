@@ -16,7 +16,7 @@ export async function reviewA0StoredCatalog(port:A0StoragePort,input:unknown,lan
  if(raw!==null){
   const previous=loadA0Journal(raw,language,previousLessons);
   if(previous.kind!=='ok')return {kind:'blocked',reason:'UNREADABLE_PROGRESS',publishable:false};
-  const decision:A0CatalogUpdateDecision=reviewA0CatalogUpdate(input,[previous.journal]);
+  const decision:A0CatalogUpdateDecision=reviewA0CatalogUpdate(input,[previous.journal],previousLessons);
   if(decision.kind==='blocked')return {kind:'blocked',reason:'INCOMPATIBLE_PROGRESS',publishable:false};
  }
  return {kind:'ready_candidate',lessons:initial.lessons,publishable:false};
