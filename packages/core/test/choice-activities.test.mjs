@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {targetLanguages,learningPairs,loadA0CandidateCatalog,auditChoiceItems,a0AuditItems,a0ChoiceActivities,courseComprehensionActivities,courseActivities,seededOptionOrder,servesFunction,
  planLearningSession,stepSession,sessionOpening,sessionToJSON,sessionFromJSON,completeSession,defaultSessionPreferences,newLearnerModel,newCourseProgress,recordKey} from '../dist/index.js';
 
@@ -116,4 +117,19 @@ test('unclear or non-matching speech never chooses an option',()=>{
  assert.equal(run(ctx,[{type:'answer',response:right,source:{kind:'speech',confidence:'low'}}])[0].code,'not-heard');
  assert.equal(run(ctx,[{type:'answer',response:'qualcosa',source:{kind:'typed'}}])[0].code,'not-heard');
  assert.equal(ctx.state.current.meaningErrors,0);assert.equal(ctx.state.results.length,1);
+});
+
+test('the original A0 v0.2 catalog stays byte-for-byte immutable for historical progress',()=>{
+ // Ship revisions as new assets. Editing the historical baseline would silently
+ // reinterpret option IDs recorded on devices that already used it.
+ const bytes=readFileSync(new URL('../../../mobile/assets/VoiceFirst_A0_Functional_6Langs_v0.2.json',import.meta.url));
+ const actual=createHash('sha1').update('blob '+bytes.length+'\\0').update(bytes).digest('hex');
+ assert.equal(actual,'31d031cafb5b47bcba4565c9371ebf3e575e3355');
+});
+test('the mobile A0 preview is mounted with the historical catalog preflight',()=>{
+ const app=readFileSync(new URL('../../../mobile/App.tsx',import.meta.url),'utf8');
+ const preview=readFileSync(new URL('../../../mobile/A0CandidatePreview.tsx',import.meta.url),'utf8');
+ assert.match(app,/a0CatalogPreflight=\\{input:a0CandidateJson,previousLessons:pendingA0Lessons\\}/);
+ assert.match(app,/<A0CandidatePreview[^>]+preflight=\\{a0CatalogPreflight\\}/);
+ assert.match(preview,/useA0Session\\(target,eligible,preflight\\)/);
 });
