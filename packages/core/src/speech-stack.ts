@@ -99,10 +99,16 @@ export function planSpeechStack(input:{target:TargetLanguage;locale?:string;devi
   .map(x=>({id:x.e.pack.id,bytes:x.e.pack.bytes,requiredDiskBytes:x.fit.requiredDiskBytes}));
  return {locale,asr,tts,vad:vadModel?{source:'installed-model',modelId:vadModel.pack.id}:{source:'energy'},suggestedDownloads,nonSpeechFallback:true};
 }
-export type RemovalPlan={status:'ok';remove:readonly string[];freedBytes:number}|{status:'blocked';reason:'in-use'|'required-by-installed'|'unknown-pack';ids:readonly string[]};
+export type RemovalPlan={status:'ok';remove:readonly string[];freedBytes:number}|{status:'blocked';reason:'in-use'|'required-by-installed'|'unknown-pack'|'invalid-catalog';ids:readonly string[]};
 /** Removing a pack never breaks another installed pack or the model the current session is using. */
 export function planPackRemoval(catalog:readonly LanguagePack[],installedIds:readonly string[],remove:readonly string[],inUse:readonly string[]):RemovalPlan{
  const byId=new Map(catalog.map(p=>[p.id,p]));
+ // Imported or corrupt catalog metadata must not authorize model removal or
+ // report misleading disk savings. No files are touched by this planner.
+ if(byId.size!==catalog.length||catalog.some(p=>!p||typeof p.id!=='string'||!p.id||
+    !Number.isSafeInteger(p.bytes)||p.bytes<=0||
+    !Array.isArray(p.dependencies)||p.dependencies.some(d=>typeof d!=='string')))
+  return {status:'blocked',reason:'invalid-catalog',ids:[]};
  const uniqueRemove=[...new Set(remove)];
  const unknown=uniqueRemove.filter(id=>!byId.has(id)||!installedIds.includes(id));
  if(unknown.length)return {status:'blocked',reason:'unknown-pack',ids:unknown};
@@ -111,7 +117,9 @@ export function planPackRemoval(catalog:readonly LanguagePack[],installedIds:rea
  const keep=installedIds.filter(id=>!uniqueRemove.includes(id));
  const dependents=keep.filter(id=>byId.get(id)?.dependencies.some(d=>uniqueRemove.includes(d)));
  if(dependents.length)return {status:'blocked',reason:'required-by-installed',ids:dependents};
- return {status:'ok',remove:uniqueRemove,freedBytes:uniqueRemove.reduce((n,id)=>n+(byId.get(id)?.bytes??0),0)};
+ const freedBytes=uniqueRemove.reduce((n,id)=>n+(byId.get(id)?.bytes??0),0);
+ if(!Number.isSafeInteger(freedBytes))return {status:'blocked',reason:'invalid-catalog',ids:[]};
+ return {status:'ok',remove:uniqueRemove,freedBytes};
 }
 export interface PackFile {path:string;packId:string;kind:'download'|'staging'|'installed'}
 /** Temporary files that are safe to delete: downloads and staging areas of packs no install is still working on.
