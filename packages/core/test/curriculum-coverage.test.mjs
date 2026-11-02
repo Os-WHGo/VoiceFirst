@@ -30,3 +30,22 @@ test('malformed or wrong-concept materials are not counted as available',()=>{
  assert.equal(report.cells.find(c=>c.knownLanguage==='es'&&c.targetLanguage==='fr-CA').state,'missing-target');
  assert.equal(report.cells.find(c=>c.knownLanguage==='es'&&c.targetLanguage==='de').state,'candidate');
 });
+
+test('coverage never infers an authored dialogue or translation from the other half of a language pair',()=>{
+ const noDialogue={...unit('fr-CA'),dialogue:[],activities:[]};
+ const meaningful={...unit('it'),dialogue:[],activities:['Select the meaning you hear']};
+ const emptySupport={...support('es'),instructions:'   '};
+ const report=auditConceptCoverage(concept,[noDialogue,meaningful],[emptySupport,support('de')]);
+ assert.equal(report.candidatePairs,1);
+ assert.equal(report.cells.find(c=>c.knownLanguage==='de'&&c.targetLanguage==='fr-CA').state,'missing-target');
+ assert.equal(report.cells.find(c=>c.knownLanguage==='es'&&c.targetLanguage==='it').state,'missing-support');
+ assert.equal(report.cells.find(c=>c.knownLanguage==='de'&&c.targetLanguage==='it').state,'candidate');
+ assert.ok(report.cells.every(c=>!c.readyForPublicRelease));
+});
+test('activity-only candidate is counted only where explicit authoring and support both exist',()=>{
+ const activity={...unit('fr-CA'),dialogue:[],activities:['Identify the sound']};
+ const report=auditConceptCoverage(concept,[activity],[support('es')]);
+ assert.equal(report.candidatePairs,1);
+ assert.equal(report.missingPairs,29);
+ assert.equal(report.cells.find(c=>c.knownLanguage==='es'&&c.targetLanguage==='fr-CA').state,'candidate');
+});
