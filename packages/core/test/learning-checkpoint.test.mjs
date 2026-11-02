@@ -87,7 +87,11 @@ function storageHarness(){
  const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
  const module={exports:{}};
  new Function('require','module','exports',compiled)(name=>name==='@voicefirst/core'?core:{default:storage},module,module.exports);
- return {api:module.exports,values,setFailure:()=>{fail=true;}};
+ const courseSource=readFileSync(new URL('../../../mobile/offline-course-storage.ts',import.meta.url),'utf8');
+ const courseJs=ts.transpileModule(courseSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ const courseModule={exports:{}};
+ new Function('require','module','exports',courseJs)(name=>name==='@voicefirst/core'?core:{default:storage},courseModule,courseModule.exports);
+ return {api:module.exports,courseApi:courseModule.exports,values,setFailure:()=>{fail=true;}};
 }
 test('actual SQLite adapter rejects stale writes and preserves data on disk failure',async()=>{
  const h=storageHarness(),entry=await h.api.loadLearningCheckpoint('en-CA');
@@ -119,4 +123,31 @@ test('foreground microcourse uses SQLite compare-and-write for progress',()=>{
  assert.match(code,/current!==expected/);
  assert.match(ui,/writeOfflineCourseCAS\(target,expected,raw\)/);
  assert.doesNotMatch(ui,/Storage\.setItem\(storeKey\(target\)/);
+});
+
+test('foreground course SQLite CAS preserves newer answers across screens',async()=>{
+ const h=storageHarness(),language='fr-CA',api=h.courseApi;
+ const key=api.offlineCourseProgressKey(language);
+ const initial=core.courseStateToJSON(core.newCourseProgress(language));
+ assert.equal(await api.readOfflineCourseRaw(language),null);
+ await api.writeOfflineCourseCAS(language,null,initial);
+ const lesson=core.lessonsFor(language)[0];
+ const progress=core.recordCourseAttempt(core.newCourseProgress(language),lesson.exercises[2],
+  {kind:'match',recognized:lesson.exercises[2].alternatives[0]},day);
+ const updated=core.courseStateToJSON(progress);
+ await api.writeOfflineCourseCAS(language,initial,updated);
+ await assert.rejects(api.writeOfflineCourseCAS(language,initial,initial),/COURSE_PROGRESS_CONFLICT/);
+ await assert.rejects(api.writeOfflineCourseCAS(language,null,initial),/COURSE_PROGRESS_CONFLICT/);
+ assert.equal(h.values.get(key),updated,'a stale course screen must never discard new progress');
+});
+test('foreground course CAS rejects invalid records, languages, and disk failures',async()=>{
+ const h=storageHarness(),api=h.courseApi;
+ const good=core.courseStateToJSON(core.newCourseProgress('it'));
+ await assert.rejects(api.writeOfflineCourseCAS('es',null,good),/COURSE_PROGRESS_INVALID/);
+ await assert.rejects(api.writeOfflineCourseCAS('it',null,'{'),/COURSE_PROGRESS_INVALID/);
+ await assert.rejects(api.writeOfflineCourseCAS('it','corrupted',good),/COURSE_BASELINE_INVALID/);
+ assert.equal(h.values.size,0,'invalid transitions must not create data');
+ h.setFailure();
+ await assert.rejects(api.writeOfflineCourseCAS('it',null,good),/disk full/);
+ assert.equal(h.values.size,0,'failed transaction must not create a partial journal');
 });
