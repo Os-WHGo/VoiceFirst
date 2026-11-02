@@ -147,3 +147,39 @@ test('forged match verdicts with unrelated transcripts never count across 336 ex
  }
  assert.equal(checked,336);
 });
+
+test('locked exercises never preload scored evidence in the six offline course paths',()=>{
+ let blocked=0;
+ for(const language of locales){
+  const lessons=lessonsFor(language);
+  for(const lesson of lessons.filter(l=>l.prerequisite)){
+   const base=newCourseProgress(language);
+   for(const exercise of lesson.exercises.filter(e=>e.type==='recall'||e.type==='checkpoint')){
+    for(const evaluation of [
+     {kind:'match',recognized:exercise.utterance},
+     {kind:'retry',hint:'Try again'}
+    ]){
+     const after=recordCourseAttempt(base,exercise,evaluation,'2026-11-01');
+     assert.strictEqual(after,base,language+' '+lesson.id+' '+exercise.type);
+     blocked++;
+    }
+   }
+  }
+ }
+ assert.equal(blocked,312);
+});
+
+test('altered exercise stage cannot mint mastery even when the lesson is available',()=>{
+ for(const language of locales){
+  const lesson=lessonsFor(language)[0];
+  const recall=lesson.exercises.find(e=>e.type==='recall');
+  const checkpoint=lesson.exercises.find(e=>e.type==='checkpoint');
+  const progress=newCourseProgress(language);
+  for(const exercise of [recall,checkpoint]){
+   const altered={...exercise,type:exercise.type==='recall'?'checkpoint':'recall'};
+   const attempted=recordCourseAttempt(progress,altered,{kind:'match',recognized:exercise.utterance},'2026-11-01');
+   assert.strictEqual(attempted,progress,language+' '+exercise.id);
+  }
+  assert.strictEqual(finishLesson(progress,lesson),progress);
+ }
+});
