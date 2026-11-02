@@ -87,7 +87,7 @@ export function planPackRemoval(catalog:readonly LanguagePack[],installedIds:rea
  const uniqueRemove=[...new Set(remove)];
  const unknown=uniqueRemove.filter(id=>!byId.has(id)||!installedIds.includes(id));
  if(unknown.length)return {status:'blocked',reason:'unknown-pack',ids:unknown};
- const busy=remove.filter(id=>inUse.includes(id));
+ const busy=uniqueRemove.filter(id=>inUse.includes(id));
  if(busy.length)return {status:'blocked',reason:'in-use',ids:busy};
  const keep=installedIds.filter(id=>!remove.includes(id));
  const dependents=keep.filter(id=>byId.get(id)?.dependencies.some(d=>remove.includes(d)));
