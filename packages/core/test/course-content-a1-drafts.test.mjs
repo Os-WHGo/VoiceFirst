@@ -40,7 +40,7 @@ test('six-language semantic concept inventory has 96 authored phrase patterns',(
   id:[u.targetLanguage,u.unitId,x.conceptId].join('/'),form:x.form
  })));
  assert.equal(cards.length,96);
- assert.equal(new Set(cards.map(x=>x.id)).size,48);
+ assert.equal(new Set(cards.map(x=>x.id)).size,96);
  for(const unit of a1EditorialDrafts){
   assert.deepEqual(unit.lexemes.map(x=>x.conceptId),
    a1VocabularyConcepts[unit.unitId]);
