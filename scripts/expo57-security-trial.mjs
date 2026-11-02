@@ -26,9 +26,14 @@ export function snapshot(lock,audit){
   throw Error('Invalid audit response');
  const installed=Object.fromEntries(monitored.map(name=>{
   const entry=lock.packages['node_modules/'+name];
-  if(!entry||!entry.version)throw Error('Missing monitored dependency '+name);
-  return [name,entry.version];
+  // Optional transitive packages can genuinely disappear after an upstream
+  // patch. That is a potentially GOOD result, not a malformed lockfile.
+  return [name,entry?.version??null];
  }));
+ for(const critical of ['expo','@expo/cli','@expo/config','@expo/config-plugins',
+  '@expo/fingerprint','@expo/metro-config','react-native']){
+  if(!installed[critical])throw Error('Missing essential SDK component '+critical);
+ }
  const roots=Object.entries(audit.vulnerabilities).filter(([,data])=>
   Array.isArray(data?.via)&&data.via.some(item=>item&&typeof item==='object'));
  const advisories=[...new Set(roots.flatMap(([,data])=>data.via
@@ -45,8 +50,8 @@ export function snapshot(lock,audit){
 export function compareSnapshots(before,after){
  for(const name of monitored){
   const a=before.installed[name],b=after.installed[name];
-  if(!a||!b)throw Error('Missing comparison dependency '+name);
-  versionNumbers(a);versionNumbers(b);
+  if(a!==null&&a!==undefined)versionNumbers(a);
+  if(b!==null&&b!==undefined)versionNumbers(b);
  }
  const allowedSdk=(pkg,major)=>versionNumbers(pkg)[0]===major;
  if(!allowedSdk(after.installed.expo,57)||!allowedSdk(after.installed['@expo/cli'],57)||
