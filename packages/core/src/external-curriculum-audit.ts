@@ -3,7 +3,8 @@ import {a1EditorialDrafts} from './course-content-a1-drafts.js';
 export interface ExternalCurriculumAudit {acceptedForReview:boolean;unitCount:number;duplicates:readonly string[];collisions:readonly string[];errors:readonly string[];readyForPublicRelease:false}
 const supported=new Set(['en-CA','fr-CA','es','pt-BR','de','it']);
 const skillsRequired=['listening','speaking','reading','writing','interaction','mediation'];
-const validId=(x:unknown):x is string=>typeof x==='string'&&/^[a-z0-9][a-z0-9-]{2,100}$/.test(x);
+// Historical source IDs include CEFR paths such as C1.01.fr-CA. IDs are data, never file paths.
+const validId=(x:unknown):x is string=>typeof x==='string'&&/^[a-z0-9][a-z0-9._:-]{2,100}$/i.test(x)&&!x.includes('..')&&!x.endsWith('.');
 export function auditExternalCurriculumCandidate(candidate:unknown):ExternalCurriculumAudit {
  const errors:string[]=[],duplicates:string[]=[],collisions:string[]=[];
  const doc=candidate&&typeof candidate==='object'&&!Array.isArray(candidate)?candidate as {units?:unknown;metadata?:unknown}:null;
@@ -15,8 +16,12 @@ export function auditExternalCurriculumCandidate(candidate:unknown):ExternalCurr
  if(new Set(declared).size>1)errors.push('Conflicting metadata target languages');
  const inferred=units.map(u=>u&&typeof u==='object'&&!Array.isArray(u)?(u as {targetLanguage?:unknown}).targetLanguage:undefined);
  const inferredUnique=new Set(inferred.filter(x=>typeof x==='string'));
+ // A source without a single target can contain all six authored languages.
+ // Every unit must then declare its target explicitly. Never guess a locale.
+ const allExplicit=units.length>0&&units.every(u=>u&&typeof u==='object'&&!Array.isArray(u)&&typeof (u as {targetLanguage?:unknown}).targetLanguage==='string'&&supported.has((u as {targetLanguage:string}).targetLanguage));
+ const mixedPack=declared.length===0&&inferredUnique.size>1&&allExplicit;
  const target=declared[0]??(inferredUnique.size===1?[...inferredUnique][0]:undefined);
- if(target===undefined||!supported.has(String(target)))errors.push('Missing or ambiguous target language');
+ if(!mixedPack&&(target===undefined||!supported.has(String(target))))errors.push('Missing or ambiguous target language');
  const known=new Set(a1EditorialDrafts.map(u=>u.targetLanguage+'/'+u.unitId));
  const seen=new Set<string>(),seenCanonical=new Set<string>();
  for(const item of units){
@@ -28,12 +33,12 @@ export function auditExternalCurriculumCandidate(candidate:unknown):ExternalCurr
   seen.add(sourceKey);
   if(!validId(u.unitId)){errors.push('Missing or invalid explicit canonical unit ID '+u.id);continue;}
   const locale=u.targetLanguage??target;
-  if(typeof locale!=='string'||!supported.has(locale)||locale!==target)errors.push('Unit target language mismatch '+u.id);
+  if(typeof locale!=='string'||!supported.has(locale)||(!mixedPack&&locale!==target))errors.push('Unit target language mismatch '+u.id);
   const canonicalKey=String(locale)+'/'+u.unitId;
 
   if(seenCanonical.has(canonicalKey))duplicates.push(canonicalKey);seenCanonical.add(canonicalKey);
   if(known.has(canonicalKey))collisions.push(canonicalKey);
-  if(u.level!=='A1'&&u.level!=='A2'&&u.level!=='B1'&&u.level!=='B2')errors.push('Invalid level '+u.id);
+  if(!['A1','A2','B1','B2','C1','C2'].includes(String(u.level)))errors.push('Invalid level '+u.id);
   if(!u.skills||typeof u.skills!=='object'||Array.isArray(u.skills)||skillsRequired.some(s=>!(s in (u.skills as object))))errors.push('Missing required skills '+u.id);
   if(!u.status||typeof u.status!=='object'||Array.isArray(u.status)||(u.status as {publishable?:unknown}).publishable!==false)errors.push('Candidate must explicitly prohibit publication '+u.id);
  }
