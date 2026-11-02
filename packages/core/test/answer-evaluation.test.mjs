@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {targetLanguages,learningPairs,lessonsFor,dialoguesFor,evaluateAnswer,answerKeyForExercise,answerKeyForDialogueTurn,answerFeedbackText,answerOutcomeCopy,answerFindingCopy,checkUtterance,recordCourseAttempt,newCourseProgress,matchesAnswerPattern,normalizedUtterance} from '../dist/index.js';
+import {targetLanguages,learningPairs,lessonsFor,dialoguesFor,evaluateAnswer,answerKeyForExercise,answerKeyForDialogueTurn,answerFeedbackText,answerOutcomeCopy,answerFindingCopy,checkUtterance,recordCourseAttempt,finishLesson,newCourseProgress,matchesAnswerPattern,normalizedUtterance} from '../dist/index.js';
 
 const typed={kind:'typed'},spoken={kind:'speech',confidence:'high'},unsure={kind:'speech',confidence:'low'};
 const exercise=(lang,topic,stage='recall')=>lessonsFor(lang).flatMap(l=>l.exercises).find(e=>e.id.startsWith(`${lang}-${topic}-${stage}`));
@@ -50,7 +50,15 @@ test('gendered and regional forms are valid answers in the micro-course',()=>{
   const ex=exercise(lang,topic);
   assert.equal(evaluateAnswer(answerKeyForExercise(ex,lang),answer,spoken).outcome,'correct');
   assert.equal(checkUtterance(ex,answer,lang,'high').kind,'match');
-  const p=recordCourseAttempt(newCourseProgress(lang),ex,{kind:'match',recognized:answer},'2026-10-23');
+  // Populate earlier lessons through their actual recall/checkpoint flow.
+  let unlocked=newCourseProgress(lang);
+  for(const preceding of lessonsFor(lang)){
+   if(preceding.exercises.some(item=>item.id===ex.id))break;
+   for(const item of preceding.exercises.filter(item=>item.type==='recall'||item.type==='checkpoint'))
+    unlocked=recordCourseAttempt(unlocked,item,{kind:'match',recognized:item.utterance},'2026-10-22');
+   unlocked=finishLesson(unlocked,preceding);
+  }
+  const p=recordCourseAttempt(unlocked,ex,{kind:'match',recognized:answer},'2026-10-23');
   assert.equal(p.correct[ex.id],1);
  }
  for(const lesson of lessonsFor('es'))assert.ok(lesson.exercises.every(e=>e.alternatives.length===2),'model examples unchanged');
