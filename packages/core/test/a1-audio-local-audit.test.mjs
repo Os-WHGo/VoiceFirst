@@ -8,9 +8,9 @@ const asset={id,targetLanguage,unitId,role,uri:'a1/audio.wav',sha256:'a'.repeat(
 const native={fileSizeBytes:async()=>128,sha256File:async()=> 'a'.repeat(64)};
 test('empty and partially verified audio inventories remain unavailable',async()=>{
  const empty=await auditA1LocalAudio([],native);
- assert.equal(empty.expected,48);assert.equal(empty.verified,0);assert.equal(empty.missing.length,48);assert.equal(empty.readyForEditorialPlayback,false);
+ assert.equal(empty.expected,96);assert.equal(empty.verified,0);assert.equal(empty.missing.length,96);assert.equal(empty.readyForEditorialPlayback,false);
  const partial=await auditA1LocalAudio([{asset,localUri:'file:///cache/a1.wav'}],native);
- assert.equal(partial.verified,1);assert.equal(partial.missing.length,47);assert.equal(partial.readyForEditorialPlayback,false);assert.equal(partial.readyForPublicRelease,false);
+ assert.equal(partial.verified,1);assert.equal(partial.missing.length,95);assert.equal(partial.readyForEditorialPlayback,false);assert.equal(partial.readyForPublicRelease,false);
 });
 test('duplicate, corrupted and missing audio cannot silently pass',async()=>{
  const entry={asset,localUri:'file:///cache/a1.wav'};
@@ -20,7 +20,7 @@ test('duplicate, corrupted and missing audio cannot silently pass',async()=>{
  assert.equal(bad.verified,0);assert.equal(bad.rejected[0].reason,'checksum-mismatch');
 });
 
-test('48 unique A1 local audio candidates can be inspected without granting public playback',async()=>{
+test('96 unique A1 local audio candidates can be inspected without granting public playback',async()=>{
  const entries=a1AudioExpectedIds.map((candidate,index)=>{
   const [targetLanguage,unitId,role]=candidate.split('/');
   return {
@@ -37,20 +37,20 @@ test('48 unique A1 local audio candidates can be inspected without granting publ
   sha256File:async uri=>files.get(uri)?.sha256??''
  };
  const audit=await auditA1LocalAudio(entries,simulatedVerifier);
- assert.equal(audit.expected,48);
- assert.equal(audit.verified,48);
+ assert.equal(audit.expected,96);
+ assert.equal(audit.verified,96);
  assert.equal(audit.missing.length,0);
  assert.deepEqual(audit.rejected,[]);
  assert.equal(audit.readyForEditorialPlayback,true);
  assert.equal(audit.readyForPublicRelease,false);
  const cards=a1ListeningAvailability(audit);
- assert.equal(cards.length,24);
+ assert.equal(cards.length,48);
  assert.ok(cards.every(card=>card.editorialPreviewAvailable&&card.publicPlaybackAvailable===false));
  // Mismatching one verified file cannot be silently treated as installed content.
  const badVerifier={...simulatedVerifier,sha256File:async uri=>
   uri===entries[0].localUri?'b'.repeat(64):simulatedVerifier.sha256File(uri)};
  const damaged=await auditA1LocalAudio(entries,badVerifier);
- assert.equal(damaged.verified,47);
+ assert.equal(damaged.verified,95);
  assert.equal(damaged.rejected.length,1);
  assert.equal(damaged.readyForEditorialPlayback,false);
  assert.ok(a1ListeningAvailability(damaged).every(card=>!card.editorialPreviewAvailable));
@@ -71,7 +71,7 @@ test('A1 inventory preflight blocks oversized, repeated-ID or reused-file batche
  const repeated=await auditA1LocalAudio([first,first],counting);
  assert.equal(repeated.rejected[0].reason,'unexpected-or-duplicate');
  assert.equal(nativeCalls,0);
- const oversized=await auditA1LocalAudio(Array.from({length:49},()=>first),counting);
+ const oversized=await auditA1LocalAudio(Array.from({length:97},()=>first),counting);
  assert.equal(oversized.rejected[0].reason,'invalid-or-oversized-inventory');
  assert.equal(nativeCalls,0);
  const malformed=await auditA1LocalAudio(null,counting);
