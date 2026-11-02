@@ -24,6 +24,8 @@ const safeUri=/^[a-z0-9][a-z0-9/_-]*\.(wav|mp3|m4a|ogg)$/i;
  */
 export function a1AccentMatchesTarget(target:TargetLanguage,accentTag:unknown):boolean {
  if(typeof accentTag!=='string')return false;
+ // The initial Portuguese course is Brazilian. Do not tag pt-PT as pt-BR.
+ if(target==='pt-BR')return accentTag==='pt-BR';
  const family=target.split('-')[0]!;
  return new RegExp('^'+family+'(?:-[A-Za-z0-9]{2,8})*
 export function auditA1AudioAssets(input:unknown):A1AudioGate {
