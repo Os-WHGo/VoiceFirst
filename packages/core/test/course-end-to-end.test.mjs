@@ -183,3 +183,20 @@ test('altered exercise stage cannot mint mastery even when the lesson is availab
   assert.strictEqual(finishLesson(progress,lesson),progress);
  }
 });
+
+test('malformed native outcome cannot create attempts or progress in any target language',()=>{
+ for(const language of locales){
+  const base=newCourseProgress(language);
+  const exercise=lessonsFor(language)[0].exercises.find(e=>e.type==='recall');
+  for(const event of [
+   null,{}, {kind:'forged',recognized:exercise.utterance},
+   {kind:'match'}, {kind:'match',recognized:42},
+   {kind:'retry'}, {kind:'retry',hint:null}
+  ]){
+   assert.strictEqual(recordCourseAttempt(base,exercise,event,'2026-11-01'),base,language+' malformed event');
+  }
+  assert.strictEqual(recordCourseAttempt(base,null,{kind:'retry',hint:'retry'},'2026-11-01'),base);
+  const valid=recordCourseAttempt(base,exercise,{kind:'match',recognized:exercise.utterance},'2026-11-01');
+  assert.equal(valid.correct[exercise.id],1,language+' valid event still works');
+ }
+});
