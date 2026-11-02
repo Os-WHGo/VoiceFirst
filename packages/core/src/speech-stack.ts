@@ -78,7 +78,8 @@ export interface SpeechStackPlan {
 function installedModelUsable(entry:SpeechModelEntry,device:DeviceProfile):boolean{
  return assessModelFit(entry,{...device,freeDiskBytes:Number.MAX_SAFE_INTEGER}).usable;
 }
-const exact=(list:readonly string[],locale:string)=>list.some(l=>l.toLowerCase()===locale.toLowerCase());
+const exact=(list:readonly string[],locale:string)=>typeof locale==='string'&&!!locale.trim()&&
+ Array.isArray(list)&&list.some(l=>typeof l==='string'&&l.toLowerCase()===locale.toLowerCase());
 export function planSpeechStack(input:{target:TargetLanguage;locale?:string;device:DeviceProfile;catalog:readonly SpeechModelEntry[];installedIds:readonly string[]}):SpeechStackPlan{
  if(!targetLanguages.includes(input.target))throw new Error('Unsupported target');
  const locale=input.locale??input.target;
