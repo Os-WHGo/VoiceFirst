@@ -151,3 +151,30 @@ test('foreground course CAS rejects invalid records, languages, and disk failure
  await assert.rejects(api.writeOfflineCourseCAS('it',null,good),/disk full/);
  assert.equal(h.values.size,0,'failed transaction must not create a partial journal');
 });
+
+test('foreground course rejects a stale writer for all six language journals',async()=>{
+ for(const target of core.targetLanguages){
+  const h=storageHarness(),api=h.courseApi;
+  const lesson=core.lessonsFor(target)[0];
+  const fresh=core.courseStateToJSON(core.newCourseProgress(target));
+  await api.writeOfflineCourseCAS(target,null,fresh);
+  const next=core.courseStateToJSON(core.recordCourseAttempt(core.newCourseProgress(target),
+   lesson.exercises[2],{kind:'match',recognized:lesson.exercises[2].alternatives[0]},day));
+  await api.writeOfflineCourseCAS(target,fresh,next);
+  await assert.rejects(api.writeOfflineCourseCAS(target,fresh,fresh),/COURSE_PROGRESS_CONFLICT/);
+  assert.equal(h.values.get(api.offlineCourseProgressKey(target)),next,target);
+ }
+});
+test('course screen never displays uncommitted completion after a CAS failure',()=>{
+ const screen=readFileSync(new URL('../../../mobile/OfflineCourse.tsx',import.meta.url),'utf8');
+ const cursor=screen.indexOf('Storage.setItem(cursorKey(target),raw)');
+ const guard=screen.lastIndexOf('if(haltedTargets.current.has(target))return;',cursor);
+ assert.ok(guard>=0&&guard<cursor,'cursor must stay untouched after conflict');
+ const failed=screen.indexOf('void writeQueue.current.catch(()=>{\n      haltedTargets.current.add(target);');
+ assert.ok(failed>=0,'a failed transaction freezes pending writes');
+ const restored=screen.indexOf('setProgress(restored?.kind',failed);
+ const paused=screen.indexOf('setActive(false)',restored);
+ assert.ok(restored>failed&&paused>restored,'visible progress rolls back before class pauses');
+ assert.match(screen,/COURSE_WRITES_HALTED/);
+ assert.match(screen,/No se pudo confirmar el progreso local/);
+});
