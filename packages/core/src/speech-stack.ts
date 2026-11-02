@@ -87,7 +87,7 @@ export function planSpeechStack(input:{target:TargetLanguage;locale?:string;devi
   .sort((a,b)=>Number(b.evidence.kind==='device-test')-Number(a.evidence.kind==='device-test')||a.peakRamMb-b.peakRamMb);
  const asrModel=installedFit('asr')[0];
  const asr:SpeechStackPlan['asr']=asrModel?{source:'installed-model',modelId:asrModel.pack.id,confidencePolicy:asrModel.calibratedConfidence?'use-reported-confidence':'confirm-every-answer',languageLock:asrModel.languageLock}
-  :exact(input.device.osOnDeviceAsrLocales,locale)?{source:'os-on-device',confidencePolicy:'use-reported-confidence',languageLock:true}
+  :exact(input.device.osOnDeviceAsrLocales,locale)?{source:'os-on-device',confidencePolicy:'confirm-every-answer',languageLock:true}
   :{source:'none',confidencePolicy:'confirm-every-answer',languageLock:false};
  const ttsModel=installedFit('tts')[0];
  const tts:SpeechStackPlan['tts']=ttsModel?{source:'installed-model',modelId:ttsModel.pack.id}:exact(input.device.osVoiceLocales,locale)?{source:'os-voice'}:{source:'recorded-audio-only'};
