@@ -3,18 +3,17 @@ on:
   pull_request:
     paths:
       - 'mobile/**'
-      - 'packages/core/**'
       - 'scripts/check-expo-config.mjs'
       - 'scripts/check-android-prebuild.mjs'
       - 'scripts/check-android-release-wiring.mjs'
       - 'scripts/inspect-android-release-signing.mjs'
-      - 'scripts/check-mobile-bundle.mjs'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/expo-native-readiness.yml'
   workflow_dispatch:
 permissions:
   contents: read
+# Core-only edits run core/TS/Metro checks in separate workflows without native builds.
 # Cancel only obsolete PR builds of this workflow. Manual runs use a unique run ID, so queued manual runs cannot replace each other. The PR number prevents cross-PR interference.
 concurrency:
   group: voicefirst-native-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -53,32 +52,21 @@ jobs:
         run: node scripts/check-android-release-wiring.mjs
       - name: Inspect release signing configuration without building
         run: node scripts/inspect-android-release-signing.mjs
-      - name: Compile Android Kotlin and assemble local Release for inspection only
+      - name: Compile Android debug and release Kotlin only (B0, no APK/AAB)
         run: |
           cd mobile/android
           chmod +x gradlew
-          ./gradlew :app:compileDebugKotlin :app:assembleRelease --no-daemon --max-workers=2 --stacktrace
-      - name: Inspect temporary release APK without uploading or distributing it
+          ./gradlew :app:compileDebugKotlin :app:compileReleaseKotlin --no-daemon --max-workers=2 --stacktrace
+      - name: Assert no Android installable was generated in this compile-only job
         shell: bash
         run: |
           set -euo pipefail
-          APK=mobile/android/app/build/outputs/apk/release/app-release.apk
-          test -s "$APK"
-          unzip -Z1 "$APK" > "$RUNNER_TEMP/voicefirst-apk-entries.txt"
-          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
-          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
-          test -n "$APKSIGNER" && test -n "$AAPT"
-          "$APKSIGNER" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/voicefirst-apk-signature.txt"
-          "$AAPT" dump badging "$APK" > "$RUNNER_TEMP/voicefirst-apk-badging.txt"
-          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > "$RUNNER_TEMP/voicefirst-apk-manifest.txt"
-          grep -Fq "android.permission.RECORD_AUDIO" "$RUNNER_TEMP/voicefirst-apk-manifest.txt"
-          node scripts/verify-android-release-artifact.mjs \
-            "$RUNNER_TEMP/voicefirst-apk-entries.txt" \
-            "$RUNNER_TEMP/voicefirst-apk-signature.txt" \
-            "$RUNNER_TEMP/voicefirst-apk-badging.txt" \
-            "$RUNNER_TEMP/voicefirst-apk-manifest.txt"
-          sha256sum "$APK" | sed 's|mobile/android/app/build/outputs/apk/release/||'
-          echo 'Inspection only: no APK artifact published, uploaded or physical device tested.'
+          if [[ -d mobile/android/app/build/outputs ]] && \
+             find mobile/android/app/build/outputs -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit | grep -q .; then
+            echo '::error::B0 native readiness must not produce an APK or AAB.'
+            exit 1
+          fi
+          echo 'Android Kotlin compilation only; packaging is reserved for an authorized B1 candidate.'
   ios-native-source:
     # Standard macOS runner in this public repository. No EAS, signing, IPA,
     # App Store upload, hardware microphone or paid Apple account.
@@ -158,15 +146,3 @@ jobs:
           print('Packaged simulator Info.plist checked: permissions, foreground audio and bundle identifier.')
           PY
           echo 'Simulator .app built and validated locally. Not an installable iPhone IPA or a hardware test.'
-  mobile-js-bundle:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm run build:core
-      - run: npm run check:mobile-bundle
