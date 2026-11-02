@@ -1,6 +1,7 @@
 export * from './types.js';
 export * from './first-release-languages.js';
 export * from './commands.js';
+export * from './voice-command-approval.js';
 export * from './session.js';
 export * from './review.js';
 export * from './missions.js';
