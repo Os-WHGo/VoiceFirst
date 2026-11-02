@@ -12,6 +12,30 @@ export interface A1AudioLocalAudit {
 }
 export async function auditA1LocalAudio(entries:readonly A1AudioLocalEntry[],native:NativeLocalFileVerifier):Promise<A1AudioLocalAudit>{
  const expected=new Set(a1AudioExpectedIds);
+ // Imported inventories are untrusted. Preflight before any native hashing so
+ // oversized or ambiguous batches cannot trigger unbounded filesystem work.
+ if(!Array.isArray(entries)||entries.length>expected.size)return {
+  expected:expected.size,verified:0,missing:[...expected],
+  rejected:[{id:'manifest',reason:'invalid-or-oversized-inventory'}],
+  readyForEditorialPlayback:false,readyForPublicRelease:false
+ };
+ const ids=new Set<string>(),uris=new Set<string>();
+ for(const entry of entries){
+  const id=entry?.asset?.id;
+  if(typeof id==='string'&&ids.has(id))return {
+   expected:expected.size,verified:0,missing:[...expected],
+   rejected:[{id,reason:'unexpected-or-duplicate'}],
+   readyForEditorialPlayback:false,readyForPublicRelease:false
+  };
+  if(typeof id==='string')ids.add(id);
+  const uri=entry?.localUri;
+  if(typeof uri==='string'&&uris.has(uri))return {
+   expected:expected.size,verified:0,missing:[...expected],
+   rejected:[{id:typeof id==='string'?id:'unknown',reason:'duplicate-local-uri'}],
+   readyForEditorialPlayback:false,readyForPublicRelease:false
+  };
+  if(typeof uri==='string')uris.add(uri);
+ }
  const seen=new Set<string>(),verified=new Set<string>();
  const rejected:{id:string;reason:string}[]=[];
  for(const entry of entries){
