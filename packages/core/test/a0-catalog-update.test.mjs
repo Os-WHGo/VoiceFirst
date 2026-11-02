@@ -37,7 +37,9 @@ test('A0 update rejects changed keys, labels, removed options, and missing old b
   [item=>{item.activity.options[0].text='Bye';},'CHANGED_ANSWER_OPTIONS'],
   [item=>{item.activity.options[1].text='Hello';},'CHANGED_ANSWER_OPTIONS'],
   [item=>{item.activity.options[1].id='later';},'CHANGED_ANSWER_OPTIONS'],
-  [item=>{item.concept_id='a0.other';},'CHANGED_LESSON_CONCEPT']
+  [item=>{item.concept_id='a0.other';},'CHANGED_LESSON_CONCEPT'],
+  [item=>{item.activity.context_by_known_language.es='You are at a bus stop';},'CHANGED_LESSON_CONTEXT'],
+  [item=>{item.activity.prompt_by_known_language.it='Scegli un colore';},'CHANGED_LESSON_CONTEXT']
  ];
  for(const [change,code] of cases){
   const next=make();change(next);
