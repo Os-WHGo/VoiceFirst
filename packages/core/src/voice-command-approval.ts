@@ -51,3 +51,17 @@ export function voiceCommandProposalPrompt(known:TargetLanguage,command:VoiceCom
  const name=readableNames[known][command.type]??command.type.toLocaleLowerCase();
  return copy.proposed.replace('{command}',name).replace('{approve}',copy.approve).replace('{cancel}',copy.cancel);
 }
+
+/** A cancelled navigation action is neutral: reopen a safe command turn, not
+ * a choice or learning answer, and do not award progress. */
+export function voiceCommandRetryPrompt(known:TargetLanguage):string {
+ const copy:Readonly<Record<TargetLanguage,string>>={
+  es:'Comando cancelado. Puedes decir siguiente ejercicio, repite, más lento o pausa.',
+  'en-CA':'Command cancelled. You can say next exercise, repeat that, speak slower or pause.',
+  'fr-CA':'Commande annulée. Vous pouvez dire exercice suivant, répétez, plus lentement ou pause.',
+  'pt-BR':'Comando cancelado. Você pode dizer próximo exercício, repita, mais devagar ou pausa.',
+  de:'Befehl abgebrochen. Du kannst nächste Übung, wiederholen, langsamer oder Pause sagen.',
+  it:'Comando annullato. Puoi dire prossimo esercizio, ripeti, più lentamente o pausa.'
+ };
+ return copy[known];
+}
