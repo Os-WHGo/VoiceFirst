@@ -1,0 +1,30 @@
+name: Expo JavaScript bundle integrity
+on:
+  pull_request:
+    paths:
+      - 'packages/core/**'
+      - 'mobile/**'
+      - 'scripts/check-mobile-bundle.mjs'
+      - 'scripts/inspect-mobile-bundle-sources.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/expo-js-bundle.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: voicefirst-js-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  mobile-js-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build:core
+      - run: npm run check:mobile-bundle
