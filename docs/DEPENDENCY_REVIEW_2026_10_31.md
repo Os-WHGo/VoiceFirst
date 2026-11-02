@@ -36,3 +36,46 @@ forzar overrides mayores (descartado sin pruebas de compatibilidad). No se usó
 La suite funcional y TypeScript pasan con el parche. La auditoría de seguridad
 sigue **FAIL**, separada de esos resultados. Repetir CI remoto tras el push;
 los resultados locales no sustituyen Actions ni aceptación en dispositivos.
+
+## Actualización MU V4 · 1 noviembre 2026 (CI 2 noviembre UTC)
+
+Evidencia CI en SHA `f4a22d1eaa734581d4183a459ce0663b97386748`:
+`https://github.com/Os-WHGo/VoiceFirst/actions/runs/41376407027` — **FAIL**.
+La guardia describe 15 **paquetes afectados**, no 15 avisos únicos:
+2 high, 11 moderate, 2 low. Fuentes de advisory: `deepmerge`,
+`glob`, `minimatch`, `uuid`, `zod`. La regresión frente
+al baseline no está aceptada y no se rebajó ninguna severidad ni se
+amplió la lista permitida. La compilación anterior/TypeScript y los
+bundles Metro verifican propiedades distintas: no cancelan esta deuda.
+
+Investigación upstream al 01-11-2026:
+- `glob` GHSA-3g3m-2fjr-6pw4 se corrige en 14.0.2, mientras que
+  herramientas Expo aún fijan ^13 en SDK 58 según issue abierto
+  https://github.com/expo/expo/issues/52735 (es una incidencia de SDK
+  58; extrapolar compatibilidad exacta a SDK 57 sería incorrecto).
+- `minimatch` GHSA-g3hv-75wg-m249 exige 11.0.1 y rutas Expo
+  incluyen líneas ^10; forzar el salto puede romper consumidores de
+  `makeRe`, tal como advierte el mismo issue de Expo.
+- `zod` GHSA-mrhx-c7xc-m3w5 exige 4.6.6; NO hay
+  parche compatible 3.x. Requiere migración validada del proveedor;
+  un override 4.x sin comprobar APIs puede romper CLI/configuración.
+- `deepmerge` y `uuid` también siguen observados; no se ha demostrado
+  una sustitución transitiva y compatible con Expo 57 ni un parche
+  aprobado de la cadena completa.
+
+Opciones examinadas: (A) actualizar parches compatibles aislados
+(ya se hizo para node-forge en el bloque previo);
+(B) sustituir/probar versiones mayores de Expo y sus dependencias en
+rama experimental con lockfile+Metro+TypeScript+prebuild+CI nativa
+antes de integrar, sin resultado validado por ahora;
+(C) imponer overrides mayores o ejecutar npm audit fix --force para
+obtener verde (DESCARTADO: integridad de compilación no demostrada);
+(D) conservar bloqueo de auditoría (aplicado, hasta remediación compatible).
+No se afirma que la falta de fuentes detectadas en el bundle JS implique
+ausencia de riesgo en el conjunto nativo/proceso de build.
+
+**Estado:** auditoría abierta, sin parche nuevo a dependencias en esta
+revisión. PR #1 conserva el control rojo intencional; ninguna beta se
+considera aprobada por este documento. Próximo ensayo: comprobar rangos
+de cada dependencia transitiva de Expo 57 y evaluar una actualización
+compatible en rama reversible; documentar resultado positivo y negativo.
