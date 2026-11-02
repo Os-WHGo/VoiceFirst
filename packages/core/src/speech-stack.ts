@@ -97,7 +97,7 @@ export interface PackFile {path:string;packId:string;kind:'download'|'staging'|'
 /** Temporary files that are safe to delete: downloads and staging areas of packs no install is still working on.
  * Only paths inside `root` are ever returned; installed files are never returned. */
 export function temporaryFilesToDelete(files:readonly PackFile[],journal:Readonly<Record<string,PackInstallState|undefined>>,root:string):string[]{
- if(!root.endsWith('/')||root.length<2)throw new Error('Root must be an absolute directory ending in /');
+ if(!root.endsWith('/')||!((root.startsWith('/')&&root.length>1)||(root.startsWith('file:///')&&root.length>8))||root.split('/').some(p=>p==='.'||p==='..'))throw new Error('Root must be an absolute local directory ending in /');
  return files.filter(f=>f.kind!=='installed'&&f.path.startsWith(root)&&!f.path.includes('/../')&&!f.path.endsWith('/..'))
   .filter(f=>{const phase=journal[f.packId]?.phase;return phase!=='staging'&&phase!=='verified';}).map(f=>f.path);
 }
