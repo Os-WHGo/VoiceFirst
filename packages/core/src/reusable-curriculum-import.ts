@@ -31,7 +31,7 @@ export function inspectReusableCurriculumImport(candidate:unknown):ReusableImpor
    !Array.isArray(c.prerequisites)||c.prerequisites.some((p:unknown)=>typeof p!=='string'||!p.trim()||p===c.id)||
    new Set(c.prerequisites).size!==c.prerequisites.length){errors.push('Invalid shared concept');continue;}
   if(seenConcepts.has(c.id))errors.push('Duplicate concept '+c.id);
-  else verifiedConcepts.set(c.id,{level:c.level,prerequisites:c.prerequisites});
+  else verifiedConcepts.set(c.id,{level:String(c.level),prerequisites:c.prerequisites as string[]});
   seenConcepts.add(c.id);
  }
  // Prerequisites must resolve within this self-contained offline candidate pack.
