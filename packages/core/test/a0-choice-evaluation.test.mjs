@@ -45,3 +45,13 @@ test('French and Italian farewell synonyms are accepted without incorrect A0 evi
   assert.equal(evaluateA0Choice(lesson,{lessonId:lesson.lessonId,selectedOptionId:'3',attemptNumber:1}).feedbackCode,'review_context');
  }
 });
+
+test('A0 mobile preview shows regional feedback before any persistence request',()=>{
+ const code=readFileSync(new URL('../../../mobile/A0CandidatePreview.tsx',import.meta.url),'utf8');
+ const evaluate=code.indexOf('const outcome=evaluateA0Choice(');
+ const neutral=code.indexOf("outcome?.feedbackCode==='also_valid'",evaluate);
+ const localized=code.indexOf('setFeedback(alsoValidNote[nativeLanguage])',neutral);
+ const submitted=code.indexOf('await session.submit(',neutral);
+ assert.ok(evaluate>=0&&neutral>evaluate&&localized>neutral&&submitted>localized);
+ assert.match(code.slice(neutral,submitted),/return;/,'regional synonym must return before writing');
+});
