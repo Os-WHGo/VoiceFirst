@@ -27,7 +27,8 @@ const expected=advancedListeningStoryboards.flatMap(scene=>
 const expectedById=new Map(expected.map(item=>[item.audioId,item]));
 const safeFileUri=/^file:\/\/\/[A-Za-z0-9_./-]+$/;
 const hexDigest=/^[0-9a-f]{64}$/;
-const maxClipBytes=32*1024*1024;
+/** Match the existing bounded sha256Bytes verifier used by the Expo file adapter. */
+const maxClipBytes=8*1024*1024;
 const maxTotalBytes=128*1024*1024;
 type Rejection={id:string;reason:string};
 const isObject=(raw:unknown):raw is Record<string,unknown> =>
