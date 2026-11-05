@@ -58,6 +58,10 @@ export class AdvancedEditorialClipPlayer {
     if(step?.kind!=='script-turn'||!Array.isArray(candidates)||
        candidates.length!==6){settle({status:'unavailable'});return;}
     try{
+     await this.port.prepareForeground();
+     if(!this.owner.isCurrent(token))return;
+     // Check actual bytes AFTER async foreground configuration and just
+     // before allocating a local playback handle, reducing the TOCTOU gap.
      const report=await auditAdvancedSceneLocalAudio(candidates,this.verifier);
      if(!this.owner.isCurrent(token))return;
      const allowed=advancedEditorialAudioRequest(state,report);
@@ -66,8 +70,6 @@ export class AdvancedEditorialClipPlayer {
      }
      const row=(candidates as AdvancedAudioCandidate[]).find(x=>x.audioId===step.audioId);
      if(!row){settle({status:'unavailable'});return;}
-     await this.port.prepareForeground();
-     if(!this.owner.isCurrent(token))return;
      // Synchronous creation and start, guarded by the previously claimed token.
      player=this.port.createLocalClip(row.localUri,effectivePlaybackRate(rate));
      if(!this.owner.isCurrent(token)){
