@@ -16,6 +16,7 @@ export * from './course-content-a1-drafts.js';
 export * from './a2-editorial-contract.js';
 export * from './b1-editorial-contract.js';
 export * from './b2-editorial-contract.js';
+export * from './first-release-curriculum-coverage.js';
 
 export * from './guided-dialogues.js';
 export * from './free-resources.js';
