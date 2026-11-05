@@ -7,7 +7,7 @@ export async function loadReviewAssets(sceneId:string):Promise<ReviewAssets>{
  const scene=advancedListeningStoryboards.find(s=>s.sceneId===sceneId);
  if(!scene)return{kind:'rejected',reason:'Unknown scene',verified:false};
  try{
-  const file=new File(Paths.document,'voicefirst-advanced-review',...sceneId.split('/'),'manifest.json');
+  const file=new File(Paths.document,'voicefirst-advanced-review',scene.targetLanguage,scene.level.toLowerCase(),scene.unitId,'manifest.json');
   if(!file.exists)return{kind:'missing',reason:'No local recordings installed',verified:false};
   if(file.size>16384||file.size<=0)return{kind:'rejected',reason:'Invalid manifest size',verified:false};
   const raw=await file.text();
