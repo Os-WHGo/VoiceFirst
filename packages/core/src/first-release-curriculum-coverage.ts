@@ -8,6 +8,7 @@ import {a1EditorialDrafts} from './course-content-a1-drafts.js';
 import {a2EditorialDrafts} from './a2-editorial-contract.js';
 import {b1EditorialDrafts} from './b1-editorial-contract.js';
 import {b2EditorialDrafts} from './b2-editorial-contract.js';
+import {advancedEditorialDrafts} from './advanced-editorial-contract.js';
 type FirstTarget=(typeof firstReleaseLanguages)[number];
 type Level=(typeof officialCefrBands)[number];
 export interface FirstReleaseEditorialCell{
@@ -16,7 +17,7 @@ export interface FirstReleaseEditorialCell{
  verifiedAudioTurns:0;publicAvailable:false;
 }
 const originals:readonly ProductionUnit[]=[
- ...a1EditorialDrafts,...a2EditorialDrafts,...b1EditorialDrafts,...b2EditorialDrafts
+ ...a1EditorialDrafts,...a2EditorialDrafts,...b1EditorialDrafts,...b2EditorialDrafts,...advancedEditorialDrafts
 ];
 /** Even a structurally valid report is NOT a licence to publish or claim B2/C2 mastery. */
 export function auditFirstReleaseEditorialCoverage(input:unknown=originals){
