@@ -145,7 +145,7 @@ export function auditAdvancedEditorialDrafts(input:unknown=advancedEditorialDraf
     errors.push('INCOMPLETE_ADVANCED_PRAGMATICS '+id);
   if(!Array.isArray(row.activities)||row.activities.length!==6||
     !courseSkills.every(skill=>row.activities?.filter(a=>
-     a.skill===skill&&typeof a.prompt==='string'&&a.prompt.length>=35).length===1))
+     a!==null&&typeof a==='object'&&a.skill===skill&&typeof a.prompt==='string'&&a.prompt.length>=35).length===1))
     errors.push('INCOMPLETE_ADVANCED_SKILLS '+id);
   if(Array.isArray(row.dialogue)&&row.dialogue.length===2){
    const key=String(row.targetLanguage)+'/'+row.dialogue.join('|');
