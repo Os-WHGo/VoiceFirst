@@ -82,6 +82,8 @@ test('malformed, repeated, oversized or remote audio manifests fail before nativ
   [...rows,{...rows[0]}],
   [{...rows[0],localUri:'https://example.com/clip.wav'}],
   [{...rows[0],localUri:'file:///voicefirst/../clip.wav'}],
+  [{...rows[0],localUri:'file:////voicefirst/clip.wav'}],
+  [{...rows[0],localUri:'file:///voicefirst//clip.wav'}],
   [{...rows[0],localUri:'file:///voicefirst/%2e%2e/clip.wav'}],
   [{...rows[0],localUri:'file:///voicefirst/audio.wav?token=x'}],
   [{...rows[0],bytes:40*1024*1024}],
