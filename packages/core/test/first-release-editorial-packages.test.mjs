@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
  firstReleaseEditorialPackages,auditFirstReleaseProductionPackages,
  editorialPackagePreview,validateLessonPackage,lessonPackageDigest,
+ expandedFirstReleasePilots,expandedPilotExpectedAudioIds,auditExpandedFirstReleasePilots,
  firstReleaseLanguages,officialCefrBands,curriculumUnitBlueprint,
  lessonsFor,firstPublicReleaseReadiness
 } from '../dist/index.js';
@@ -11,7 +12,7 @@ test('144 original first-release drafts map to three valid 48-unit offline edito
  const report=auditFirstReleaseProductionPackages();
  assert.deepEqual(report,{
   structurallyValid:true,errors:[],packages:3,
-  candidateLessons:144,draftActivities:1008,
+  candidateLessons:144,draftActivities:1071,
   editoriallyApprovedLessons:0,verifiedVoiceClips:0,
   publiclyAvailableLessons:0,fullCoursesReady:0
  });
@@ -33,7 +34,8 @@ test('144 original first-release drafts map to three valid 48-unit offline edito
     const view=editorialPackagePreview(target,level,unit);
     assert.ok(view);
     assert.equal(view.status,'editorial-only');
-    assert.equal(view.lesson.activities.length,7);
+    assert.equal(view.lesson.activities.length,
+     expandedFirstReleasePilots.some(x=>x.targetLanguage===target&&x.level===level&&x.unitId===unit)?14:7);
     assert.equal(view.canAssess,false);
     assert.equal(view.canAwardProgress,false);
     assert.equal(view.hasApprovedAudio,false);
@@ -101,4 +103,35 @@ test('production audit rejects hostile or incomplete package inventories without
   assert.doesNotThrow(()=>auditFirstReleaseProductionPackages(bad));
   assert.equal(auditFirstReleaseProductionPackages(bad).structurallyValid,false);
  }
+});
+
+test('nine substantive A2-B2 expansions add 54 original turns, 27 grounded checks and 63 package activities',()=>{
+ const audit=auditExpandedFirstReleasePilots();
+ assert.deepEqual(audit,{
+  valid:true,errors:[],scenes:9,dialogueTurns:54,
+  comprehensionChecks:27,verifiedAudio:0,availableToLearners:false
+ });
+ assert.equal(expandedPilotExpectedAudioIds.length,54);
+ assert.equal(new Set(expandedPilotExpectedAudioIds).size,54);
+ for(const scene of expandedFirstReleasePilots){
+  const view=editorialPackagePreview(scene.targetLanguage,scene.level,scene.unitId);
+  assert.ok(view);
+  assert.equal(view.lesson.activities.filter(x=>x.kind==='listen').length,6);
+  assert.equal(view.lesson.activities.filter(x=>x.kind==='choice').length,4);
+  assert.equal(view.lesson.audioStatus,'audio-missing');
+  assert.equal(view.publicAvailable,false);
+  for(const check of scene.checks){
+   const i=Number(check.afterTurnId.split('-')[1])-1;
+   assert.ok(scene.turns[i].text.includes(check.verbatimEvidence));
+   assert.ok(view.lesson.activities.some(a=>a.kind==='choice'&&
+    a.options.some(opt=>opt.text===check.verbatimEvidence)));
+  }
+ }
+ const falsified=expandedFirstReleasePilots.map((x,i)=>i?x:
+  {...x,publicAvailable:true,canScore:true});
+ assert.equal(auditExpandedFirstReleasePilots(falsified).valid,false);
+ const ungrounded=expandedFirstReleasePilots.map((x,i)=>i?x:{
+  ...x,checks:x.checks.map((v,j)=>j?v:{...v,verbatimEvidence:'invented phrase not spoken'})
+ });
+ assert.equal(auditExpandedFirstReleasePilots(ungrounded).valid,false);
 });
