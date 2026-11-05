@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - name: Install pinned packages without third-party scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject missing or incompatible installed dependency edges
+        run: npm ls --all
       - name: Read exact original npm audit baseline
         run: node scripts/expo57-security-trial.mjs before
       - name: Try npm-supported fixes without allowing forced major upgrades
@@ -54,6 +56,8 @@ jobs:
         run: node scripts/expo57-lock-delta.mjs
       - name: Reinstall proposed lockfile in disposable runner
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject missing or incompatible installed dependency edges
+        run: npm ls --all
       - name: Core Node tests under trial dependency tree
         run: npm run check
       - name: Mobile TypeScript under trial dependency tree

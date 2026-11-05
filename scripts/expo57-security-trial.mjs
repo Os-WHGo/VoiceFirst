@@ -9,6 +9,7 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {join} from 'node:path';
+import {readAuditResult} from './npm-security-hard-gate.mjs';
 
 export const monitored=['expo','@expo/cli','@expo/config','@expo/config-plugins',
  '@expo/fingerprint','@expo/metro-config','react-native','zod','glob',
@@ -24,6 +25,12 @@ export function snapshot(lock,audit){
   throw Error('Expected npm lockfile v3');
  if(!audit?.metadata?.vulnerabilities||!audit.vulnerabilities)
   throw Error('Invalid audit response');
+ // Preserve every nested copy: a fixed hoisted version does not clear an advisory.
+ const instances=Object.fromEntries(monitored.map(name=>[name,
+  Object.entries(lock.packages).filter(([path])=>
+   path==='node_modules/'+name||path.endsWith('/node_modules/'+name))
+   .map(([path,entry])=>({path,version:entry.version}))
+   .sort((a,b)=>a.path.localeCompare(b.path))]));
  const installed=Object.fromEntries(monitored.map(name=>{
   const entry=lock.packages['node_modules/'+name];
   // Optional transitive packages can genuinely disappear after an upstream
@@ -44,7 +51,7 @@ export function snapshot(lock,audit){
  for(const severity of ['critical','high','moderate','low','total']){
   if(!Number.isInteger(counts[severity])||counts[severity]<0)throw Error('Invalid severity count '+severity);
  }
- return {installed,counts:Object.fromEntries(['critical','high','moderate','low','total']
+ return {installed,instances,counts:Object.fromEntries(['critical','high','moderate','low','total']
   .map(key=>[key,counts[key]])),advisories,roots:roots.map(([name])=>name).sort()};
 }
 export function compareSnapshots(before,after){
@@ -61,6 +68,30 @@ export function compareSnapshots(before,after){
     !allowedSdk(after.installed['react-native'],0)||
     versionNumbers(after.installed['react-native'])[1]!==86)
   throw Error('Trial escaped supported Expo 57 / React Native 0.86 architecture');
+ // A fixed hoisted SDK package must not hide an incompatible nested copy.
+ // These are patch trials, so prereleases, SDK-family migrations and rollback
+ // candidates require separate review rather than an apparently green trial.
+ const families={expo:[57],'@expo/cli':[57],'@expo/config':[57],
+  '@expo/config-plugins':[57],'@expo/metro-config':[57],
+  '@expo/fingerprint':[0,20],'react-native':[0,86]};
+ for(const [name,family] of Object.entries(families)){
+  const copies=after.instances?.[name];
+  if(!Array.isArray(copies)||!copies.length)throw Error('Missing SDK instance inventory '+name);
+  for(const copy of copies){
+   const version=copy.version;
+   if(typeof version!=='string'||!/^\d+\.\d+\.\d+$/.test(version))
+    throw Error('Trial requires stable SDK versions: '+name+' at '+copy.path);
+   const numbers=versionNumbers(version);
+   if(family.some((number,index)=>numbers[index]!==number))
+    throw Error('Trial escaped supported SDK family: '+name+' at '+copy.path);
+   const previous=before.instances?.[name]?.find(item=>item.path===copy.path)?.version
+    ??before.installed[name];
+   const old=versionNumbers(previous);
+   const firstDifference=numbers.findIndex((number,index)=>number!==old[index]);
+   if(firstDifference>=0&&numbers[firstDifference]<old[firstDifference])
+    throw Error('Trial downgraded SDK component: '+name+' at '+copy.path);
+  }
+ }
  const changed=monitored.filter(name=>before.installed[name]!==after.installed[name])
   .map(name=>({package:name,before:before.installed[name],after:after.installed[name]}));
  const resolved=before.advisories.filter(url=>!after.advisories.includes(url));
@@ -78,10 +109,7 @@ export function compareSnapshots(before,after){
 function auditNow(){
  const run=spawnSync('npm',['audit','--json','--package-lock-only'],
   {encoding:'utf8',timeout:120000,maxBuffer:12*1024*1024});
- if(run.error)throw run.error;
- // npm audit returns status 1 for findings; that is expected here.
- if(run.status!==0&&run.status!==1)throw Error('npm audit unavailable '+(run.stderr||'').slice(-400));
- try{return JSON.parse(run.stdout);}catch{throw Error('npm audit did not provide JSON');}
+ return readAuditResult(run);
 }
 function currentSnapshot(){
  const lock=JSON.parse(readFileSync(new URL('../package-lock.json',import.meta.url),'utf8'));

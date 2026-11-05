@@ -77,3 +77,54 @@ test('trial accepts only complete semantic package versions',()=>{
  assert.throws(()=>versionNumbers('latest'),/Invalid package/);
  assert.throws(()=>versionNumbers('57'),/Invalid package/);
 });
+
+test('snapshot retains vulnerable nested copies beside a fixed hoisted package',()=>{
+ const nested=lock({...installed,glob:'14.0.3'});
+ const path='node_modules/@expo/fingerprint/node_modules/glob';
+ nested.packages[path]={version:'13.0.6'};
+ const result=snapshot(nested,audit());
+ assert.equal(result.installed.glob,'14.0.3');
+ assert.deepEqual(result.instances.glob,[
+  {path,version:'13.0.6'},
+  {path:'node_modules/glob',version:'14.0.3'}
+ ]);
+ assert.equal(result.advisories.includes('https://github.com/advisories/GHSA-glob'),true);
+ const removed=lock({...installed,glob:'14.0.3'});
+ delete removed.packages['node_modules/zod'];
+ removed.packages['node_modules/@expo/cli/node_modules/zod']={version:'3.25.76'};
+ assert.equal(snapshot(removed,audit()).instances.zod.length,1);
+});
+
+test('trial rejects prerelease, downgrade and incompatible nested SDK even with fewer advisories',()=>{
+ const before=snapshot(lock(),audit());
+ const improved=audit({critical:0,high:0,moderate:0,low:0,total:0},[]);
+ for(const [name,version,message] of [
+  ['expo','57.0.29',/downgraded/],
+  ['expo','57.0.32-canary-20261105',/stable SDK/],
+  ['@expo/fingerprint','0.21.0',/escaped supported/],
+  ['react-native','0.86.0-rc.1',/stable SDK/]
+ ]){
+  const candidate=lock({...installed,[name]:version});
+  assert.throws(()=>compareSnapshots(before,snapshot(candidate,improved)),message);
+ }
+ for(const [name,version] of [['@expo/cli','58.0.0'],['react-native','0.85.0']]){
+  const candidate=lock();
+  candidate.packages['node_modules/parent/node_modules/'+name]={version};
+  assert.throws(()=>compareSnapshots(before,snapshot(candidate,improved)),/escaped supported/);
+ }
+ const missing=snapshot(lock(),improved);delete missing.instances;
+ assert.throws(()=>compareSnapshots(before,missing),/Missing SDK instance inventory/);
+});
+
+test('trial reports security improvement while accepting stable coordinated SDK patches',()=>{
+ const before=snapshot(lock(),audit());
+ const candidate=lock({...installed,expo:'57.0.32','@expo/cli':'57.0.33',
+  '@expo/fingerprint':'0.20.15','react-native':'0.86.3',glob:'14.0.3'});
+ candidate.packages['node_modules/@expo/fingerprint/node_modules/glob']={version:'13.0.6'};
+ const out=compareSnapshots(before,snapshot(candidate,
+  audit({critical:0,high:0,moderate:4,low:0,total:4},['glob'])));
+ assert.equal(out.improved,true);
+ assert.equal(out.regression,false);
+ assert.equal(out.clean,false);
+ assert.deepEqual(out.remaining,['https://github.com/advisories/GHSA-glob']);
+});
