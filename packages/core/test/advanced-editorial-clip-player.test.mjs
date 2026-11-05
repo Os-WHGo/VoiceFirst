@@ -25,3 +25,18 @@ test('verified six-file local review completes without storing progress',async()
  assert.deepEqual(await task,{status:'completed',audioId:clips[0].audioId});
  assert.equal(state.recordedProgress,false);
 });
+
+test('rejected hash, oversized assets and malformed IDs cannot play',async()=>{
+ let starts=0;
+ const player=new AdvancedEditorialClipPlayer(
+  {fileSizeBytes:async uri=>clips.find(x=>x.localUri===uri)?.bytes??0,sha256File:async()=>('a'.repeat(64))},
+  {prepareForeground:async()=>{},createLocalClip:()=>{starts++;return{start(){},stop(){}};}}
+ );
+ const corrupt=clips.map((c,i)=>i?c:{...c,sha256:'f'.repeat(64)});
+ const oversized=clips.map((c,i)=>i?c:{...c,bytes:9*1024*1024});
+ const duplicated=[clips[0],clips[0],...clips.slice(2)];
+ for(const input of [corrupt,oversized,duplicated]){
+  assert.deepEqual(await player.play(state,input),{status:'unavailable'});
+ }
+ assert.equal(starts,0);
+});
