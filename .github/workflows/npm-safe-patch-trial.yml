@@ -1,0 +1,68 @@
+name: NPM security safe-fix experiment (no release or lockfile promotion)
+# Opt-in by changing this workflow in a PR. It is NON-PROMOTING and cannot
+# substitute for the independent zero-advisory security merge gate.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/npm-safe-patch-trial.yml'
+      - 'scripts/npm-security-hard-gate.mjs'
+      - 'packages/core/test/npm-security-hard-gate.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: voicefirst-npm-safe-trial-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: false
+jobs:
+  safe-audit-fix-trial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_NO_GIT_STATUS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned packages without third-party scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Read exact original npm audit baseline
+        run: node scripts/expo57-security-trial.mjs before
+      - name: Try npm-supported fixes without allowing forced major upgrades
+        run: |
+          set +e
+          npm audit fix --package-lock-only --ignore-scripts --no-fund
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; then
+            echo "npm audit fix failed operationally with status $status"
+            exit "$status"
+          fi
+          echo "NPM safe-fix trial exit code: $status (1 can mean unresolved findings)"
+      - name: Reject manifest changes
+        run: |
+          git diff --exit-code -- package.json mobile/package.json packages/core/package.json
+          git diff --stat -- package-lock.json
+      - name: Compare snapshots, reject new advisory and preserve Expo 57 architecture
+        run: node scripts/expo57-security-trial.mjs after
+      - name: Record deterministic patch candidate, do not commit
+        run: node scripts/expo57-lock-delta.mjs
+      - name: Reinstall proposed lockfile in disposable runner
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Core Node tests under trial dependency tree
+        run: npm run check
+      - name: Mobile TypeScript under trial dependency tree
+        run: npm run check:mobile
+      - name: Expo config and privacy checks under trial dependency tree
+        run: npm run check:expo-config
+      - name: Metro JavaScript bundle under trial dependency tree
+        run: npm run check:mobile-bundle
+      - name: Confirm no code or manifest was promoted
+        run: |
+          test -z "$(git status --porcelain -- package.json mobile/package.json packages/core/package.json)"
+          echo 'Runner-local safe-fix experiment only; unresolved npm audit findings still block merge.'
