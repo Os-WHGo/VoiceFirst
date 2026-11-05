@@ -9,6 +9,7 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {join} from 'node:path';
+import {readAuditResult} from './npm-security-hard-gate.mjs';
 
 export const monitored=['expo','@expo/cli','@expo/config','@expo/config-plugins',
  '@expo/fingerprint','@expo/metro-config','react-native','zod','glob',
@@ -108,10 +109,7 @@ export function compareSnapshots(before,after){
 function auditNow(){
  const run=spawnSync('npm',['audit','--json','--package-lock-only'],
   {encoding:'utf8',timeout:120000,maxBuffer:12*1024*1024});
- if(run.error)throw run.error;
- // npm audit returns status 1 for findings; that is expected here.
- if(run.status!==0&&run.status!==1)throw Error('npm audit unavailable '+(run.stderr||'').slice(-400));
- try{return JSON.parse(run.stdout);}catch{throw Error('npm audit did not provide JSON');}
+ return readAuditResult(run);
 }
 function currentSnapshot(){
  const lock=JSON.parse(readFileSync(new URL('../package-lock.json',import.meta.url),'utf8'));

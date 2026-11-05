@@ -18,6 +18,7 @@ export function requiresNativeCompile(files){
   f==='package.json'||f==='package-lock.json'||
   f==='.github/workflows/expo-native-readiness.yml'||
   f==='scripts/native-ci-change-gate.mjs'||
+  f==='scripts/check-ios-startup-screen.swift'||
   /^scripts\/(?:check-android|check-ios|check-expo|inspect-android|verify-android)/.test(f)
  );
 }
