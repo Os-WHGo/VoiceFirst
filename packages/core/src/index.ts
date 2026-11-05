@@ -17,6 +17,7 @@ export * from './a2-editorial-contract.js';
 export * from './b1-editorial-contract.js';
 export * from './b2-editorial-contract.js';
 export * from './advanced-editorial-contract.js';
+export * from './advanced-listening-storyboards.js';
 export * from './first-release-curriculum-coverage.js';
 
 export * from './guided-dialogues.js';
