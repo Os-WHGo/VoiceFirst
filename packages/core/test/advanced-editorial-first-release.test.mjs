@@ -90,6 +90,8 @@ test('C1/C2 fail closed on missing, duplicated, false approval and weak evidence
  assert.ok(auditAdvancedEditorialDrafts([...advancedEditorialDrafts,original]).errors.some(x=>x.includes('DUPLICATE_ADVANCED')));
  assert.equal(auditAdvancedEditorialDrafts(null).valid,false);
  assert.equal(auditAdvancedEditorialDrafts([null]).valid,false);
+ assert.equal(auditAdvancedEditorialDrafts(advancedEditorialDrafts.map((x,i)=>i?x:{...x,dialogue:['a',42]})).valid,false);
+ assert.equal(auditAdvancedEditorialDrafts(advancedEditorialDrafts.map((x,i)=>i?x:{...x,activities:[null,...x.activities.slice(1)]})).valid,false);
  const structure=auditCurriculumProduction(advancedEditorialDrafts);
  assert.equal(structure.valid,true);
  assert.equal(structure.levels.filter(row=>
