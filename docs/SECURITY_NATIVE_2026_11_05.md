@@ -16,9 +16,11 @@ Official metadata checked live: Expo sdk-57 57.0.32, latest 58.0.23. SDK58 is no
 
 ## Reproduction and safeguards
 
-Node 24.22.1 / npm 11.9.0 locally; CI Node22 independently verifies npm ci. Starting with the exact base lockfile: `npm ci --ignore-scripts --no-audit --no-fund`, then `npm update --workspace mobile --package-lock-only --ignore-scripts --no-audit --no-fund`. npm emitted a workspace warning but produced the full tree; installation and checks must validate it. No manifests changed. Candidate reinstalled with npm ci. Lockfile SHA256: `4a3135584edbb8dea531b5cd86846f08b41c6cbb5a6e7d91e2dce44cd105f8b1`.
+Node 24.22.1 / npm 11.9.0 locally; CI Node22 independently verifies npm ci. Starting with the exact base lockfile: `npm ci --ignore-scripts --no-audit --no-fund`, then `npm update --workspace mobile --package-lock-only --ignore-scripts --no-audit --no-fund`. npm emitted a workspace warning but produced the full tree; installation and checks must validate it. Initial Expo-only candidate reinstalled with npm ci; its SHA256 was `4a3135584edbb8dea531b5cd86846f08b41c6cbb5a6e7d91e2dce44cd105f8b1`. A second scoped update, `npm install --workspace mobile react-native@0.86.3 --save-exact --package-lock-only --ignore-scripts --no-audit --no-fund`, aligns the native runtime with the official Expo recommendation. Final lockfile SHA256: `f54184c144ae69f8f4908480f26c1f14749e82314fe74254ca5d57c9368be2aa`. The sole manifest edit is the exact RN patch pin.
 
-All dependency majors below come from official parent releases within existing manifest ranges, never overrides. In particular glob14, minimatch11 and path-scurry3 are upstream choices; fingerprint's old copies are preserved rather than silently replaced. React 19.2.3 / RN 0.86.0 unchanged. New helper @isaacs/nonrecursive-glob-match is transitive from glob14, not a direct app dependency. Expo metadata declares MIT; official license https://github.com/expo/expo/blob/main/LICENSE. Existing upstream package notices retained.
+All dependency majors below come from official parent releases within existing manifest ranges, never overrides. In particular glob14, minimatch11 and path-scurry3 are upstream choices; fingerprint's old copies are preserved rather than silently replaced. React 19.2.3 unchanged; RN 0.86.0 → 0.86.3, within the same supported minor. Both Expo 57.0.31 and 57.0.32 bundledNativeModules.json recommend RN 0.86.3; this corrects a pre-existing alignment warning. React peer ^19.2.3 is satisfied. RN MIT license read from installed package (https://github.com/facebook/react-native/blob/main/LICENSE). New helper @isaacs/nonrecursive-glob-match is transitive from glob14, not a direct app dependency. Expo metadata declares MIT; official license https://github.com/expo/expo/blob/main/LICENSE. Existing upstream package notices retained.
+
+`expo install --check` also reports inherited development-tool recommendations (@types/react ~19.2.4 instead of installed 19.3.0, TypeScript ~6.0.3 instead of 5.9.3). No TypeScript major or type downgrade imposed: actual core/mobile typechecks verify this tree; these advisory tool-alignment warnings remain explicit.
 
 Snapshot diagnostic now lists every monitored nested package path/version, preventing a fixed hoisted glob from hiding the nested vulnerable copy. Regression covers this exact split and a nested-only Zod installation. Existing zero-advisory gate and baselines unchanged.
 
@@ -26,6 +28,7 @@ Snapshot diagnostic now lists every monitored nested package path/version, preve
 
 | Lockfile path | Before | After |
 | --- | --- | --- |
+| `mobile` | 0.1.0 | 0.1.0 |
 | `node_modules/@babel/core` | 7.29.7 | 7.29.13 |
 | `node_modules/@babel/core/node_modules/semver` | 6.3.1 | 6.3.2 |
 | `node_modules/@babel/generator` | 7.29.12 | 7.29.13 |
@@ -64,6 +67,15 @@ Snapshot diagnostic now lists every monitored nested package path/version, preve
 | `node_modules/@expo/require-utils` | 57.0.6 | 57.0.7 |
 | `node_modules/@expo/schema-utils` | 57.0.2 | 57.0.3 |
 | `node_modules/@isaacs/nonrecursive-glob-match` | absent | 1.1.0 |
+| `node_modules/@react-native/assets-registry` | 0.86.0 | 0.86.3 |
+| `node_modules/@react-native/community-cli-plugin` | 0.86.0 | 0.86.3 |
+| `node_modules/@react-native/community-cli-plugin/node_modules/@react-native/debugger-frontend` | 0.86.0 | absent |
+| `node_modules/@react-native/community-cli-plugin/node_modules/@react-native/debugger-shell` | 0.86.0 | absent |
+| `node_modules/@react-native/community-cli-plugin/node_modules/@react-native/dev-middleware` | 0.86.0 | absent |
+| `node_modules/@react-native/community-cli-plugin/node_modules/ws` | 7.5.13 | absent |
+| `node_modules/@react-native/gradle-plugin` | 0.86.0 | 0.86.3 |
+| `node_modules/@react-native/js-polyfills` | 0.86.0 | 0.86.3 |
+| `node_modules/@react-native/virtualized-lists` | 0.86.0 | 0.86.3 |
 | `node_modules/babel-plugin-polyfill-corejs2/node_modules/semver` | 6.3.1 | 6.3.2 |
 | `node_modules/babel-preset-expo` | 57.0.16 | 57.0.17 |
 | `node_modules/baseline-browser-mapping` | 2.11.34 | 2.11.35 |
@@ -77,9 +89,13 @@ Snapshot diagnostic now lists every monitored nested package path/version, preve
 | `node_modules/expo-modules-core` | 57.0.24 | 57.0.25 |
 | `node_modules/glob` | 13.0.6 | 14.0.3 |
 | `node_modules/glob/node_modules/minimatch` | absent | 11.0.4 |
+| `node_modules/hermes-compiler` | 250829098.0.14 | 250829098.0.17 |
 | `node_modules/is-core-module` | 2.17.0 | 2.18.0 |
 | `node_modules/node-forge` | 1.4.2 | 1.4.3 |
 | `node_modules/path-scurry` | 2.0.2 | 3.0.0 |
+| `node_modules/react-native` | 0.86.0 | 0.86.3 |
+| `node_modules/react-native/node_modules/@react-native/codegen` | 0.86.0 | absent |
+| `node_modules/react-native/node_modules/@react-native/normalize-colors` | 0.86.0 | absent |
 | `node_modules/regexpu-core` | 6.5.3 | 6.5.4 |
 | `node_modules/regjsparser` | 0.13.4 | 0.14.1 |
 | `node_modules/resolve` | 1.22.13 | 1.22.14 |
