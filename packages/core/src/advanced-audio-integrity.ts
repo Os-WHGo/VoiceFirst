@@ -34,7 +34,8 @@ const isObject=(raw:unknown):raw is Record<string,unknown> =>
  raw!==null&&typeof raw==='object'&&!Array.isArray(raw);
 const isSafeUri=(value:unknown):value is string=>
  typeof value==='string'&&value.length<=512&&safeFileUri.test(value)&&
- !value.includes('..')&&!value.includes('//',7)&&
+ !value.includes('..')&&!value.slice(8).startsWith('/')&&
+ !value.slice(8).includes('//')&&
  !value.includes('\\')&&!value.includes('%')&&!value.includes('?')&&
  !value.includes('#');
 function result(verifiedIds:ReadonlySet<string>,rejected:readonly Rejection[]):AdvancedAudioIntegrityReport{
