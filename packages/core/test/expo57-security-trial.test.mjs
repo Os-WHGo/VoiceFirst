@@ -77,3 +77,20 @@ test('trial accepts only complete semantic package versions',()=>{
  assert.throws(()=>versionNumbers('latest'),/Invalid package/);
  assert.throws(()=>versionNumbers('57'),/Invalid package/);
 });
+
+test('snapshot retains vulnerable nested copies beside a fixed hoisted package',()=>{
+ const nested=lock({...installed,glob:'14.0.3'});
+ const path='node_modules/@expo/fingerprint/node_modules/glob';
+ nested.packages[path]={version:'13.0.6'};
+ const result=snapshot(nested,audit());
+ assert.equal(result.installed.glob,'14.0.3');
+ assert.deepEqual(result.instances.glob,[
+  {path,version:'13.0.6'},
+  {path:'node_modules/glob',version:'14.0.3'}
+ ]);
+ assert.equal(result.advisories.includes('https://github.com/advisories/GHSA-glob'),true);
+ const removed=lock({...installed,glob:'14.0.3'});
+ delete removed.packages['node_modules/zod'];
+ removed.packages['node_modules/@expo/cli/node_modules/zod']={version:'3.25.76'};
+ assert.equal(snapshot(removed,audit()).instances.zod.length,1);
+});

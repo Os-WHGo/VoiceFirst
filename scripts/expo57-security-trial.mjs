@@ -24,6 +24,12 @@ export function snapshot(lock,audit){
   throw Error('Expected npm lockfile v3');
  if(!audit?.metadata?.vulnerabilities||!audit.vulnerabilities)
   throw Error('Invalid audit response');
+ // Preserve every nested copy: a fixed hoisted version does not clear an advisory.
+ const instances=Object.fromEntries(monitored.map(name=>[name,
+  Object.entries(lock.packages).filter(([path])=>
+   path==='node_modules/'+name||path.endsWith('/node_modules/'+name))
+   .map(([path,entry])=>({path,version:entry.version}))
+   .sort((a,b)=>a.path.localeCompare(b.path))]));
  const installed=Object.fromEntries(monitored.map(name=>{
   const entry=lock.packages['node_modules/'+name];
   // Optional transitive packages can genuinely disappear after an upstream
@@ -44,7 +50,7 @@ export function snapshot(lock,audit){
  for(const severity of ['critical','high','moderate','low','total']){
   if(!Number.isInteger(counts[severity])||counts[severity]<0)throw Error('Invalid severity count '+severity);
  }
- return {installed,counts:Object.fromEntries(['critical','high','moderate','low','total']
+ return {installed,instances,counts:Object.fromEntries(['critical','high','moderate','low','total']
   .map(key=>[key,counts[key]])),advisories,roots:roots.map(([name])=>name).sort()};
 }
 export function compareSnapshots(before,after){
