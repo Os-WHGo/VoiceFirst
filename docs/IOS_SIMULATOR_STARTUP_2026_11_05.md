@@ -2,7 +2,7 @@
 
 ## Scope and base
 
-Dedicated branch `codex/ios-simulator-startup-20261105`, based on verified PR #7 `be6b24006eeff3a0b7f3e76807ad6fc077be2dc4` (itself based on npm/native security PR #6). No editorial, curriculum, lesson or mobile product source is changed. Existing security improvements and author contributions remain in history. No main merge or modifications to ChatGPT branches.
+Dedicated branch `codex/ios-simulator-startup-20261105`, based on verified PR #7 `be6b24006eeff3a0b7f3e76807ad6fc077be2dc4` (itself based on npm/native security PR #6). No editorial, curriculum, lesson or mobile product source is changed. PR #7 was still missing PR #6 commits 7cc2916 and eccf6f5 when checked. This isolated branch merges the verified PR #6 head eccf6f5623f0afc53c6f25a5d86669d769102618 with full history; no ChatGPT branch is changed. Existing security improvements and author contributions remain in history. No main merge or modifications to ChatGPT branches.
 
 Compilation alone does not demonstrate that React Native can initialize its native modules and render its bundled JS. The existing iOS readiness job now uses the unsigned Release Simulator app it already builds to verify real, noninteractive startup. Android remains compile-only, without an APK/AAB. This is not a public release, an iPhone IPA, or hardware audio testing.
 
