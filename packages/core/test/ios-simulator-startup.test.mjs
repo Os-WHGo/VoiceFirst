@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {checkIOSStartup,selectSimulator} from '../../../scripts/check-ios-simulator-startup.mjs';
+import {checkIOSStartup,selectSimulator,simulatorCommand} from '../../../scripts/check-ios-simulator-startup.mjs';
 import {requiresNativeCompile} from '../../../scripts/native-ci-change-gate.mjs';
 const runtime='com.apple.CoreSimulator.SimRuntime.iOS-26-6';
 const type='com.apple.CoreSimulator.SimDeviceType.iPhone-17';
@@ -92,4 +92,11 @@ test('cleanup failure cannot leave a successful startup report',async()=>{
 test('both real startup verifier files request native validation',()=>{
  assert.equal(requiresNativeCompile(['scripts/check-ios-simulator-startup.mjs']),true);
  assert.equal(requiresNativeCompile(['scripts/check-ios-startup-screen.swift']),true);
+});
+
+test('a CLI ignoring SIGTERM cannot defeat the command timeout',()=>{
+ const started=performance.now();
+ assert.throws(()=>simulatorCommand(process.execPath,['-e',
+  "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],300),/Simulator command failed/);
+ assert.ok(performance.now()-started<5000,'direct child timeout must remain bounded');
 });

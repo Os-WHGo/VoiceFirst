@@ -24,13 +24,14 @@ export function selectSimulator(runtimes,deviceTypes){
  }
  throw Error('No supported available iOS 26+ iPhone Simulator');
 }
-function command(binary,args){
- const result=spawnSync(binary,args,{encoding:'utf8',timeout:180000,maxBuffer:4*1024*1024});
+export function simulatorCommand(binary,args,timeoutMs=
+ binary==='xcrun'&&args[0]==='simctl'&&['shutdown','delete'].includes(args[1])?30000:180000){
+ const result=spawnSync(binary,args,{encoding:'utf8',timeout:timeoutMs,killSignal:'SIGKILL',maxBuffer:4*1024*1024});
  if(result.error||result.signal||result.status!==0)throw Error('Simulator command failed');
  return result.stdout.trim();
 }
 export async function checkIOSStartup({appPath,outputDir,codeSha=null},
- {run=command,delay=ms=>new Promise(done=>setTimeout(done,ms))}={}){
+ {run=simulatorCommand,delay=ms=>new Promise(done=>setTimeout(done,ms))}={}){
  appPath=resolve(appPath);outputDir=resolve(outputDir);
  if(!appPath.endsWith('.app')||!existsSync(join(appPath,'Info.plist')))
   throw Error('Expected an already-built iOS Simulator app');
@@ -38,49 +39,59 @@ export async function checkIOSStartup({appPath,outputDir,codeSha=null},
  const report={codeSha:/^[a-f0-9]{40}$/.test(codeSha??'')?codeSha:null,
   stage:'metadata',passed:false,processAlive:false,renderedStartup:false,cleanedUp:false,
   interpretation:'Fresh iOS Simulator startup only; not physical iPhone, audio, offline-course or security approval.'};
+ const persist=()=>writeFileSync(join(outputDir,'startup-report.json'),JSON.stringify(report,null,2)+'\n');
+ const stage=name=>{report.stage=name;persist();console.log('iOS startup stage: '+name);};
  let device=null,primaryError=null;
  try{
+  stage('metadata');
   const plist=JSON.parse(run('plutil',['-convert','json','-o','-',join(appPath,'Info.plist')]));
   if(plist.CFBundleIdentifier!==bundleId||
    typeof plist.CFBundleExecutable!=='string'||!plist.CFBundleExecutable||basename(plist.CFBundleExecutable)!==plist.CFBundleExecutable||/[\x00-\x1f]/.test(plist.CFBundleExecutable))
    throw Error('Unexpected simulator app identity');
+  stage('runtime');
   const target=selectSimulator(
    JSON.parse(run('xcrun',['simctl','list','runtimes','--json'])),
    JSON.parse(run('xcrun',['simctl','list','devicetypes','--json'])));
   report.runtime=target.runtime;report.deviceType=target.deviceType;
-  report.stage='create';
+  stage('create');
   device=run('xcrun',['simctl','create','VoiceFirstStartup-'+Date.now(),target.deviceType,target.runtime]);
   if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(device)){
    device=null;throw Error('Simulator create did not return a device identifier');
   }
-  report.stage='boot';
+  stage('boot');
   run('xcrun',['simctl','boot',device]);
+  stage('bootstatus');
   run('xcrun',['simctl','bootstatus',device,'-b']);
-  report.stage='install';run('xcrun',['simctl','install',device,appPath]);
-  report.stage='launch';
+  stage('install');run('xcrun',['simctl','install',device,appPath]);
+  stage('launch');
   const launched=run('xcrun',['simctl','launch','--terminate-running-process',device,bundleId]);
   const match=launched.match(/^com\.oswhgo\.voicefirst:\s*([1-9]\d*)\s*$/);
   if(!match)throw Error('Simulator launch did not return an application PID');
   const assertAlive=()=>{
+   report.processAlive=false;
    const process=run('ps',['-ww','-p',match[1],'-o','comm=']);
    if(!process.endsWith('/'+basename(appPath)+'/'+plist.CFBundleExecutable))
     throw Error('Launched simulator application is no longer alive');
+   report.processAlive=true;
   };
-  report.stage='settle';await delay(15000);assertAlive();report.processAlive=true;
-  report.stage='screenshot';const screenshot=join(outputDir,'startup.png');
+  stage('settle');await delay(15000);assertAlive();report.processAlive=true;
+  stage('screenshot');const screenshot=join(outputDir,'startup.png');
   run('xcrun',['simctl','io',device,'screenshot',screenshot]);
-  report.stage='render';
+  stage('render');
   run('xcrun',['swift',fileURLToPath(new URL('./check-ios-startup-screen.swift',import.meta.url)),screenshot]);
-  report.stage='post-render-liveness';assertAlive();report.renderedStartup=true;
-  report.stage='complete';report.passed=true;
+  stage('post-render-liveness');assertAlive();report.renderedStartup=true;
+  stage('complete');report.passed=true;
  }catch(error){primaryError=error;}
  finally{
   if(device){
+   console.log('iOS startup cleanup: shutdown');
    try{run('xcrun',['simctl','shutdown',device]);}catch{/* Delete still required if boot failed. */}
+   console.log('iOS startup cleanup: delete');
    try{run('xcrun',['simctl','delete',device]);report.cleanedUp=true;}
    catch{if(!primaryError)primaryError=Error('Could not delete disposable Simulator');report.passed=false;}
   }
-  writeFileSync(join(outputDir,'startup-report.json'),JSON.stringify(report,null,2)+'\n');
+  persist();
+  console.log('iOS startup result: passed='+report.passed+' stage='+report.stage+' cleanedUp='+report.cleanedUp);
  }
  if(primaryError)throw Error('iOS Simulator startup failed at '+report.stage,{cause:primaryError});
  return report;

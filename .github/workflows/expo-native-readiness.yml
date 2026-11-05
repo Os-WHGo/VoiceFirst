@@ -176,6 +176,7 @@ jobs:
           PY
           echo 'Simulator .app built and validated locally. Not an installable iPhone IPA or a hardware test.'
       - name: Launch fresh iPhone Simulator and verify actual React Native startup screen
+        timeout-minutes: 10
         env:
           VOICEFIRST_CODE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
