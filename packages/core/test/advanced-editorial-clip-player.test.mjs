@@ -40,3 +40,20 @@ test('rejected hash, oversized assets and malformed IDs cannot play',async()=>{
  }
  assert.equal(starts,0);
 });
+
+test('stop revokes verification while file read is unresolved',async()=>{
+ let release;
+ const blocked=new Promise(done=>{release=()=>done(100);});
+ let started=0;
+ const player=new AdvancedEditorialClipPlayer(
+  {fileSizeBytes:async()=>blocked,sha256File:async()=>('a'.repeat(64))},
+  {prepareForeground:async()=>{},createLocalClip:()=>{started++;return{start(){},stop(){}};}}
+ );
+ const pending=player.play(state,clips);
+ await new Promise(resolve=>setImmediate(resolve));
+ player.stop();
+ assert.deepEqual(await pending,{status:'cancelled'});
+ release();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(started,0);
+});
