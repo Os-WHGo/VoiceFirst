@@ -22,6 +22,7 @@ export * from './advanced-audio-integrity.js';
 export * from './advanced-editorial-rehearsal.js';
 export * from './advanced-editorial-clip-player.js';
 export * from './first-release-curriculum-coverage.js';
+export * from './first-release-editorial-packages.js';
 
 export * from './guided-dialogues.js';
 export * from './free-resources.js';
