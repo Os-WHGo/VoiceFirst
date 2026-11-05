@@ -89,3 +89,16 @@ test('changing original dialogue/metadata/rights invalidates the package or prod
  assert.equal(editorialPackagePreview('en-CA','A0','greetings-and-introductions'),null);
  assert.equal(editorialPackagePreview('fr-CA','C2','does-not-exist'),null);
 });
+
+test('production audit rejects hostile or incomplete package inventories without throwing',()=>{
+ const originals=firstReleaseEditorialPackages;
+ for(const bad of [
+  null,[null,...originals.slice(1)],
+  [{...originals[0],lessons:null},...originals.slice(1)],
+  [{...originals[0],lessons:[null,...originals[0].lessons.slice(1)]},...originals.slice(1)],
+  [{...originals[0],targetLanguage:'it'},...originals.slice(1)]
+ ]){
+  assert.doesNotThrow(()=>auditFirstReleaseProductionPackages(bad));
+  assert.equal(auditFirstReleaseProductionPackages(bad).structurallyValid,false);
+ }
+});
