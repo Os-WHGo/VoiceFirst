@@ -57,3 +57,23 @@ test('stop revokes verification while file read is unresolved',async()=>{
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(started,0);
 });
+
+test('new playback cancels stale requests and ignored callbacks',async()=>{
+ let callbacks=[],stops=0;
+ const player=new AdvancedEditorialClipPlayer(
+  {fileSizeBytes:async uri=>clips.find(c=>c.localUri===uri)?.bytes??0,sha256File:async()=>('a'.repeat(64))},
+  {prepareForeground:async()=>{},createLocalClip:()=>({
+    start(done){callbacks.push(done);},stop(){stops++;}
+  })}
+ );
+ const first=player.play(state,clips);
+ await new Promise(resolve=>setImmediate(resolve));
+ const second=player.play(state,clips);
+ assert.deepEqual(await first,{status:'cancelled'});
+ await new Promise(resolve=>setImmediate(resolve));
+ callbacks[0]();
+ assert.equal(stops,1);
+ callbacks[1]();
+ assert.deepEqual(await second,{status:'completed',audioId:clips[0].audioId});
+ assert.equal(stops,2);
+});
