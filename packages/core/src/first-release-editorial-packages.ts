@@ -10,6 +10,7 @@ import {a2EditorialDrafts} from './a2-editorial-contract.js';
 import {b1EditorialDrafts} from './b1-editorial-contract.js';
 import {b2EditorialDrafts} from './b2-editorial-contract.js';
 import {advancedEditorialDrafts} from './advanced-editorial-contract.js';
+import {expandedFirstReleasePilots} from './a2-b2-expanded-pilots.js';
 import {
  lessonPackageFormat,lessonPackageDigest,validateLessonPackage,
  type LessonPackage,type PackageLesson,type PackageActivity,type PackageResponseMode
@@ -120,6 +121,27 @@ function candidateLesson(source:SourceDraft):PackageLesson{
    model:reply,accepted:[reply],responseModes:oralAndText
   })
  ];
+ const pilot=expandedFirstReleasePilots.find(p=>
+  p.targetLanguage===source.targetLanguage&&p.level===source.level&&p.unitId===source.unitId);
+ if(pilot){
+  if(pilot.turns[0]?.text!==cue||pilot.turns[1]?.text!==reply)
+   throw new Error('Expanded dialogue differs from canonical source: '+id);
+  const followup:PackageActivity[]=pilot.turns.slice(2).map((turn,i)=>
+   stage(base('extended-turn-'+(i+3)),'listen','hear-reply',{
+    prompt:{target:turn.text,support:supports['hear-reply']}
+   }));
+  const evidence:PackageActivity[]=pilot.checks.map((check,i)=>
+   stage(base('evidence-'+(i+1)),'choice','identify-reply',{
+    prompt:{target:check.question,support:supports['identify-reply']},
+    options:[
+     {id:base('evidence-correct-'+(i+1)),text:check.verbatimEvidence},
+     {id:base('evidence-unsupported-'+(i+1)),text:check.unsupportedInterpretation}
+    ],
+    correctOptionId:base('evidence-correct-'+(i+1)),
+    responseModes:['choice']
+   }));
+  activities.splice(2,0,...followup,...evidence);
+ }
  const outcome=source.outcomes[0]??'';
  const goal:LocalizedText={...supports['take-turn'],[source.targetLanguage]:outcome};
  return {
@@ -187,10 +209,12 @@ export function auditFirstReleaseProductionPackages(
     const lesson=validLessons.find(l=>l.id===[targetLanguage,level.toLowerCase(),unitId].join('-'));
     if(!draft||!lesson||lesson.band!==level||lesson.editorialStatus!=='draft'||
       lesson.audioStatus!=='audio-missing'||lesson.asrStatus!=='asr-unvalidated'||
-      lesson.rights.status!=='original'||lesson.activities.length!==7||
+      lesson.rights.status!=='original'||
+      lesson.activities.length!==(expandedFirstReleasePilots.some(p=>
+       p.targetLanguage===targetLanguage&&p.level===level&&p.unitId===unitId)?14:7)||
       lesson.activities[0]?.prompt.target!==draft.dialogue[0]||
       lesson.activities[1]?.prompt.target!==draft.dialogue[1]||
-      lesson.activities[4]?.model!==draft.dialogue[1])
+      !lesson.activities.some(a=>a.kind==='dialogue-turn'&&a.model===draft.dialogue[1]))
       errors.push('INCOMPLETE_OR_CHANGED_DRAFT '+targetLanguage+'/'+level+'/'+unitId);
    }
   }
