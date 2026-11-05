@@ -20,6 +20,7 @@ export * from './advanced-editorial-contract.js';
 export * from './advanced-listening-storyboards.js';
 export * from './advanced-audio-integrity.js';
 export * from './advanced-editorial-rehearsal.js';
+export * from './advanced-editorial-clip-player.js';
 export * from './first-release-curriculum-coverage.js';
 
 export * from './guided-dialogues.js';
