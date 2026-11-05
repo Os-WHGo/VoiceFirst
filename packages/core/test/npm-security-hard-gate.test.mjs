@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {installedLocations,reverseParents,classifyExplainTarget} from '../../scripts/audit-dependency-parents.mjs';
-import {assessReleaseAudit} from '../../scripts/npm-security-hard-gate.mjs';
+import {installedLocations,reverseParents,classifyExplainTarget} from '../../../scripts/audit-dependency-parents.mjs';
+import {assessReleaseAudit} from '../../../scripts/npm-security-hard-gate.mjs';
 const lock={lockfileVersion:3,packages:{
  '':{dependencies:{foo:'^1'}},
  'node_modules/foo':{version:'1.2.0',dependencies:{bar:'^2'}},
@@ -38,7 +38,7 @@ test('release gate passes only an internally consistent zero-vulnerability audit
  assert.throws(()=>assessReleaseAudit(report(1,{zod:{via:[{url:'http://unsafe.invalid'}]}})));
 });
 test('workflow retains mandatory npm zero gate and traces before failing',()=>{
- const workflow=readFileSync(new URL('../../.github/workflows/dependency-vulnerability-inventory.yml',import.meta.url),'utf8');
+ const workflow=readFileSync(new URL('../../../.github/workflows/dependency-vulnerability-inventory.yml',import.meta.url),'utf8');
  assert.match(workflow,/node scripts\/npm-security-hard-gate\.mjs/);
  assert.match(workflow,/node scripts\/audit-dependency-parents\.mjs/);
  assert.match(workflow,/if:\s*\$\{\{\s*!cancelled\(\)\s*\}\}/);
