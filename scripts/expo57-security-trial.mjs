@@ -67,6 +67,30 @@ export function compareSnapshots(before,after){
     !allowedSdk(after.installed['react-native'],0)||
     versionNumbers(after.installed['react-native'])[1]!==86)
   throw Error('Trial escaped supported Expo 57 / React Native 0.86 architecture');
+ // A fixed hoisted SDK package must not hide an incompatible nested copy.
+ // These are patch trials, so prereleases, SDK-family migrations and rollback
+ // candidates require separate review rather than an apparently green trial.
+ const families={expo:[57],'@expo/cli':[57],'@expo/config':[57],
+  '@expo/config-plugins':[57],'@expo/metro-config':[57],
+  '@expo/fingerprint':[0,20],'react-native':[0,86]};
+ for(const [name,family] of Object.entries(families)){
+  const copies=after.instances?.[name];
+  if(!Array.isArray(copies)||!copies.length)throw Error('Missing SDK instance inventory '+name);
+  for(const copy of copies){
+   const version=copy.version;
+   if(typeof version!=='string'||!/^\d+\.\d+\.\d+$/.test(version))
+    throw Error('Trial requires stable SDK versions: '+name+' at '+copy.path);
+   const numbers=versionNumbers(version);
+   if(family.some((number,index)=>numbers[index]!==number))
+    throw Error('Trial escaped supported SDK family: '+name+' at '+copy.path);
+   const previous=before.instances?.[name]?.find(item=>item.path===copy.path)?.version
+    ??before.installed[name];
+   const old=versionNumbers(previous);
+   const firstDifference=numbers.findIndex((number,index)=>number!==old[index]);
+   if(firstDifference>=0&&numbers[firstDifference]<old[firstDifference])
+    throw Error('Trial downgraded SDK component: '+name+' at '+copy.path);
+  }
+ }
  const changed=monitored.filter(name=>before.installed[name]!==after.installed[name])
   .map(name=>({package:name,before:before.installed[name],after:after.installed[name]}));
  const resolved=before.advisories.filter(url=>!after.advisories.includes(url));

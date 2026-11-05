@@ -37,6 +37,8 @@ jobs:
           '
       - name: Install locked dependencies only
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject missing or incompatible installed dependency edges
+        run: npm ls --all
       - name: Validate shared and mobile contracts
         run: |
           npm run check

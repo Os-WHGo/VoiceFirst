@@ -32,6 +32,8 @@ jobs:
           cache: npm
       - name: Install original pinned dependencies without executing third-party scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject missing or incompatible installed dependency edges
+        run: npm ls --all
       - name: Record immutable comparison from checked-in lockfile
         run: node scripts/expo57-security-trial.mjs before
       - name: Try latest allowed Expo 57 family patches in disposable checkout only
@@ -46,6 +48,8 @@ jobs:
         run: node scripts/expo57-lock-delta.mjs
       - name: Reinstall resulting trial lockfile without third-party scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject missing or incompatible installed dependency edges
+        run: npm ls --all
       - name: Core and security regression tests under trial dependency tree
         run: npm run check
       - name: Mobile TypeScript under trial dependency tree

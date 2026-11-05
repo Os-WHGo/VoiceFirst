@@ -129,3 +129,13 @@ Changed files are limited to mobile/package.json (RN patch pin), package-lock.js
 ## Next technical block
 
 Obtain an official SDK57-compatible fingerprint update or documented Expo backport moving both glob and minimatch to fixed ranges; test the complete parent chain with npm ci, full audit, Metro, privacy/autolinking and both native builds. Do not upgrade fingerprint across SDK constraints or weaken the gate. Physical iPhone/Android voice/offline/Bluetooth QA remains independently pending.
+
+## Continuation · trial compatibility safeguards
+
+Rechecked upstream and completed PR #6 checks on c3a4d62. npm audit remains **4 MODERATE, 0 HIGH/LOW/CRITICAL**; no newer official fingerprint0.20 patch or SDK57 release is available, and fingerprint0.21.9 still requires glob13/minimatch10. No additional dependency or manifest change is justified.
+
+A reproducible gap in the previous trial comparator allowed prerelease/downgrade candidates within the same numerical SDK major, and inspected family compatibility only for hoisted copies. The comparator now rejects unstable SDK candidates, rollback of required SDK components, fingerprint migration beyond 0.20, and incompatible nested Expo/RN copies even if advisory counts drop. This conservative experiment policy does not assert that every rejected candidate is broken; it requires separate review rather than automatic patch-trial acceptance. Official glob14/minimatch11 transitive choices remain allowed; remaining advisories still block security.
+
+Lockfile-review and both disposable update trials now also run `npm ls --all` after installation, checking missing/invalid installed dependency edges independently of audit counts. No security threshold, baseline, exemption, third-party dependency, mobile feature or native source was changed. Regression fixtures exercise clean-audit candidates with incompatible nested CLI/RN, prereleases, downgraded Expo, unsupported fingerprint, missing instance inventory and the valid official SDK57 patch combination.
+
+Validation and CI results for this continuation are recorded below after completion. Native compilation is not repeated for tooling/tests-only changes; dependency tree is byte-identical to the previously compiled 81ad431 tree (lock SHA256 f54184c144ae69f8f4908480f26c1f14749e82314fe74254ca5d57c9368be2aa). Device QA and the two fingerprint root advisories remain pending.
