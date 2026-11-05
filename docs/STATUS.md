@@ -1,3 +1,18 @@
+# Estado operativo canónico de desarrollo · 05-11-2026
+
+> La sección histórica «16 de octubre» que aparece más abajo se mantiene para trazabilidad, pero **no describe el estado actual**. Fuente viva: GitHub, [PR #12](https://github.com/Os-WHGo/VoiceFirst/pull/12), checkpoint único VoiceFirst de Drive y [consolidación A1–C2](FIRST_RELEASE_CEFR_PACKAGE_CONSOLIDATION_2026_11_05.md).
+
+- **Proyecto móvil real:** React Native / Expo SDK 57, núcleo TypeScript, almacenamiento local y motores de sesión/revisión existentes. Primera prioridad: iPhone con compatibilidad Android. La interfaz muestra inglés canadiense, francés canadiense y español para beta; portugués brasileño, alemán e italiano siguen como «Próximamente» para lanzamiento público.
+- **Contenido:** 84 microlecciones funcionales A0/A1 del catálogo histórico de seis idiomas; *aparte*, 144 unidades temáticas de producción A1–C2 para los tres idiomas principales ahora empaquetadas como **borradores** mediante el validador `LessonPackage`. Estos paquetes no se montan en sesiones públicas, no dan progreso ni acreditación. Hay 9 pilotos nuevos de seis turnos A2/B1/B2 con 27 comprobaciones de evidencia y 12 escenas C1/C2 extendidas en la cadena ancestral; no hay cursos A1–C2 completos.
+- **Voz/audio:** ASR conservador y rutas alternativas sin micrófono existen en código para foreground; no se ha verificado offline real para todos los dialectos, pronunciación ni uso físico de Bluetooth, lentes o pantalla bloqueada. Los 54 clips planificados para A2/B1/B2 y 72 para las 12 escenas C1/C2 no están grabados/verificados/cedidos para publicación. Los ejemplos de TTS del sistema no equivalen a una biblioteca de voces local licenciada.
+- **Calidad:** comprobaciones core, TS móvil y bundle Metro automatizadas; la última ejecución exacta de la PR #12 se registra en el cuerpo de su PR y el checkpoint. Compilaciones técnicas iOS/Android de la PR #11 completaron SUCCESS; ello no prueba arranque ni reproducción física. La PR #9 de Codex compila iOS pero falló el arranque del simulador al esperar `bootstatus`. Mantener diagnóstico separado.
+- **Seguridad NPM:** quedan 4 paquetes afectados de severidad MODERATE en la rama apilada de Codex. Hard gate `readyForMerge:false` sin excepciones ni upgrades incompatibles forzados. El curso obligatorio permanece sin servidor, cuenta ni IA generativa cuando están disponibles sus recursos locales.
+- **Límites operativos:** todas las PR siguen Draft; `main` intacta; no eliminar trabajos Claude/Codex, no generar IPA/APK por bloque, no publicar, gastar, activar captura continua ni desplegar servicios externos.
+
+**Siguiente hito verificable:** expandir contenido real por banda y habilidad, obtener voces originales con derechos e informes de revisión humana, conectar las unidades aprobadas al motor existente, probar físicamente iPhone y Android en B1 y resolver la auditoría de dependencias. Nada de lo anterior equivale a declarar el curso acabado.
+
+---
+
 # Estado técnico · 16 de octubre de 2026, bloque 03
 
 > Actualización 31-10-2026: integrado el motor pedagógico de Claude y conectado
