@@ -180,3 +180,5 @@ export * from './voice-choice.js';
 export * from './handsfree-capture-policy.js';
 export * from './native-capture-evidence.js';
 export * from './native-input-observation.js';
+
+export * from './advanced-review-manifest.js';
