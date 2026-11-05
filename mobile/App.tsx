@@ -13,6 +13,7 @@ import { RegionalComparisons } from './RegionalComparisons';
 import { LearningAdjustments } from './LearningAdjustments';
 import { PragmaticsPractice } from './PragmaticsPractice';
 import { VoicePackImporter } from './VoicePackImporter';
+import {AdvancedEditorialReview} from './AdvancedEditorialReview';
 import {stopCuratedVoice} from './curated-voice-output';
 import { useLearningPreferences } from './use-learning-preferences';
 import { missionsFor, languageNames, targetLanguages, firstReleaseLanguages, canSelectFirstReleaseLanguage, canSelectFirstReleasePair, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus, type A0LessonCandidate } from '@voicefirst/core';
@@ -34,6 +35,7 @@ export default function App() {
   },[target]);
   const guideLocale=courseReadingLocale(target,primaryRegion?.target===target?primaryRegion.locale:null);
   const [level, setLevel] = useState<CefrBand>('A1');
+  const [editorialReviewOpen,setEditorialReviewOpen]=useState(false);
   const learning=useLearningPreferences();
   const experience=learning.settings;
   const rate=experience.speechRate;
