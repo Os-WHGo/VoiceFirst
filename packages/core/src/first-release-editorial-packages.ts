@@ -20,8 +20,7 @@ import type {CefrBand,TargetLanguage} from './types.js';
 type FirstTarget=(typeof firstReleaseLanguages)[number];
 type SourceDraft=ProductionUnit&{
  dialogue:readonly [string,string];editorialStatus:'not-human-reviewed';
- audioStatus:'not-recorded';rightsStatus:'pending-editorial-clearance';
- publicAvailable:false
+ audioStatus:'not-recorded';rightsStatus:'pending-editorial-clearance'
 };
 type Stage='hear-cue'|'hear-reply'|'identify-reply'|'model-response'|'take-turn'|'independent-recall'|'checkpoint';
 const supports:Readonly<Record<Stage,LocalizedText>>={
@@ -122,9 +121,7 @@ function candidateLesson(source:SourceDraft):PackageLesson{
   })
  ];
  const outcome=source.outcomes[0]??'';
- const goal=Object.fromEntries(Object.entries(supports['take-turn']).map(([k,v])=>
-  [k,k===source.targetLanguage?outcome:v+' '+source.level+' ('+source.unitId+').'])
- ) as LocalizedText;
+ const goal:LocalizedText={...supports['take-turn'],[source.targetLanguage]:outcome};
  return {
   id,band:source.level,objective:{id,goal},
   skills:['listening-comprehension','spoken-production','spoken-interaction','written-production'],
