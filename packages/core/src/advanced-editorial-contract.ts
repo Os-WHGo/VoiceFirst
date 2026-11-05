@@ -136,7 +136,7 @@ export function auditAdvancedEditorialDrafts(input:unknown=advancedEditorialDraf
     errors.push('INCOMPLETE_ADVANCED_DIALOGUE '+id);
   if(typeof row.listeningQuestion!=='string'||row.listeningQuestion.trim().length<15||
     typeof row.explicitEvidence!=='string'||row.explicitEvidence.trim().length<8||
-    !row.dialogue?.[1]?.includes(row.explicitEvidence))
+    !Array.isArray(row.dialogue)||typeof row.dialogue[1]!=='string'||!row.dialogue[1].includes(row.explicitEvidence))
     errors.push('UNGROUNDED_ADVANCED_EVIDENCE '+id);
   if(typeof row.supportedInference!=='string'||row.supportedInference.trim().length<30||
     typeof row.rejectedInference!=='string'||row.rejectedInference.trim().length<30||
