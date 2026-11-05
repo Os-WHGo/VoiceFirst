@@ -171,14 +171,20 @@ export function auditFirstReleaseProductionPackages(
     !result.publicationBlockers.includes('audio-not-verified')||
     !result.publicationBlockers.includes('asr-not-validated'))
    errors.push('PREMATURE_PUBLICATION '+targetLanguage);
+  if(!Array.isArray(pack.lessons)){
+   errors.push('INVALID_LESSON_LIST '+targetLanguage);continue;
+  }
   if(pack.lessons.length!==48)errors.push('LESSON_COUNT '+targetLanguage);
+  const validLessons=pack.lessons.filter((lesson):lesson is PackageLesson=>
+   lesson!==null&&typeof lesson==='object'&&!Array.isArray(lesson));
+  if(validLessons.length!==pack.lessons.length)errors.push('INVALID_LESSON_ROW '+targetLanguage);
   for(const level of officialCefrBands){
    const expected=curriculumUnitBlueprint[level];
-   const found=pack.lessons.filter(l=>l.band===level);
+   const found=validLessons.filter(l=>l.band===level);
    if(found.length!==expected.length)errors.push('LEVEL_COUNT '+targetLanguage+'/'+level);
    for(const unitId of expected){
     const draft=originalById.get([targetLanguage,level,unitId].join('/'));
-    const lesson=pack.lessons.find(l=>l.id===[targetLanguage,level.toLowerCase(),unitId].join('-'));
+    const lesson=validLessons.find(l=>l.id===[targetLanguage,level.toLowerCase(),unitId].join('-'));
     if(!draft||!lesson||lesson.band!==level||lesson.editorialStatus!=='draft'||
       lesson.audioStatus!=='audio-missing'||lesson.asrStatus!=='asr-unvalidated'||
       lesson.rights.status!=='original'||lesson.activities.length!==7||
