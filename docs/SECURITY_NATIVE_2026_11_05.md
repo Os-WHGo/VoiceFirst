@@ -104,7 +104,27 @@ Snapshot diagnostic now lists every monitored nested package path/version, preve
 
 ## Validation
 
-Local and GitHub results will be recorded here after completion. Native batch marker requests existing Android debug/release Kotlin and complete unsigned iOS Simulator compile-only jobs. No installable APK/AAB/IPA, EAS, paid services or hardware claims.
+Final code/lockfile SHA: `81ad431fa70a79c29c95a01406b26e65812c5e29`. The closing report commit changes documentation only. All following GitHub results were read after completion for that code SHA.
+
+| Check | Result | GitHub run |
+| --- | --- | --- |
+| Core TypeScript + regression/unit tests | 794/794 PASS, zero failures | https://github.com/Os-WHGo/VoiceFirst/actions/runs/42115471526 |
+| Mobile TypeScript | PASS | https://github.com/Os-WHGo/VoiceFirst/actions/runs/42115469391 |
+| Lockfile review | PASS | https://github.com/Os-WHGo/VoiceFirst/actions/runs/42115469417 |
+| Metro Android + iOS, source provenance | PASS, 797/799 sources; watched advisory packages absent from JS maps | https://github.com/Os-WHGo/VoiceFirst/actions/runs/42115469585 |
+| Repeated SDK57 patch trial | PASS, delta 0; exact final SHA256 unchanged | https://github.com/Os-WHGo/VoiceFirst/actions/runs/42115469429 |
+| Native batch | PASS: config/privacy, Android debug + release Kotlin, local Swift module + full iOS Simulator app | https://github.com/Os-WHGo/VoiceFirst/actions/runs/42115469425 |
+| Full npm security inventory | **FAIL**, 4 MODERATE; hard gate and historical regressions preserved | https://github.com/Os-WHGo/VoiceFirst/actions/runs/42115469371 |
+
+Initial Expo-only patch SHA `abf7393248aab16bf93d780bb685ea88e66d664a` also passed full Android/iOS native batch https://github.com/Os-WHGo/VoiceFirst/actions/runs/42114895623 before the subsequent RN alignment. Final batch above supersedes it for the final dependency tree.
+
+Local: reproducible npm ci without third-party scripts, npm ls --all without invalid tree errors, full npm audit (confirmed again after reinstall), 794 tests/core compilation, mobile TS, config/privacy and both Metro exports PASS. Android native-source prebuild, autolinking, release bundling wiring and signing-configuration inspection also PASS; the generated prebuild script edits to mobile/package.json were restored, retaining only the intentional RN pin. Final CI independently repeats prebuild/autolinking and compiles both platforms with Node22; iOS uses Xcode26.6. No source-only evidence is represented as hardware testing.
+
+`expo install --check`: native runtime warning fixed by RN patch; inherited dev-tool version recommendations remain as described above. They are not hidden or treated as successful checks. Android generated release config references debug signing; this compile-only workflow is not a distribution-signing check and no production key was added.
+
+**iPhone/Android status:** native source compilation verified on CI (iOS Simulator, Android Kotlin debug/release); physical phones, mic/ASR/TTS offline models, Bluetooth, airplane-mode and interruption behavior remain PENDING. No APK/AAB/IPA generated, no EAS, paid service, publication, new permission, account or required server. Distributed native exposure is not exhaustively proven by Metro maps. Security remains blocked for merge/release; main remains unmodified (08286606e0fb6e934dc9c38735106ff457a186b3) and no branch protection was changed.
+
+Changed files are limited to mobile/package.json (RN patch pin), package-lock.json, snapshot diagnostic + regression test, native batch marker, this report and two raw audit snapshots. Roll back both dependency commits together on this isolated branch if native/device review finds a regression; do not modify the ChatGPT base branches or rewrite history.
 
 ## Next technical block
 
