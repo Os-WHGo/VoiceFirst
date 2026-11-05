@@ -29,7 +29,7 @@ export const c2ListeningEnglish=[
   turns:[
    ['speaker-a','The chair called our fictional plan ambitious, paused, and ended the discussion. Was that approval?'],
    ['speaker-b','After a long silence, the chair proposed another review instead of calling for a vote.'],
-   ['speaker-a','Would you classify the pause as a rejection?'],
+   ['speaker-a','Would you classify that long pause as a rejection rather than a delay?'],
    ['speaker-b','It might be a polite deferral, but we cannot infer the chair’s private intention from a pause alone.'],
    ['speaker-a','Then how should the minutes record the exchange without guessing at motives?'],
    ['speaker-b','State that no vote was taken and another review was requested, without claiming anyone privately opposed the plan.']
