@@ -11,3 +11,17 @@ test('missing six files never start editorial playback',async()=>{
  assert.deepEqual(await player.play(state,clips.slice(0,5)),{status:'unavailable'});
  assert.equal(played,0);
 });
+
+test('verified six-file local review completes without storing progress',async()=>{
+ let count=0,done;
+ const native={fileSizeBytes:async uri=>{count++;return clips.find(x=>x.localUri===uri)?.bytes??0;},sha256File:async()=>{count++;return 'a'.repeat(64);}};
+ const port={prepareForeground:async()=>{},createLocalClip:()=>({start(callback){done=callback;},stop(){}})};
+ const player=new AdvancedEditorialClipPlayer(native,port);
+ const task=player.play(state,clips);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(count,12);
+ assert.equal(typeof done,'function');
+ done();
+ assert.deepEqual(await task,{status:'completed',audioId:clips[0].audioId});
+ assert.equal(state.recordedProgress,false);
+});
