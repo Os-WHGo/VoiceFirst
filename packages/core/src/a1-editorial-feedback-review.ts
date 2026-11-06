@@ -46,7 +46,55 @@ const authoredTypedVariants:Readonly<Record<string,readonly string[]>>={
  'es/A1/places-and-directions#0':['Debe girar a la izquierda en la esquina'],
  'en-CA/A1/basic-needs-and-help#0':['The helper will explain slowly'],
  'fr-CA/A1/basic-needs-and-help#0':['La personne peut expliquer doucement'],
- 'es/A1/basic-needs-and-help#0':['Se lo explica más despacio']
+ 'es/A1/basic-needs-and-help#0':['Se lo explica más despacio'],
+ 'en-CA/A1/greetings-and-introductions#1':['Near the park'],
+ 'en-CA/A1/greetings-and-introductions#2':['After class'],
+ 'en-CA/A1/personal-information#1':['French'],
+ 'en-CA/A1/personal-information#2':['The time of the class'],
+ 'en-CA/A1/numbers-time-and-dates#1':['Room three'],
+ 'en-CA/A1/numbers-time-and-dates#2':['Monday at two o’clock, room three'],
+ 'en-CA/A1/family-and-people#1':['A small notebook'],
+ 'en-CA/A1/family-and-people#2':['Saturday afternoon'],
+ 'en-CA/A1/daily-routines#1':['Seven thirty'],
+ 'en-CA/A1/daily-routines#2':['The person reads a book before work'],
+ 'en-CA/A1/food-and-shopping#1':['Four dollars'],
+ 'en-CA/A1/food-and-shopping#2':['The small bag is free'],
+ 'en-CA/A1/places-and-directions#1':['Beside the park'],
+ 'en-CA/A1/places-and-directions#2':['No, stay on this side of the street'],
+ 'en-CA/A1/basic-needs-and-help#1':['At the top, beside the number'],
+ 'en-CA/A1/basic-needs-and-help#2':['The top of the ticket, by the number'],
+ 'fr-CA/A1/greetings-and-introductions#1':['Près du parc'],
+ 'fr-CA/A1/greetings-and-introductions#2':['Après le cours'],
+ 'fr-CA/A1/personal-information#1':['L’anglais'],
+ 'fr-CA/A1/personal-information#2':['L’heure du cours'],
+ 'fr-CA/A1/numbers-time-and-dates#1':['Salle trois'],
+ 'fr-CA/A1/numbers-time-and-dates#2':['Lundi à deux heures, salle trois'],
+ 'fr-CA/A1/family-and-people#1':['Un petit carnet'],
+ 'fr-CA/A1/family-and-people#2':['Samedi après-midi'],
+ 'fr-CA/A1/daily-routines#1':['Sept heures et demie'],
+ 'fr-CA/A1/daily-routines#2':['La personne lit un livre avant de travailler'],
+ 'fr-CA/A1/food-and-shopping#1':['Quatre dollars'],
+ 'fr-CA/A1/food-and-shopping#2':['Le sac est gratuit'],
+ 'fr-CA/A1/places-and-directions#1':['À côté du parc'],
+ 'fr-CA/A1/places-and-directions#2':['Non, restez de ce côté de la rue'],
+ 'fr-CA/A1/basic-needs-and-help#1':['En haut, à côté du numéro'],
+ 'fr-CA/A1/basic-needs-and-help#2':['Le haut du billet, à côté du numéro'],
+ 'es/A1/greetings-and-introductions#1':['Cerca del parque'],
+ 'es/A1/greetings-and-introductions#2':['Después de la clase'],
+ 'es/A1/personal-information#1':['Inglés'],
+ 'es/A1/personal-information#2':['La hora de la clase'],
+ 'es/A1/numbers-time-and-dates#1':['Sala tres'],
+ 'es/A1/numbers-time-and-dates#2':['Lunes a las dos de la tarde, sala tres'],
+ 'es/A1/family-and-people#1':['Un cuaderno pequeño'],
+ 'es/A1/family-and-people#2':['Sábado por la tarde'],
+ 'es/A1/daily-routines#1':['Siete y media'],
+ 'es/A1/daily-routines#2':['Lee un libro antes de trabajar'],
+ 'es/A1/food-and-shopping#1':['Cuatro dólares'],
+ 'es/A1/food-and-shopping#2':['La bolsa es gratis'],
+ 'es/A1/places-and-directions#1':['Al lado del parque'],
+ 'es/A1/places-and-directions#2':['No, debe quedarse de este lado de la calle'],
+ 'es/A1/basic-needs-and-help#1':['Arriba, junto al número'],
+ 'es/A1/basic-needs-and-help#2':['La parte superior del boleto, junto al número'],
 };
 export const a1EditorialReviewVariantKeys:readonly string[]=Object.keys(authoredTypedVariants);
 
@@ -101,13 +149,36 @@ function validated(input:unknown):A1EditorialReviewState|null{
  const s=input as Partial<A1EditorialReviewState>,scene=getScene(String(s.sceneId));
  if(!scene||s.status!=='editorial-only'||s.targetLanguage!==scene.targetLanguage||
    !targetLanguages.includes(s.knownLanguage as TargetLanguage)||
+   s.knownLanguage===s.targetLanguage||
    !Number.isSafeInteger(s.cursor)||s.cursor!<0||s.cursor!>3||
    (s.phase!=='question'&&s.phase!=='feedback')||
    typeof s.revealed!=='boolean'||typeof s.closed!=='boolean'||
    s.recordedProgress!==false||s.canScore!==false||s.publicAvailable!==false||
-   (s.lastResult!==null&&!['supported','unverified','not-supported','skipped'].includes(String(s.lastResult))))
+   (s.lastResult!==null&&!['supported','unverified','not-supported','skipped'].includes(String(s.lastResult)))||
+   (s.phase==='question'&&s.lastResult!==null)||
+   (s.phase==='feedback'&&s.lastResult===null)||
+   (s.cursor===3&&(s.phase!=='question'||s.revealed||s.lastResult!==null)))
   return null;
  return s as A1EditorialReviewState;
+}
+/** Authored examples for an internal reviewer; never inferred or graded as mastery. */
+export function a1EditorialAuthoredTypedExamples(input:unknown):readonly string[]|null{
+ const state=validated(input);
+ if(!state||state.closed||state.cursor>=3)return null;
+ return [...(authoredTypedVariants[state.sceneId+'#'+state.cursor]??[])];
+}
+/** Return only prepublication source dialogue. No recording is present or produced. */
+export interface A1EditorialReviewTranscript {
+ sceneId:string;targetLanguage:FirstTarget;level:'A1';
+ turns:readonly {id:string;speaker:'a'|'b';text:string;audioId:string}[];
+ audioStatus:'not-recorded';reviewerOnly:true;canRecordProgress:false;
+}
+export function a1EditorialReviewTranscript(input:unknown):A1EditorialReviewTranscript|null{
+ const state=validated(input);if(!state)return null;
+ const scene=getScene(state.sceneId)!;
+ return {sceneId:state.sceneId,targetLanguage:state.targetLanguage,level:'A1',
+  turns:scene.turns.map(({id,speaker,text,audioId})=>({id,speaker,text,audioId})),
+  audioStatus:'not-recorded',reviewerOnly:true,canRecordProgress:false};
 }
 /** Returns only unpublished rehearsal state; no learner session is created. */
 export function startA1EditorialReview(
@@ -193,6 +264,8 @@ export function advanceA1EditorialReview(
  if(command==='restart')return {...s,cursor:0,closed:false,phase:'question',
   revealed:false,lastResult:null};
  if(s.closed||s.cursor>=3)return s;
+ // Advancing without an explicit answer or skip would silently lose a question.
+ if(command==='next'&&s.phase!=='feedback')return null;
  if(command==='reveal')return {...s,revealed:true};
  return {...s,cursor:Math.min(3,s.cursor+1),phase:'question',
   revealed:false,lastResult:null};

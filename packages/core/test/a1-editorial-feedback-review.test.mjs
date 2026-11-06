@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
  firstReleaseLanguages,a1EditorialSceneTopics,startA1EditorialReview,
  currentA1EditorialReview,submitA1EditorialReview,advanceA1EditorialReview,
- a1EditorialReviewVariantKeys,expandedA1GreetingPilots,expandedA1SituationalPilots,
+ a1EditorialReviewVariantKeys,a1EditorialReviewTranscript,a1EditorialAuthoredTypedExamples,expandedA1GreetingPilots,expandedA1SituationalPilots,
  lessonsFor,firstPublicReleaseReadiness
 } from '../dist/index.js';
 
@@ -64,7 +64,7 @@ test('typed authored variants are accepted but unreviewed paraphrases are not pe
   assert.equal(unknown.state.lastResult,'unverified');
   assert.ok(!JSON.stringify(unknown).includes('This is a different fictional response'));
  }
- assert.ok(a1EditorialReviewVariantKeys.length===24);
+ assert.equal(a1EditorialReviewVariantKeys.length,72);
 });
 
 test('unsupported, skipped and hint states remain non-scoring and show evidence on demand',()=>{
@@ -99,7 +99,12 @@ test('forged state, invalid inputs and overlong typed response fail closed',()=>
   null,{...s,publicAvailable:true},{...s,canScore:true},
   {...s,recordedProgress:true},{...s,cursor:-1},{...s,cursor:4},
   {...s,phase:'completed'},{...s,lastResult:'graded'},
-  {...s,sceneId:'en-CA/A1/unknown'}
+  {...s,sceneId:'en-CA/A1/unknown'},
+  {...s,knownLanguage:'en-CA'},
+  {...s,phase:'feedback',lastResult:null},
+  {...s,phase:'question',lastResult:'skipped'},
+  {...s,cursor:3,phase:'feedback',lastResult:'supported'},
+  {...s,cursor:3,revealed:true}
  ]){
   assert.equal(currentA1EditorialReview(bad),null);
   assert.equal(submitA1EditorialReview(bad,{kind:'skip'}),null);
@@ -126,4 +131,52 @@ test('localization, review order and result serialization never depend on user t
   const a=currentA1EditorialReview(state,'seed-one').options.map(x=>x.id);
   assert.deepEqual(a,currentA1EditorialReview(state,'seed-one').options.map(x=>x.id));
  }
+});
+
+
+test('all 72 authored A1 question variant keys and full transcript cues are private',()=>{
+ const keys=new Set(a1EditorialReviewVariantKeys);
+ assert.equal(keys.size,72);
+ for(const scene of scenes){
+  const state=startA1EditorialReview(knownFor(scene.targetLanguage),scene.targetLanguage,scene.unitId);
+  assert.ok(state);
+  const transcript=a1EditorialReviewTranscript(state);
+  assert.equal(transcript.sceneId,scene.sceneId);
+  assert.equal(transcript.audioStatus,'not-recorded');
+  assert.equal(transcript.reviewerOnly,true);
+  assert.equal(transcript.canRecordProgress,false);
+  assert.equal(transcript.turns.length,6);
+  assert.deepEqual(transcript.turns.map(t=>t.audioId),scene.turns.map(t=>t.audioId));
+  assert.equal(advanceA1EditorialReview(state,'next'),null,'cannot silently skip a question');
+  let stepState=state;
+  for(let index=0;index<3;index++){
+   assert.ok(keys.has(scene.sceneId+'#'+index));
+   const examples=a1EditorialAuthoredTypedExamples(stepState);
+   assert.ok(examples?.length>0,'explicit variants '+scene.sceneId+'#'+index);
+   for(const text of examples){
+    const response=submitA1EditorialReview(stepState,{kind:'typed',text});
+    assert.equal(response?.result,'supported',scene.sceneId+' '+index+' '+text);
+    assert.equal(response?.countsAsMastery,false);
+   }
+   const skip=submitA1EditorialReview(stepState,{kind:'skip'});
+   stepState=advanceA1EditorialReview(skip.state,'next');
+  }
+  assert.equal(a1EditorialAuthoredTypedExamples(stepState),null);
+ }
+});
+
+test('reveal, skip and restart preserve non-scoring state and reviewer transcript',()=>{
+ const state=startA1EditorialReview('es','fr-CA','places-and-directions');
+ const reveal=advanceA1EditorialReview(state,'reveal');
+ assert.equal(currentA1EditorialReview(reveal).kind,'question');
+ assert.ok(currentA1EditorialReview(reveal).revealedEvidence);
+ assert.deepEqual(a1EditorialReviewTranscript(reveal).turns,a1EditorialReviewTranscript(state).turns);
+ const skip=submitA1EditorialReview(reveal,{kind:'skip'});
+ assert.equal(skip.state.lastResult,'skipped');
+ const next=advanceA1EditorialReview(skip.state,'next');
+ assert.equal(next.cursor,1);
+ assert.equal(next.lastResult,null);
+ assert.equal(next.revealed,false);
+ assert.equal(a1EditorialReviewTranscript({...state,publicAvailable:true}),null);
+ assert.equal(a1EditorialReviewTranscript({...state,phase:'feedback',lastResult:null}),null);
 });
