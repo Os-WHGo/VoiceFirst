@@ -93,7 +93,7 @@ function validated(input:unknown):A1EditorialReviewState|null{
    (s.phase!=='question'&&s.phase!=='feedback')||
    typeof s.revealed!=='boolean'||typeof s.closed!=='boolean'||
    s.recordedProgress!==false||s.canScore!==false||s.publicAvailable!==false||
-   ![null,'supported','unverified','not-supported','skipped'].includes(s.lastResult))
+   (s.lastResult!==null&&!['supported','unverified','not-supported','skipped'].includes(String(s.lastResult))))
   return null;
  return s as A1EditorialReviewState;
 }
