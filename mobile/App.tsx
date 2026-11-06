@@ -14,6 +14,7 @@ import { LearningAdjustments } from './LearningAdjustments';
 import { PragmaticsPractice } from './PragmaticsPractice';
 import { VoicePackImporter } from './VoicePackImporter';
 import {AdvancedEditorialReview} from './AdvancedEditorialReview';
+import {A1EditorialPractice} from './A1EditorialPractice';
 import {stopCuratedVoice} from './curated-voice-output';
 import { useLearningPreferences } from './use-learning-preferences';
 import { missionsFor, languageNames, targetLanguages, firstReleaseLanguages, canSelectFirstReleaseLanguage, canSelectFirstReleasePair, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus, type A0LessonCandidate } from '@voicefirst/core';
@@ -123,11 +124,12 @@ export default function App() {
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
         </>}
         {__DEV__ && <View style={styles.mission}>
-          <Text style={styles.eyebrow}>REVISIÓN INTERNA C1–C2</Text>
+          <Text style={styles.eyebrow}>REVISIÓN INTERNA A1 Y C1–C2</Text>
           <Pressable accessibilityRole="button" onPress={()=>{stop();setEditorialReviewOpen(x=>!x);}} style={styles.chip}>
             <Text style={styles.chipText}>{editorialReviewOpen?'Cerrar revisión':'Abrir revisión editorial'}</Text>
           </Pressable>
           {editorialReviewOpen&&<AdvancedEditorialReview known={nativeLanguage} target={target} onClose={()=>setEditorialReviewOpen(false)}/>}
+          {editorialReviewOpen&&<A1EditorialPractice known={nativeLanguage} target={target}/>}
         </View>}
         <Text style={styles.note}>Tres idiomas seleccionables para la beta privada y tres marcados Próximamente. Ningún curso está completo hasta C2 ni aprobado para lanzamiento público. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio generativo es opcional y separado. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
       </ScrollView>

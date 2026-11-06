@@ -186,3 +186,5 @@ export * from './native-capture-evidence.js';
 export * from './native-input-observation.js';
 
 export * from './advanced-review-manifest.js';
+
+export * from './a1-editorial-feedback-review.js';
