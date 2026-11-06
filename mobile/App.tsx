@@ -129,6 +129,7 @@ export default function App() {
             <Text style={styles.chipText}>{editorialReviewOpen?'Cerrar revisión':'Abrir revisión editorial'}</Text>
           </Pressable>
           {editorialReviewOpen&&<AdvancedEditorialReview known={nativeLanguage} target={target} onClose={()=>setEditorialReviewOpen(false)}/>}
+          <A1EditorialPractice known={nativeLanguage} target={target}/>
         </View>}
         <Text style={styles.note}>Tres idiomas seleccionables para la beta privada y tres marcados Próximamente. Ningún curso está completo hasta C2 ni aprobado para lanzamiento público. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio generativo es opcional y separado. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
       </ScrollView>
