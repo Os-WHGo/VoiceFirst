@@ -8,18 +8,18 @@ import {
  lessonPackageDigest,validateLessonPackage,lessonsFor
 } from '../dist/index.js';
 
-test('nine A1 scenes have six sourced turns, 27 literal checks and 54 planned audio IDs',()=>{
+test('twenty-one A1 scenes have six sourced turns, 63 literal checks and 126 planned audio IDs',()=>{
  const result=auditExpandedA1SituationalPilots();
  assert.deepEqual(result,{
-  valid:true,errors:[],scenes:9,turns:54,checks:27,
+  valid:true,errors:[],scenes:21,turns:126,checks:63,
   approvedAudio:0,availableToLearners:false
  });
- assert.equal(a1SituationalAudioIds.length,54);
- assert.equal(new Set(a1SituationalAudioIds).size,54);
- assert.equal(a1SituationTopics.length,3);
+ assert.equal(a1SituationalAudioIds.length,126);
+ assert.equal(new Set(a1SituationalAudioIds).size,126);
+ assert.equal(a1SituationTopics.length,7);
  for(const target of firstReleaseLanguages){
   const scenes=expandedA1SituationalPilots.filter(s=>s.targetLanguage===target);
-  assert.equal(scenes.length,3,target);
+  assert.equal(scenes.length,7,target);
   assert.deepEqual(scenes.map(s=>s.unitId),[...a1SituationTopics]);
   for(const scene of scenes){
    assert.equal(scene.turns.length,6);
@@ -37,14 +37,14 @@ test('nine A1 scenes have six sourced turns, 27 literal checks and 54 planned au
  }
 });
 
-test('three lesson packages integrate nine A1 scenes without changing six-language learner lessons',()=>{
+test('three lesson packages integrate twenty-one A1 scenes without changing six-language learner lessons',()=>{
  const report=auditFirstReleaseProductionPackages();
  assert.equal(report.structurallyValid,true,report.errors.join('; '));
  assert.deepEqual([
   report.packages,report.candidateLessons,report.draftActivities,
   report.editoriallyApprovedLessons,report.publiclyAvailableLessons,
   report.verifiedVoiceClips
- ],[3,144,1263,0,0,0]);
+ ],[3,144,1347,0,0,0]);
  for(const pack of firstReleaseEditorialPackages){
   const structurallyValid=validateLessonPackage(pack);
   assert.equal(structurallyValid.structurallyValid,true,
