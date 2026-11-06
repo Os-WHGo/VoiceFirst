@@ -4,7 +4,7 @@ import {
  expandedA1GreetingPilots,a1ExpandedExpectedAudioIds,auditExpandedA1GreetingPilots,
  advancedListeningStoryboards,advancedStoryboardExpectedAudioIds,auditAdvancedListeningStoryboards,
  firstReleaseEditorialPackages,editorialPackagePreview,auditFirstReleaseProductionPackages,
- validateLessonPackage,lessonsFor
+ validateLessonPackage,lessonPackageDigest,lessonsFor
 } from '../dist/index.js';
 
 test('all A1 greeting pilots contain grounded original six-turn scripts without promotion',()=>{
@@ -88,4 +88,33 @@ test('tampering with A1 evidence and approval flags is detected',()=>{
  assert.equal(auditExpandedA1GreetingPilots(promoted).valid,false);
  assert.equal(auditExpandedA1GreetingPilots([]).valid,false);
  assert.equal(auditExpandedA1GreetingPilots([null,...original.slice(1)]).valid,false);
+});
+
+test('recomputed SHA cannot conceal edited advanced scene or a changed comprehension key',()=>{
+ const scene=advancedListeningStoryboards[0];
+ const original=firstReleaseEditorialPackages.find(p=>p.targetLanguage===scene.targetLanguage);
+ assert.ok(original);
+ const originalLessonId=scene.targetLanguage+'-'+scene.level.toLowerCase()+'-'+scene.unitId;
+ const changed=original.lessons.map(lesson=>lesson.id!==originalLessonId?lesson:{
+  ...lesson,activities:lesson.activities.map(a=>
+   a.kind==='listen'&&a.prompt.target===scene.turns[2].text?
+    {...a,prompt:{...a.prompt,target:'An invented scene transcript without source evidence.'}}:a)
+ });
+ const altered={...original,lessons:changed,contentSha256:lessonPackageDigest(changed)};
+ assert.equal(validateLessonPackage(altered).structurallyValid,true,
+  'basic structural validator should accept a well-formed changed package with matching digest');
+ const inventory=firstReleaseEditorialPackages.map(p=>p.targetLanguage===scene.targetLanguage?altered:p);
+ const report=auditFirstReleaseProductionPackages(inventory);
+ assert.equal(report.structurallyValid,false);
+ assert.ok(report.errors.some(s=>s.startsWith('MISSING_STORYBOARD_TURN')));
+ const changedKey=original.lessons.map(lesson=>lesson.id!==originalLessonId?lesson:{
+  ...lesson,activities:lesson.activities.map(a=>
+   a.kind==='choice'&&a.prompt.target===scene.checks[0].question?
+    {...a,correctOptionId:a.options.find(o=>o.text===scene.checks[0].unsupportedInterpretation).id}:a)
+ });
+ const keyChanged={...original,lessons:changedKey,contentSha256:lessonPackageDigest(changedKey)};
+ const report2=auditFirstReleaseProductionPackages(firstReleaseEditorialPackages.map(p=>
+  p.targetLanguage===scene.targetLanguage?keyChanged:p));
+ assert.equal(report2.structurallyValid,false);
+ assert.ok(report2.errors.some(s=>s.startsWith('MISSING_STORYBOARD_EVIDENCE')));
 });
