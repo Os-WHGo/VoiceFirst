@@ -1,6 +1,70 @@
 /** Authored Canadian English A1 situations. Editorial drafts, no recorded audio. */
 import type {A1SituationSeed,A1SituationTopic} from './a1-situational-pilots.js';
 export const a1SituationsEnglish:Readonly<Record<A1SituationTopic,A1SituationSeed>>={
+ 'numbers-time-and-dates':{
+  continuation:[
+   "Is the class in room three or room four?",
+   "The class is in room three on Monday.",
+   "Can you repeat the day and time for my friend?",
+   "Of course. Monday at two o’clock, in room three.",
+  ],
+  checks:[
+   ["What time does the class start?", "two o’clock in the afternoon.", "The class starts at nine o’clock in the morning."],
+   ["Which room will the class use?", "room three on Monday.", "The Monday class meets in room four."],
+   ["What information is repeated for the friend?", "Monday at two o’clock, in room three.", "The friend is told to arrive on Tuesday at four."],
+  ],
+  spokenFollowUp:"Confirm the day, hour and room of a fictional class with another speaker and ask politely to hear them again.",
+  noMicAlternative:"Write two short messages confirming a fictional Monday class, its starting time and its room number.",
+  mediationPrompt:"Tell a fictional classmate who missed the conversation the class day, time and room without using a real school schedule."
+ },
+ 'family-and-people':{
+  continuation:[
+   "Does Sam enjoy visiting the community garden?",
+   "Yes, Sam enjoys the garden and brings a small notebook.",
+   "Can I invite Sam to our fictional group meeting?",
+   "Yes, Sam can join us on Saturday afternoon.",
+  ],
+  checks:[
+   ["How is Sam related to the first speaker?", "my cousin.", "Sam is introduced as the speaker’s teacher."],
+   ["What does Sam bring to the garden?", "a small notebook.", "Sam carries a large suitcase to the garden."],
+   ["When can Sam join the fictional group?", "Saturday afternoon.", "Sam is only available on Wednesday morning."],
+  ],
+  spokenFollowUp:"Introduce a fictional cousin respectfully, describe one interest and invite them to a small group meeting.",
+  noMicAlternative:"Write a fictional description of a cousin and two short messages asking and answering about a meeting.",
+  mediationPrompt:"Explain to a fictional newcomer who Sam is, what Sam enjoys and when the group meeting takes place."
+ },
+ 'daily-routines':{
+  continuation:[
+   "Does the bus leave before eight?",
+   "Yes, it leaves at seven thirty from the bus stop.",
+   "What do you do when you arrive?",
+   "I read a book before I start work at nine.",
+  ],
+  checks:[
+   ["What happens just after breakfast?", "then I take the bus.", "The person goes straight to bed after breakfast."],
+   ["At what time does the bus leave?", "at seven thirty", "The bus leaves at half past nine."],
+   ["What does the person do before work?", "I read a book before I start work at nine.", "The person goes running after work ends."],
+  ],
+  spokenFollowUp:"Describe a fictional morning routine using three activities and their times, then ask about the bus departure.",
+  noMicAlternative:"Write a three-sentence fictional morning schedule with breakfast, transport and a start-of-work time.",
+  mediationPrompt:"Put the fictional traveller’s breakfast, bus and reading activities in order for someone who missed the explanation."
+ },
+ 'basic-needs-and-help':{
+  continuation:[
+   "Thank you. Which part of the ticket shows the day?",
+   "The date is printed at the top, beside the number.",
+   "Can you say that again a little more slowly?",
+   "Yes. Look at the top of the ticket, beside the number.",
+  ],
+  checks:[
+   ["How will the helper explain the ticket?", "explain it slowly.", "The helper refuses to explain anything."],
+   ["Where is the date printed?", "at the top, beside the number.", "The date is written on the back below the barcode."],
+   ["Which part should the visitor look at again?", "at the top of the ticket, beside the number.", "The visitor should look under the ticket on the floor."],
+  ],
+  spokenFollowUp:"Politely ask for help with a fictional ticket, identify where to find a date and request a slower explanation.",
+  noMicAlternative:"Write a polite fictional request for ticket help and a second sentence asking for instructions to be repeated.",
+  mediationPrompt:"Explain in simple words where the date is located on a fictional ticket for a visitor who did not hear the answer."
+ },
  'personal-information':{
   continuation:[
    'Thank you. Do you speak English at the community centre?',
