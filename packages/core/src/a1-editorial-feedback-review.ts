@@ -161,6 +161,12 @@ function validated(input:unknown):A1EditorialReviewState|null{
   return null;
  return s as A1EditorialReviewState;
 }
+/** Authored examples for an internal reviewer; never inferred or graded as mastery. */
+export function a1EditorialAuthoredTypedExamples(input:unknown):readonly string[]|null{
+ const state=validated(input);
+ if(!state||state.closed||state.cursor>=3)return null;
+ return [...(authoredTypedVariants[state.sceneId+'#'+state.cursor]??[])];
+}
 /** Return only prepublication source dialogue. No recording is present or produced. */
 export interface A1EditorialReviewTranscript {
  sceneId:string;targetLanguage:FirstTarget;level:'A1';
