@@ -64,7 +64,7 @@ test('typed authored variants are accepted but unreviewed paraphrases are not pe
   assert.equal(unknown.state.lastResult,'unverified');
   assert.ok(!JSON.stringify(unknown).includes('This is a different fictional response'));
  }
- assert.ok(a1EditorialReviewVariantKeys.length>=9);
+ assert.ok(a1EditorialReviewVariantKeys.length===24);
 });
 
 test('unsupported, skipped and hint states remain non-scoring and show evidence on demand',()=>{
