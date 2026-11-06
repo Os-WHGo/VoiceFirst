@@ -14,7 +14,7 @@ test('144 original first-release drafts map to three valid 48-unit offline edito
  const report=auditFirstReleaseProductionPackages();
  assert.deepEqual(report,{
   structurallyValid:true,errors:[],packages:3,
-  candidateLessons:144,draftActivities:1263,
+  candidateLessons:144,draftActivities:1347,
   editoriallyApprovedLessons:0,verifiedVoiceClips:0,
   publiclyAvailableLessons:0,fullCoursesReady:0
  });
