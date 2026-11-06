@@ -252,7 +252,7 @@ export function auditFirstReleaseProductionPackages(
    for(const unitId of expected){
     const draft=originalById.get([targetLanguage,level,unitId].join('/'));
     const lesson=validLessons.find(l=>l.id===[targetLanguage,level.toLowerCase(),unitId].join('-'));
-    const activities=lesson&&Array.isArray(lesson.activities)?lesson.activities:[];
+    const activities:readonly PackageActivity[]=lesson&&Array.isArray(lesson.activities)?lesson.activities:[];
     if(!draft||!lesson||!Array.isArray(lesson.activities)||lesson.band!==level||lesson.editorialStatus!=='draft'||
       lesson.audioStatus!=='audio-missing'||lesson.asrStatus!=='asr-unvalidated'||
       lesson.rights?.status!=='original'||
