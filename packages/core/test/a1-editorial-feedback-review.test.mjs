@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
  firstReleaseLanguages,a1EditorialSceneTopics,startA1EditorialReview,
  currentA1EditorialReview,submitA1EditorialReview,advanceA1EditorialReview,
- a1EditorialReviewVariantKeys,a1EditorialReviewTranscript,expandedA1GreetingPilots,expandedA1SituationalPilots,
+ a1EditorialReviewVariantKeys,a1EditorialReviewTranscript,a1EditorialAuthoredTypedExamples,expandedA1GreetingPilots,expandedA1SituationalPilots,
  lessonsFor,firstPublicReleaseReadiness
 } from '../dist/index.js';
 
@@ -148,7 +148,20 @@ test('all 72 authored A1 question variant keys and full transcript cues are priv
   assert.equal(transcript.turns.length,6);
   assert.deepEqual(transcript.turns.map(t=>t.audioId),scene.turns.map(t=>t.audioId));
   assert.equal(advanceA1EditorialReview(state,'next'),null,'cannot silently skip a question');
-  for(let index=0;index<3;index++)assert.ok(keys.has(scene.sceneId+'#'+index));
+  let stepState=state;
+  for(let index=0;index<3;index++){
+   assert.ok(keys.has(scene.sceneId+'#'+index));
+   const examples=a1EditorialAuthoredTypedExamples(stepState);
+   assert.ok(examples?.length>0,'explicit variants '+scene.sceneId+'#'+index);
+   for(const text of examples){
+    const response=submitA1EditorialReview(stepState,{kind:'typed',text});
+    assert.equal(response?.result,'supported',scene.sceneId+' '+index+' '+text);
+    assert.equal(response?.countsAsMastery,false);
+   }
+   const skip=submitA1EditorialReview(stepState,{kind:'skip'});
+   stepState=advanceA1EditorialReview(skip.state,'next');
+  }
+  assert.equal(a1EditorialAuthoredTypedExamples(stepState),null);
  }
 });
 
