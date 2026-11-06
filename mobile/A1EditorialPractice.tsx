@@ -32,7 +32,7 @@ export function A1EditorialPractice({known,target}:{known:TargetLanguage;target:
   {step?.kind==='question'&&<View>
    <Text>{step.question}</Text>
    {step.options.map(o=><Pressable key={o.id} accessibilityRole="button" onPress={()=>submit({kind:'choice',optionId:o.id})}><Text>{o.text}</Text></Pressable>)}
-   {examples?.length>0&&<View>
+   {examples!==null&&examples.length>0&&<View>
     <Pressable accessibilityRole="button" onPress={()=>setShowVariants(v=>!v)}><Text>{showVariants?'Ocultar variantes':'Ver variantes autoradas para revisión'}</Text></Pressable>
     {showVariants&&examples.map((example,i)=><Text key={i}>{example}</Text>)}
    </View>}
