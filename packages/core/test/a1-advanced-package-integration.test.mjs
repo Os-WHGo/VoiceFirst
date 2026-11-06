@@ -63,7 +63,7 @@ test('all three package hashes remain valid with zero editorial/public claims',(
  const report=auditFirstReleaseProductionPackages();
  assert.equal(report.structurallyValid,true,report.errors.join(';'));
  assert.equal(report.candidateLessons,144);
- assert.equal(report.draftActivities,1200);
+ assert.equal(report.draftActivities,1347);
  assert.equal(report.publiclyAvailableLessons,0);
  assert.equal(report.editoriallyApprovedLessons,0);
  assert.equal(report.verifiedVoiceClips,0);

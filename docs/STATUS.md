@@ -1,3 +1,15 @@
+# VoiceFirst | Estado de producción B0 · 05-11-2026 (PR #14 ampliada)
+
+> Esta actualización es la referencia operativa más reciente. Se conserva íntegra la cronología anterior para auditoría. [PR #14](https://github.com/Os-WHGo/VoiceFirst/pull/14) · [Informe A1](A1_EIGHT_TOPICS_THREE_LANGUAGES_2026_11_05.md) · checkpoint único de MU.
+
+- **Currículo:** inventario mínimo editorial de 144 temas A1–C2 en los tres idiomas prioritarios en-CA/fr-CA/es, pero **cero cursos A1–C2 completos**. Hay 24/24 temas A1 con al menos un guion de seis turnos, 45 escenas ampliadas A1–C2 de 144 temas, 99 temas sin ampliación; 1.347 actividades de borrador, sin revisiones humanas ni nuevos audios licenciados/verificados. Las 84 microlecciones históricas A0/A1 en seis idiomas siguen sin alteración. A0 no es un nivel MCER oficial.
+- **Funcionalidad:** React Native/Expo + core TS + almacenamiento local, ASR/TTS foreground opcionales y alternativas sin micrófono continúan en su arquitectura histórica. Los nuevos guiones son **editoriales**, desconectados de `lessonsFor`, progreso, calificación y navegación pública. Se conservan las 30 rutas dirigidas de infraestructura y los tres idiomas PT-BR/DE/IT marcados «Próximamente» para lanzamiento.
+- **QA:** auditar HEAD y cifras exactas en el cuerpo de la PR #14 y el checkpoint. Rechazar claves de respuesta adulteradas incluso con SHA nuevo; no confundir pruebas del núcleo/compilaciones con funcionamiento de micrófono, voces offline, permisos, Bluetooth ni hardware físico.
+- **Bloqueos:** auditoría NPM heredada mantiene cuatro avisos moderados con `readyForMerge:false`; arranque real iOS Simulator de Codex PR #9 requiere investigación de `bootstatus`. No forzar upgrades incompatibles, ocultar fallos, fusionar `main` ni lanzar IPA/APK por cada macrobloque.
+- **Siguiente:** producir y revisar audio original de piloto A1, completar variantes de respuestas/feedback/repaso y avanzar con A2 auténtico, manteniendo revisión docente y pruebas físicas en B1. Sin IA remota obligatoria, cuentas ni servidor para el curso con recursos locales, gastos, anuncios de terceros, suscripciones, paywall o venta de datos.
+
+---
+
 # Estado operativo canónico de desarrollo · 05-11-2026
 
 > La sección histórica «16 de octubre» que aparece más abajo se mantiene para trazabilidad, pero **no describe el estado actual**. Fuente viva: GitHub, [PR #12](https://github.com/Os-WHGo/VoiceFirst/pull/12), checkpoint único VoiceFirst de Drive y [consolidación A1–C2](FIRST_RELEASE_CEFR_PACKAGE_CONSOLIDATION_2026_11_05.md).

@@ -12,6 +12,7 @@ import {b2EditorialDrafts} from './b2-editorial-contract.js';
 import {advancedEditorialDrafts} from './advanced-editorial-contract.js';
 import {expandedFirstReleasePilots} from './a2-b2-expanded-pilots.js';
 import {expandedA1GreetingPilots} from './a1-expanded-greeting-pilots.js';
+import {expandedA1SituationalPilots} from './a1-situational-pilots.js';
 import {advancedListeningStoryboards} from './advanced-listening-storyboards.js';
 import {
  lessonPackageFormat,lessonPackageDigest,validateLessonPackage,
@@ -144,7 +145,7 @@ function candidateLesson(source:SourceDraft):PackageLesson{
    }));
   activities.splice(2,0,...followup,...evidence);
  }
- const a1Pilot=expandedA1GreetingPilots.find(p=>
+ const a1Pilot=[...expandedA1GreetingPilots,...expandedA1SituationalPilots].find(p=>
   p.targetLanguage===source.targetLanguage&&source.level==='A1'&&p.unitId===source.unitId);
  if(a1Pilot){
   if(a1Pilot.turns[0]?.text!==cue||a1Pilot.turns[1]?.text!==reply)
@@ -260,8 +261,8 @@ export function auditFirstReleaseProductionPackages(
        7+
        (expandedFirstReleasePilots.some(p=>p.targetLanguage===targetLanguage&&
         p.level===level&&p.unitId===unitId)?7:0)+
-       (expandedA1GreetingPilots.some(p=>p.targetLanguage===targetLanguage&&
-        level==='A1'&&p.unitId===unitId)?7:0)+
+       ([...expandedA1GreetingPilots,...expandedA1SituationalPilots].some(p=>
+        p.targetLanguage===targetLanguage&&level==='A1'&&p.unitId===unitId)?7:0)+
        (advancedListeningStoryboards.some(p=>p.targetLanguage===targetLanguage&&
         p.level===level&&p.unitId===unitId)?9:0)
       )||
@@ -276,6 +277,7 @@ export function auditFirstReleaseProductionPackages(
     const scenes=[
      ...expandedFirstReleasePilots,
      ...expandedA1GreetingPilots,
+     ...expandedA1SituationalPilots,
      ...advancedListeningStoryboards
     ].filter(p=>p.targetLanguage===targetLanguage&&p.level===level&&p.unitId===unitId);
     for(const scene of scenes){
