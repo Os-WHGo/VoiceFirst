@@ -34,7 +34,19 @@ const authoredTypedVariants:Readonly<Record<string,readonly string[]>>={
  'es/A1/numbers-time-and-dates#0':['A las dos de la tarde'],
  'en-CA/A1/food-and-shopping#0':['Two dollars','It costs two dollars'],
  'fr-CA/A1/food-and-shopping#0':['Deux dollars','Elle coûte deux dollars'],
- 'es/A1/food-and-shopping#0':['Dos dólares','Cuesta dos dólares']
+ 'es/A1/food-and-shopping#0':['Dos dólares','Cuesta dos dólares'],
+ 'en-CA/A1/family-and-people#0':['Sam is the speaker’s cousin','Sam is their cousin'],
+ 'fr-CA/A1/family-and-people#0':['Sam est son cousin','C’est son cousin'],
+ 'es/A1/family-and-people#0':['Sam es su primo','Es su primo'],
+ 'en-CA/A1/daily-routines#0':['The person takes the bus'],
+ 'fr-CA/A1/daily-routines#0':['La personne prend l’autobus'],
+ 'es/A1/daily-routines#0':['La persona toma el autobús'],
+ 'en-CA/A1/places-and-directions#0':['They should turn left at the corner'],
+ 'fr-CA/A1/places-and-directions#0':['Il faut tourner à gauche au coin'],
+ 'es/A1/places-and-directions#0':['Debe girar a la izquierda en la esquina'],
+ 'en-CA/A1/basic-needs-and-help#0':['The helper will explain slowly'],
+ 'fr-CA/A1/basic-needs-and-help#0':['La personne peut expliquer doucement'],
+ 'es/A1/basic-needs-and-help#0':['Se lo explica más despacio']
 };
 export const a1EditorialReviewVariantKeys:readonly string[]=Object.keys(authoredTypedVariants);
 
