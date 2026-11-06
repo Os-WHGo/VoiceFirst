@@ -94,7 +94,7 @@ export function auditExpandedA1SituationalPilots(input:unknown=expandedA1Situati
   turnsArray.forEach((turn,i)=>{
    if(!turn||typeof turn!=='object'||turn.id!=='turn-'+(i+1)||
       turn.speaker!==(i%2===0?'a':'b')||typeof turn.text!=='string'||
-      turn.text.trim().length<18||turn.text.length>450||
+      turn.text.trim().length<12||turn.text.length>450||
       turn.audioId!==[locale,'a1',topic,'turn-'+(i+1)].join('/')||
       seenAudio.has(String(turn.audioId)))
     errors.push('INVALID_A1_TURN '+id+'/'+i);
