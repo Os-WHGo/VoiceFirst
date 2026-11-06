@@ -124,7 +124,7 @@ export default function App() {
         <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
         </>}
         {__DEV__ && <View style={styles.mission}>
-          <Text style={styles.eyebrow}>REVISIÓN INTERNA C1–C2</Text>
+          <Text style={styles.eyebrow}>REVISIÓN INTERNA A1 Y C1–C2</Text>
           <Pressable accessibilityRole="button" onPress={()=>{stop();setEditorialReviewOpen(x=>!x);}} style={styles.chip}>
             <Text style={styles.chipText}>{editorialReviewOpen?'Cerrar revisión':'Abrir revisión editorial'}</Text>
           </Pressable>
