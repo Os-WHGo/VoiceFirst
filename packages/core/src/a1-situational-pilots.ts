@@ -8,7 +8,10 @@ import {a1SituationsEnglish} from './a1-situations-en.js';
 import {a1SituationsFrench} from './a1-situations-fr.js';
 import {a1SituationsSpanish} from './a1-situations-es.js';
 type LaunchLanguage=(typeof firstReleaseLanguages)[number];
-export const a1SituationTopics=['personal-information','food-and-shopping','places-and-directions'] as const;
+export const a1SituationTopics=[
+ 'personal-information','numbers-time-and-dates','family-and-people',
+ 'daily-routines','food-and-shopping','places-and-directions','basic-needs-and-help'
+] as const;
 export type A1SituationTopic=(typeof a1SituationTopics)[number];
 export interface A1SituationSeed{
  continuation:readonly [string,string,string,string];
@@ -67,7 +70,7 @@ export const a1SituationalAudioIds:readonly string[]=
  */
 export function auditExpandedA1SituationalPilots(input:unknown=expandedA1SituationalPilots){
  const errors:string[]=[],seenScenes=new Set<string>(),seenAudio=new Set<string>();
- if(!Array.isArray(input)||input.length!==9)return{
+ if(!Array.isArray(input)||input.length!==21)return{
   valid:false,errors:['INVALID_A1_SITUATION_COUNT'],scenes:0,
   turns:0,checks:0,approvedAudio:0,availableToLearners:false as const
  };
