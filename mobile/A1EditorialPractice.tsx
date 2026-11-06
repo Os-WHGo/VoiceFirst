@@ -18,8 +18,8 @@ export function A1EditorialPractice({known,target}:{known:TargetLanguage;target:
   {a1EditorialSceneTopics.map(id=><Pressable key={id} onPress={()=>setTopic(id)}><Text>{id}</Text></Pressable>)}
   {step?.kind==='question'&&<View>
    <Text>{step.question}</Text>
-   {step.options.map(o=><Pressable key={o.id} onPress={()=>submit({kind:'choice',optionId:o.id})}><Text>{o.text}</Text></Pressable>)}
-   <TextInput value={answerText} onChangeText={setAnswerText} placeholder="Respuesta opcional"/>
+   {step.options.map(o=><Pressable key={o.id} accessibilityRole="button" onPress={()=>submit({kind:'choice',optionId:o.id})}><Text>{o.text}</Text></Pressable>)}
+   <TextInput value={answerText} onChangeText={setAnswerText} placeholder="Respuesta opcional" maxLength={240} accessibilityLabel="Respuesta escrita para ensayo A1"/>
    <Pressable onPress={()=>submit({kind:'typed',text:answerText})}><Text>Revisar texto</Text></Pressable>
    <Pressable onPress={()=>submit({kind:'skip'})}><Text>Omitir</Text></Pressable>
    <Text>{feedback}</Text>
