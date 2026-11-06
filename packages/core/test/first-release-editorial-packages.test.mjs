@@ -4,6 +4,8 @@ import {
  firstReleaseEditorialPackages,auditFirstReleaseProductionPackages,
  editorialPackagePreview,validateLessonPackage,lessonPackageDigest,
  expandedFirstReleasePilots,expandedPilotExpectedAudioIds,auditExpandedFirstReleasePilots,
+ expandedA1GreetingPilots,a1ExpandedExpectedAudioIds,auditExpandedA1GreetingPilots,
+ advancedListeningStoryboards,advancedStoryboardExpectedAudioIds,auditAdvancedListeningStoryboards,
  firstReleaseLanguages,officialCefrBands,curriculumUnitBlueprint,
  lessonsFor,firstPublicReleaseReadiness
 } from '../dist/index.js';
@@ -12,7 +14,7 @@ test('144 original first-release drafts map to three valid 48-unit offline edito
  const report=auditFirstReleaseProductionPackages();
  assert.deepEqual(report,{
   structurallyValid:true,errors:[],packages:3,
-  candidateLessons:144,draftActivities:1071,
+  candidateLessons:144,draftActivities:1200,
   editoriallyApprovedLessons:0,verifiedVoiceClips:0,
   publiclyAvailableLessons:0,fullCoursesReady:0
  });
@@ -35,7 +37,10 @@ test('144 original first-release drafts map to three valid 48-unit offline edito
     assert.ok(view);
     assert.equal(view.status,'editorial-only');
     assert.equal(view.lesson.activities.length,
-     expandedFirstReleasePilots.some(x=>x.targetLanguage===target&&x.level===level&&x.unitId===unit)?14:7);
+     7+
+     (expandedFirstReleasePilots.some(x=>x.targetLanguage===target&&x.level===level&&x.unitId===unit)?7:0)+
+     (expandedA1GreetingPilots.some(x=>x.targetLanguage===target&&level==='A1'&&x.unitId===unit)?7:0)+
+     (advancedListeningStoryboards.some(x=>x.targetLanguage===target&&x.level===level&&x.unitId===unit)?9:0));
     assert.equal(view.canAssess,false);
     assert.equal(view.canAwardProgress,false);
     assert.equal(view.hasApprovedAudio,false);

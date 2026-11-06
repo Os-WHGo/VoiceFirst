@@ -11,6 +11,8 @@ import {b1EditorialDrafts} from './b1-editorial-contract.js';
 import {b2EditorialDrafts} from './b2-editorial-contract.js';
 import {advancedEditorialDrafts} from './advanced-editorial-contract.js';
 import {expandedFirstReleasePilots} from './a2-b2-expanded-pilots.js';
+import {expandedA1GreetingPilots} from './a1-expanded-greeting-pilots.js';
+import {advancedListeningStoryboards} from './advanced-listening-storyboards.js';
 import {
  lessonPackageFormat,lessonPackageDigest,validateLessonPackage,
  type LessonPackage,type PackageLesson,type PackageActivity,type PackageResponseMode
@@ -142,6 +144,49 @@ function candidateLesson(source:SourceDraft):PackageLesson{
    }));
   activities.splice(2,0,...followup,...evidence);
  }
+ const a1Pilot=expandedA1GreetingPilots.find(p=>
+  p.targetLanguage===source.targetLanguage&&source.level==='A1'&&p.unitId===source.unitId);
+ if(a1Pilot){
+  if(a1Pilot.turns[0]?.text!==cue||a1Pilot.turns[1]?.text!==reply)
+   throw new Error('A1 pilot dialogue differs from source: '+id);
+  const extraTurns:PackageActivity[]=a1Pilot.turns.slice(2).map((turn,i)=>
+   stage(base('a1-turn-'+(i+3)),'listen','hear-reply',{
+    prompt:{target:turn.text,support:supports['hear-reply']}
+   }));
+  const extraChecks:PackageActivity[]=a1Pilot.checks.map((check,i)=>
+   stage(base('a1-evidence-'+(i+1)),'choice','identify-reply',{
+    prompt:{target:check.question,support:supports['identify-reply']},
+    options:[
+     {id:base('a1-correct-'+(i+1)),text:check.verbatimEvidence},
+     {id:base('a1-unsupported-'+(i+1)),text:check.unsupportedInterpretation}
+    ],
+    correctOptionId:base('a1-correct-'+(i+1)),responseModes:['choice']
+   }));
+  activities.splice(2,0,...extraTurns,...extraChecks);
+ }
+ // Advanced six-turn scenarios are additional, distinct situations on the SAME
+ // unit topic. They do not overwrite the original two-turn C1/C2 source draft.
+ const advanced=advancedListeningStoryboards.find(p=>
+  p.targetLanguage===source.targetLanguage&&p.level===source.level&&p.unitId===source.unitId);
+ if(advanced){
+  if(advanced.publicAvailable!==false||advanced.canScore!==false||
+    advanced.audioStatus!=='not-recorded')
+   throw new Error('Advanced scene is not a permitted editorial draft: '+id);
+  const sceneTurns:PackageActivity[]=advanced.turns.map((turn,i)=>
+   stage(base('advanced-scene-'+(i+1)),'listen','hear-reply',{
+    prompt:{target:turn.text,support:supports['hear-reply']}
+   }));
+  const sceneChecks:PackageActivity[]=advanced.checks.map((check,i)=>
+   stage(base('advanced-evidence-'+(i+1)),'choice','identify-reply',{
+    prompt:{target:check.question,support:supports['identify-reply']},
+    options:[
+     {id:base('advanced-correct-'+(i+1)),text:check.verbatimEvidence},
+     {id:base('advanced-unsupported-'+(i+1)),text:check.unsupportedInterpretation}
+    ],
+    correctOptionId:base('advanced-correct-'+(i+1)),responseModes:['choice']
+   }));
+  activities.splice(2,0,...sceneTurns,...sceneChecks);
+ }
  const outcome=source.outcomes[0]??'';
  const goal:LocalizedText={...supports['take-turn'],[source.targetLanguage]:outcome};
  return {
@@ -207,15 +252,44 @@ export function auditFirstReleaseProductionPackages(
    for(const unitId of expected){
     const draft=originalById.get([targetLanguage,level,unitId].join('/'));
     const lesson=validLessons.find(l=>l.id===[targetLanguage,level.toLowerCase(),unitId].join('-'));
-    if(!draft||!lesson||lesson.band!==level||lesson.editorialStatus!=='draft'||
+    const activities:readonly PackageActivity[]=lesson&&Array.isArray(lesson.activities)?lesson.activities:[];
+    if(!draft||!lesson||!Array.isArray(lesson.activities)||lesson.band!==level||lesson.editorialStatus!=='draft'||
       lesson.audioStatus!=='audio-missing'||lesson.asrStatus!=='asr-unvalidated'||
-      lesson.rights.status!=='original'||
-      lesson.activities.length!==(expandedFirstReleasePilots.some(p=>
-       p.targetLanguage===targetLanguage&&p.level===level&&p.unitId===unitId)?14:7)||
-      lesson.activities[0]?.prompt.target!==draft.dialogue[0]||
-      lesson.activities[1]?.prompt.target!==draft.dialogue[1]||
-      !lesson.activities.some(a=>a.kind==='dialogue-turn'&&a.model===draft.dialogue[1]))
+      lesson.rights?.status!=='original'||
+      activities.length!==(
+       7+
+       (expandedFirstReleasePilots.some(p=>p.targetLanguage===targetLanguage&&
+        p.level===level&&p.unitId===unitId)?7:0)+
+       (expandedA1GreetingPilots.some(p=>p.targetLanguage===targetLanguage&&
+        level==='A1'&&p.unitId===unitId)?7:0)+
+       (advancedListeningStoryboards.some(p=>p.targetLanguage===targetLanguage&&
+        p.level===level&&p.unitId===unitId)?9:0)
+      )||
+      activities[0]?.prompt?.target!==draft.dialogue[0]||
+      activities[1]?.prompt?.target!==draft.dialogue[1]||
+      !activities.some(a=>a.kind==='dialogue-turn'&&a.model===draft.dialogue[1]))
       errors.push('INCOMPLETE_OR_CHANGED_DRAFT '+targetLanguage+'/'+level+'/'+unitId);
+    if(!lesson||!Array.isArray(lesson.activities))continue;
+    // A recomputed package digest must not conceal substitution of a reviewed
+    // draft's evidence. Compare the FULL source dialogue and answer choices,
+    // including all standalone C1/C2 scenes and the extra A1/A2-B2 pilots.
+    const scenes=[
+     ...expandedFirstReleasePilots,
+     ...expandedA1GreetingPilots,
+     ...advancedListeningStoryboards
+    ].filter(p=>p.targetLanguage===targetLanguage&&p.level===level&&p.unitId===unitId);
+    for(const scene of scenes){
+     for(const turn of scene.turns){
+      if(!activities.some(a=>a?.kind==='listen'&&a.prompt?.target===turn.text))
+       errors.push('MISSING_STORYBOARD_TURN '+targetLanguage+'/'+level+'/'+unitId+'/'+turn.id);
+     }
+     for(const check of scene.checks){
+      if(!activities.some(a=>a?.kind==='choice'&&a.prompt?.target===check.question&&
+       a.options?.some(o=>o.id===a.correctOptionId&&o.text===check.verbatimEvidence)&&
+       a.options?.some(o=>o.text===check.unsupportedInterpretation)))
+       errors.push('MISSING_STORYBOARD_EVIDENCE '+targetLanguage+'/'+level+'/'+unitId+'/'+check.afterTurnId);
+     }
+    }
    }
   }
   lessonCount+=pack.lessons.length;activityCount+=result.activities;
