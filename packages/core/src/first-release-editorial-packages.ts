@@ -252,10 +252,11 @@ export function auditFirstReleaseProductionPackages(
    for(const unitId of expected){
     const draft=originalById.get([targetLanguage,level,unitId].join('/'));
     const lesson=validLessons.find(l=>l.id===[targetLanguage,level.toLowerCase(),unitId].join('-'));
-    if(!draft||!lesson||lesson.band!==level||lesson.editorialStatus!=='draft'||
+    const activities=lesson&&Array.isArray(lesson.activities)?lesson.activities:[];
+    if(!draft||!lesson||!Array.isArray(lesson.activities)||lesson.band!==level||lesson.editorialStatus!=='draft'||
       lesson.audioStatus!=='audio-missing'||lesson.asrStatus!=='asr-unvalidated'||
-      lesson.rights.status!=='original'||
-      lesson.activities.length!==(
+      lesson.rights?.status!=='original'||
+      activities.length!==(
        7+
        (expandedFirstReleasePilots.some(p=>p.targetLanguage===targetLanguage&&
         p.level===level&&p.unitId===unitId)?7:0)+
@@ -264,10 +265,31 @@ export function auditFirstReleaseProductionPackages(
        (advancedListeningStoryboards.some(p=>p.targetLanguage===targetLanguage&&
         p.level===level&&p.unitId===unitId)?9:0)
       )||
-      lesson.activities[0]?.prompt.target!==draft.dialogue[0]||
-      lesson.activities[1]?.prompt.target!==draft.dialogue[1]||
-      !lesson.activities.some(a=>a.kind==='dialogue-turn'&&a.model===draft.dialogue[1]))
+      activities[0]?.prompt?.target!==draft.dialogue[0]||
+      activities[1]?.prompt?.target!==draft.dialogue[1]||
+      !activities.some(a=>a.kind==='dialogue-turn'&&a.model===draft.dialogue[1]))
       errors.push('INCOMPLETE_OR_CHANGED_DRAFT '+targetLanguage+'/'+level+'/'+unitId);
+    if(!lesson||!Array.isArray(lesson.activities))continue;
+    // A recomputed package digest must not conceal substitution of a reviewed
+    // draft's evidence. Compare the FULL source dialogue and answer choices,
+    // including all standalone C1/C2 scenes and the extra A1/A2-B2 pilots.
+    const scenes=[
+     ...expandedFirstReleasePilots,
+     ...expandedA1GreetingPilots,
+     ...advancedListeningStoryboards
+    ].filter(p=>p.targetLanguage===targetLanguage&&p.level===level&&p.unitId===unitId);
+    for(const scene of scenes){
+     for(const turn of scene.turns){
+      if(!activities.some(a=>a?.kind==='listen'&&a.prompt?.target===turn.text))
+       errors.push('MISSING_STORYBOARD_TURN '+targetLanguage+'/'+level+'/'+unitId+'/'+turn.id);
+     }
+     for(const check of scene.checks){
+      if(!activities.some(a=>a?.kind==='choice'&&a.prompt?.target===check.question&&
+       a.options?.some(o=>o.id===a.correctOptionId&&o.text===check.verbatimEvidence)&&
+       a.options?.some(o=>o.text===check.unsupportedInterpretation)))
+       errors.push('MISSING_STORYBOARD_EVIDENCE '+targetLanguage+'/'+level+'/'+unitId+'/'+check.afterTurnId);
+     }
+    }
    }
   }
   lessonCount+=pack.lessons.length;activityCount+=result.activities;
