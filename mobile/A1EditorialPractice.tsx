@@ -3,6 +3,7 @@ import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {AppState,Pressable,Text,TextInput,View} from 'react-native';
 import {a1EditorialSceneTopics,startA1EditorialReview,currentA1EditorialReview,submitA1EditorialReview,advanceA1EditorialReview,a1EditorialReviewTranscript,a1EditorialAuthoredTypedExamples,a1EditorialListeningTurns,type A1EditorialListeningTurn,type A1EditorialReviewState,type TargetLanguage} from '@voicefirst/core';
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
+import {reviewA1LocalAudio} from './a1-editorial-local-audio';
 export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;target:TargetLanguage;rate:number}){
  const [topic,setTopic]=useState(a1EditorialSceneTopics[0]!);
  const [state,setState]=useState<A1EditorialReviewState|null>(null);
@@ -13,6 +14,7 @@ export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;ta
  const request=useRef(0);
  const [playingTurn,setPlayingTurn]=useState<string|null>(null);
  const [speechStatus,setSpeechStatus]=useState('');
+ const [localAudioStatus,setLocalAudioStatus]=useState('');
  const stopAudio=useCallback(()=>{
   request.current++;
   setPlayingTurn(null);
@@ -26,7 +28,7 @@ export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;ta
  },[stopAudio]);
  useEffect(()=>{
   stopAudio();
-  setSpeechStatus('');
+  setSpeechStatus('');setLocalAudioStatus('');
   setState(startA1EditorialReview(known,target,topic));
   setAnswerText('');setFeedback('');setShowTranscript(false);setShowVariants(false);
   return()=>{request.current++;void stopCuratedVoice();};
@@ -52,6 +54,15 @@ export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;ta
  return <View>
   <Text>Ensayo editorial A1. Sin audio, puntuación ni progreso.</Text>
   {transcript&&<View>
+   <Pressable accessibilityRole="button" onPress={()=>{
+    stopAudio();
+    const token=++request.current;
+    setLocalAudioStatus('Verificando seis archivos privados; no se publicarán.');
+    void reviewA1LocalAudio(transcript.sceneId).then(report=>{
+     if(request.current===token)setLocalAudioStatus(report.reason);
+    });
+   }}><Text>Comprobar grabaciones A1 originales (interno)</Text></Pressable>
+   {!!localAudioStatus&&<Text accessibilityRole="alert">{localAudioStatus}</Text>}
    <Pressable accessibilityRole="button" accessibilityLabel="Ver u ocultar diálogo completo" onPress={()=>{stopAudio();setShowTranscript(v=>!v);}}>
     <Text>{showTranscript?'Ocultar diálogo':'Ver diálogo de seis turnos'}</Text>
    </Pressable>
