@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 test('A1 editor is mounted only inside development view',()=>{
  const app=readFileSync('mobile/App.tsx','utf8');
  const gate=app.indexOf('{__DEV__ && <View style={styles.mission}>');
- const mount=app.indexOf('<A1EditorialPractice known={nativeLanguage} target={target}/>');
+ const mount=app.indexOf('<A1EditorialPractice known={nativeLanguage} target={target} rate={rate}/>');
  const end=app.indexOf('</View>}',gate);
  assert.ok(gate>=0&&mount>gate&&mount<end);
 });
