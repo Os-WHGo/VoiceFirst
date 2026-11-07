@@ -12,7 +12,8 @@ const scenes=[...expandedA1GreetingPilots,...expandedA1SituationalPilots];
 export const a1SixTurnAudioFormat='voicefirst.a1-six-turn-editorial.v1';
 const hex=/^[0-9a-f]{64}$/;
 const maxClipBytes=8*1024*1024;
-const maxClipDurationMs=120000;
+// Matches the existing inspectPcmWav 60-second upper bound.
+const maxClipDurationMs=60000;
 type AudioScene=(typeof scenes)[number];
 const sceneFor=(id:string):AudioScene|undefined=>scenes.find(s=>s.sceneId===id);
 const record=(x:unknown):x is Record<string,unknown>=>x!==null&&typeof x==='object'&&!Array.isArray(x);
