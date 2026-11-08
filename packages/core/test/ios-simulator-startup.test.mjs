@@ -68,7 +68,7 @@ test('transient simulator bootstatus uses one bounded retry before checking real
   assert.equal(report.passed,true);
   assert.equal(report.bootAttempts,2);
   assert.deepEqual(delays,[5000,15000]);
-  assert.equal(fake.calls.filter(c=>c[1]==='bootstatus').length,2);
+  assert.equal(fake.calls.filter(c=>c[1]==='simctl'&&c[2]==='bootstatus').length,2);
   assert.ok(fake.calls.some(c=>c.includes('screenshot')));
   assert.deepEqual(fake.calls.at(-1),['xcrun','simctl','delete',uuid]);
  }finally{rmSync(f.dir,{recursive:true,force:true});}
