@@ -15,6 +15,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
   const recorder=useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [devToken,setDevToken]=useState('');
   const [phase,setPhase]=useState<'ready'|'recording'|'sending'|'speaking'>('ready');
+  const phaseRef=useRef<'ready'|'recording'|'sending'|'speaking'>('ready');
   const [transcript,setTranscript]=useState('');
   const [answer,setAnswer]=useState('');
   const [error,setError]=useState('');
@@ -31,15 +32,14 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
       abort.current?.abort();
       history.current=[];
       setTranscript('');setAnswer('');
-      setPhase(current=>{
-        if(current==='recording'){
-          void recorder.stop().then(()=>{
-            const uri=recorder.uri;
-            if(uri)try{new File(uri).delete();}catch{}
-          }).catch(()=>{});
-        }
-        return 'ready';
-      });
+      if(phaseRef.current==='recording'){
+        void recorder.stop().then(()=>{
+          const uri=recorder.uri;
+          if(uri)try{new File(uri).delete();}catch{}
+        }).catch(()=>{});
+      }
+      phaseRef.current='ready';
+      setPhase('ready');
       void Speech.stop();
     };
     const sub=AppState.addEventListener('change',next=>{
@@ -115,6 +115,7 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
     }
   };
   const clear=()=>{history.current=[];setTranscript('');setAnswer('');setError('');};
+  phaseRef.current=phase;
   if(!__DEV__)return null;
   return <View style={styles.container}>
     <Text style={styles.header}>Laboratorio de conversación con IA</Text>
