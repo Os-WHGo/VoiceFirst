@@ -181,8 +181,7 @@ jobs:
           VOICEFIRST_CODE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          APP=$(find "$RUNNER_TEMP/voicefirst-ios-simulator/Build/Products/Release-iphonesimulator" \\
-            -maxdepth 1 -name '*.app' -type d | head -n 1)
+          APP=$(find "$RUNNER_TEMP/voicefirst-ios-simulator/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' -type d | head -n 1)
           test -n "$APP"
           node scripts/check-ios-simulator-startup.mjs "$APP" "$RUNNER_TEMP/voicefirst-startup"
 
