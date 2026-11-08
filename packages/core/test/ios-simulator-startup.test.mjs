@@ -16,8 +16,8 @@ function fixture(){
  const appPath=join(dir,'VoiceFirst.app');mkdirSync(appPath);writeFileSync(join(appPath,'Info.plist'),'fixture');
  return {dir,appPath,outputDir:join(dir,'evidence')};
 }
-function fakeRun(f,{failAt=null,deadAfterRender=false,wrongIdentity=false}={}){
- const calls=[];let rendered=false;
+function fakeRun(f,{failAt=null,deadAfterRender=false,wrongIdentity=false,bootstatusFailsOnce=false}={}){
+ const calls=[];let rendered=false,bootChecks=0;
  const run=(binary,args)=>{
   calls.push([binary,...args]);
   if(binary==='plutil')return JSON.stringify({CFBundleIdentifier:wrongIdentity?'other.app':'com.oswhgo.voicefirst',CFBundleExecutable:'VoiceFirst'});
@@ -30,6 +30,7 @@ function fakeRun(f,{failAt=null,deadAfterRender=false,wrongIdentity=false}={}){
    rendered=true;return 'verified';
   }
   if(args[1]==='list')return JSON.stringify(args[2]==='runtimes'?runtimes:types);
+  if(args[1]==='bootstatus'&&++bootChecks===1&&bootstatusFailsOnce)throw Error('runner not ready');
   if(args[1]===failAt)throw Error('native command failed');
   if(args[1]==='create')return uuid;
   if(args[1]==='launch')return 'com.oswhgo.voicefirst: 1234';
@@ -60,8 +61,20 @@ test('startup success requires actual screen verification and same process still
   assert.ok(!fake.calls.some(c=>c.includes('grant')||c.includes('tap')),'no permissions/UI interaction');
  }finally{rmSync(f.dir,{recursive:true,force:true});}
 });
+test('transient simulator bootstatus uses one bounded retry before checking real app UI',async()=>{
+ const f=fixture();try{
+  const fake=fakeRun(f,{bootstatusFailsOnce:true}),delays=[];
+  const report=await checkIOSStartup(f,{run:fake.run,delay:async ms=>delays.push(ms)});
+  assert.equal(report.passed,true);
+  assert.equal(report.bootAttempts,2);
+  assert.deepEqual(delays,[5000,15000]);
+  assert.equal(fake.calls.filter(c=>c[1]==='bootstatus').length,2);
+  assert.ok(fake.calls.some(c=>c.includes('screenshot')));
+  assert.deepEqual(fake.calls.at(-1),['xcrun','simctl','delete',uuid]);
+ }finally{rmSync(f.dir,{recursive:true,force:true});}
+});
 test('boot, install, launch and render failures delete only the disposable Simulator and retain failure evidence',async()=>{
- for(const failAt of ['boot','install','launch','render']){
+ for(const failAt of ['boot','bootstatus','install','launch','render']){
   const f=fixture();try{
    const fake=fakeRun(f,{failAt});
    await assert.rejects(checkIOSStartup(f,{run:fake.run,delay:async()=>{}}),/startup failed/);
