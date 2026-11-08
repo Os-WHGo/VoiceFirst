@@ -5,6 +5,8 @@ on:
       - 'mobile/**'
       - 'scripts/check-expo-config.mjs'
       - 'scripts/native-ci-change-gate.mjs'
+      - 'scripts/check-ios-simulator-startup.mjs'
+      - 'scripts/check-ios-startup-screen.swift'
       # Only an explicit edit to this small marker requests an accumulated B0 native batch.
       - 'docs/ci/native-batch-request.md'
       - 'scripts/check-android-prebuild.mjs'
@@ -173,3 +175,14 @@ jobs:
           print('Packaged simulator Info.plist checked: permissions, foreground audio and bundle identifier.')
           PY
           echo 'Simulator .app built and validated locally. Not an installable iPhone IPA or a hardware test.'
+      - name: Launch fresh iPhone Simulator and verify actual React Native startup screen
+        timeout-minutes: 12
+        env:
+          VOICEFIRST_CODE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          APP=$(find "$RUNNER_TEMP/voicefirst-ios-simulator/Build/Products/Release-iphonesimulator" \\
+            -maxdepth 1 -name '*.app' -type d | head -n 1)
+          test -n "$APP"
+          node scripts/check-ios-simulator-startup.mjs "$APP" "$RUNNER_TEMP/voicefirst-startup"
+
