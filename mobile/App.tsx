@@ -121,7 +121,7 @@ export default function App() {
         {level==='A0' && a0Catalog.kind==='candidate' && <A0CandidatePreview key={'a0-'+target} target={target} nativeLanguage={nativeLanguage} lessons={pendingA0Lessons} preflight={a0CatalogPreflight} />}
         <OfflineCourse key={target} nativeLanguage={nativeLanguage} target={target} guideLocale={guideLocale} rate={rate} experience={experience} />
         <FreeResources target={target}/>
-        <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />
+        {__DEV__ && <VoicePractice nativeLanguage={nativeLanguage} target={target} level={level} rate={rate} lowStim={lowStim} experience={experience} />}
         </>}
         {__DEV__ && <View style={styles.mission}>
           <Text style={styles.eyebrow}>REVISIÓN INTERNA A1 Y C1–C2</Text>
@@ -131,7 +131,7 @@ export default function App() {
           {editorialReviewOpen&&<AdvancedEditorialReview known={nativeLanguage} target={target} onClose={()=>setEditorialReviewOpen(false)}/>}
           {editorialReviewOpen&&<A1EditorialPractice known={nativeLanguage} target={target} rate={rate}/>}
         </View>}
-        <Text style={styles.note}>Tres idiomas seleccionables para la beta privada y tres marcados Próximamente. Ningún curso está completo hasta C2 ni aprobado para lanzamiento público. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio generativo es opcional y separado. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
+        <Text style={styles.note}>Tres idiomas seleccionables para la beta privada y tres marcados Próximamente. Ningún curso está completo hasta C2 ni aprobado para lanzamiento público. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio de IA remota solo está disponible en desarrollo y con consentimiento explícito. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
       </ScrollView>
     </SafeAreaView>
   );
