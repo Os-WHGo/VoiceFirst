@@ -178,7 +178,8 @@ jobs:
       - name: Launch fresh iPhone Simulator and verify actual React Native startup screen
         timeout-minutes: 12
         env:
-          VOICEFIRST_CODE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          # pull_request checks out the tested merge tree, not necessarily the PR head.
+          VOICEFIRST_CODE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           APP=$(find "$RUNNER_TEMP/voicefirst-ios-simulator/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' -type d | head -n 1)
