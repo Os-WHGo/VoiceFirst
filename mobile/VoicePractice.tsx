@@ -66,10 +66,14 @@ export function VoicePractice({nativeLanguage,target,level,rate,lowStim,experien
     if(devToken.trim().length<20){setError('Introduce la clave de desarrollo local (no la clave de OpenAI).');return;}
     const permission=await AudioModule.requestRecordingPermissionsAsync();
     if(!permission.granted){Alert.alert('Micrófono desactivado','Habilita el micrófono en Ajustes para practicar.');return;}
+    if(!onlineConsentRef.current||AppState.currentState!=='active')return;
     try {
       await Speech.stop();
+      if(!onlineConsentRef.current||AppState.currentState!=='active')return;
       await setAudioModeAsync({playsInSilentMode:true,allowsRecording:true});
+      if(!onlineConsentRef.current||AppState.currentState!=='active')return;
       await recorder.prepareToRecordAsync();
+      if(!onlineConsentRef.current||AppState.currentState!=='active')return;
       recorder.record();
       setPhase('recording');
     } catch {setPhase('ready');setError('No se pudo iniciar el micrófono.');}
