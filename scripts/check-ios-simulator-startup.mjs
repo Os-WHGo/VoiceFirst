@@ -37,7 +37,7 @@ export async function checkIOSStartup({appPath,outputDir,codeSha=null},
   throw Error('Expected an already-built iOS Simulator app');
  mkdirSync(outputDir,{recursive:true});
  const report={codeSha:/^[a-f0-9]{40}$/.test(codeSha??'')?codeSha:null,
-  stage:'metadata',passed:false,processAlive:false,renderedStartup:false,cleanedUp:false,
+  stage:'metadata',bootAttempts:0,passed:false,processAlive:false,renderedStartup:false,cleanedUp:false,
   interpretation:'Fresh iOS Simulator startup only; not physical iPhone, audio, offline-course or security approval.'};
  const persist=()=>writeFileSync(join(outputDir,'startup-report.json'),JSON.stringify(report,null,2)+'\n');
  const stage=name=>{report.stage=name;persist();console.log('iOS startup stage: '+name);};
@@ -61,7 +61,26 @@ export async function checkIOSStartup({appPath,outputDir,codeSha=null},
   stage('boot');
   run('xcrun',['simctl','boot',device]);
   stage('bootstatus');
-  run('xcrun',['simctl','bootstatus',device,'-b']);
+  // Hosted macOS runners can finish 'simctl boot' before CoreSimulator is
+  // ready. Retry ONCE, bounded, and keep a hard failure if readiness never
+  // succeeds. Never infer app startup from a simulator's booted state.
+  let bootFailure=null;
+  for(let attempt=1;attempt<=2;attempt++){
+   report.bootAttempts=attempt;
+   persist();
+   try{
+    run('xcrun',['simctl','bootstatus',device,'-b'],attempt===1?180000:120000);
+    bootFailure=null;
+    break;
+   }catch(error){
+    bootFailure=error;
+    if(attempt===1){
+     console.log('iOS simulator bootstatus not ready; bounded second attempt');
+     await delay(5000);
+    }
+   }
+  }
+  if(bootFailure)throw Error('Simulator did not become boot-ready',{cause:bootFailure});
   stage('install');run('xcrun',['simctl','install',device,appPath]);
   stage('launch');
   const launched=run('xcrun',['simctl','launch','--terminate-running-process',device,bundleId]);
