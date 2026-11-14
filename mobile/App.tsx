@@ -15,6 +15,7 @@ import { PragmaticsPractice } from './PragmaticsPractice';
 import { VoicePackImporter } from './VoicePackImporter';
 import {AdvancedEditorialReview} from './AdvancedEditorialReview';
 import {A1EditorialPractice} from './A1EditorialPractice';
+import {A2B2EditorialPractice} from './A2B2EditorialPractice';
 import {stopCuratedVoice} from './curated-voice-output';
 import { useLearningPreferences } from './use-learning-preferences';
 import { missionsFor, languageNames, targetLanguages, firstReleaseLanguages, canSelectFirstReleaseLanguage, canSelectFirstReleasePair, courseReadingLocale, type LanguageVariant, type CefrBand, type TargetLanguage, type LearningFocus, type A0LessonCandidate } from '@voicefirst/core';
@@ -130,6 +131,7 @@ export default function App() {
           </Pressable>
           {editorialReviewOpen&&<AdvancedEditorialReview known={nativeLanguage} target={target} onClose={()=>setEditorialReviewOpen(false)}/>}
           {editorialReviewOpen&&<A1EditorialPractice known={nativeLanguage} target={target} rate={rate}/>}
+          {editorialReviewOpen&&<A2B2EditorialPractice known={nativeLanguage} target={target} rate={rate}/>}
         </View>}
         <Text style={styles.note}>Tres idiomas seleccionables para la beta privada y tres marcados Próximamente. Ningún curso está completo hasta C2 ni aprobado para lanzamiento público. La práctica guiada tiene una ruta de reconocimiento local que requiere compilación nativa y modelos compatibles; el laboratorio de IA remota solo está disponible en desarrollo y con consentimiento explícito. No calificamos pronunciación ni certificamos niveles. No se ha probado la captura con pantalla bloqueada ni con lentes Bluetooth. Los ajustes de accesibilidad no requieren diagnósticos y no se almacena audio de las clases preparadas.</Text>
       </ScrollView>
