@@ -126,7 +126,7 @@ test('public screen cannot mount A1 private player, direct URLs, network or lear
  assert.match(screen,/localPlayer\.stop\(\)/);
  assert.match(screen,/No se usará TTS como sustituto/);
  assert.match(app,/__DEV__ && <View/);
- assert.doesNotMatch(app,/<A1EditorialPractice /);
+ assert.match(app,/editorialReviewOpen&&<A1EditorialPractice /);
  assert.match(bridge,/privateA1EditorialAudioUri\(audioId\)/);
  assert.match(bridge,/shouldPlayInBackground:false/);
  assert.match(loader,/auditA1SixTurnAudio\(sceneId,loaded\.manifest,a1NativeAudioVerifier\)/);
