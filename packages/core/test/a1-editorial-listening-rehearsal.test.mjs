@@ -72,7 +72,7 @@ test('A1 editorial system voice is manual, cancellable, foreground-only and behi
  assert.match(screen,/AppState\.addEventListener\('change'/);
  assert.match(screen,/next!=='active'/);
  assert.match(screen,/stopCuratedVoice\(\)/);
- assert.match(screen,/return\(\)=>\{request\.current\+\+;void stopCuratedVoice\(\);\}/);
+ assert.match(screen,/return\(\)=>\{request\.current\+\+;localPlayer\.stop\(\);void stopCuratedVoice\(\);\}/);
  assert.match(screen,/onPress=\{\(\)=>playTurn\(listening\[i\]!\)\}/);
  assert.match(screen,/playCuratedVoice\(turn\.cue,rate/);
  assert.match(screen,/offline ni calidad de voz/);
