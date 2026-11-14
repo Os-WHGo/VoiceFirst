@@ -1,6 +1,8 @@
 name: Expo 57 patch compatibility experiment (NOT security clearance)
 # Runs only when this isolated experiment or its tests change.
 # The patch experiment updates a runner-local lockfile, NEVER the PR or main.
+# Reassess after SDK57 @expo/fingerprint 0.20.16 publication (12 Nov 2026).
+# Do not promote a partial fix or mistake a green experiment for npm clearance.
 on:
   pull_request:
     paths:
@@ -38,6 +40,30 @@ jobs:
         run: node scripts/expo57-security-trial.mjs before
       - name: Try latest allowed Expo 57 family patches in disposable checkout only
         run: npm update --workspace mobile --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Inspect exact Expo 57 fingerprint and nested glob/minimatch candidates
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const lock=JSON.parse(readFileSync('package-lock.json','utf8'));
+          const manifest=JSON.parse(readFileSync('package.json','utf8'));
+          const mobile=JSON.parse(readFileSync('mobile/package.json','utf8'));
+          if(manifest.overrides||mobile.overrides||manifest.resolutions||mobile.resolutions)
+            throw Error('Trial may not use dependency overrides or resolutions');
+          const names=['@expo/fingerprint','glob','minimatch'];
+          for(const name of names){
+            const copies=Object.entries(lock.packages).filter(([path])=>
+              path==='node_modules/'+name||path.endsWith('/node_modules/'+name))
+              .map(([path,value])=>({path,version:value.version,
+                requiresGlob:value.dependencies?.glob??null,
+                requiresMinimatch:value.dependencies?.minimatch??null}));
+            console.log('SDK57 candidate '+name+': '+JSON.stringify(copies));
+            if(name==='@expo/fingerprint'){
+              if(!copies.length||copies.some(c=>!/^0\\.20\\.\\d+$/.test(c.version??'')))
+                throw Error('Fingerprint escaped Expo SDK57 0.20.x support family');
+            }
+          }
+          console.log('This is a runner-only candidate, not a zero-vulnerability release approval.');
+          NODE
       - name: Ensure manifest dependencies and tooling were not rewritten
         run: |
           git diff --exit-code -- package.json mobile/package.json packages/core/package.json
