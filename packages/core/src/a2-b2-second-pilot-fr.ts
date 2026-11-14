@@ -44,7 +44,7 @@ export const secondPilotFrench={
    'Non. Cette correspondance permet seulement de passer à la révision par la personne responsable; elle n’autorise pas l’approbation.'
   ],
   checks:[
-   ['Quand faut-il suspendre la demande initiale ?','S’il diffère, suspends la demande','Une différence peut être ignorée si le formulaire semble correct.'],
+   ['Quand faut-il suspendre la demande initiale ?',"S'il diffère, suspends la demande",'Une différence peut être ignorée si le formulaire semble correct.'],
    ['Quelle source faut-il consulter pour vérifier le numéro ?','registre interne','Un renseignement oral non vérifié suffit pour poursuivre.'],
    ['La correspondance des numéros constitue-t-elle une approbation ?','n’autorise pas l’approbation','La correspondance donne automatiquement le pouvoir de signer la demande.']
   ],
