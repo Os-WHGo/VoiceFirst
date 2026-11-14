@@ -26,6 +26,7 @@ export * from './first-release-editorial-packages.js';
 export * from './a1-expanded-greeting-pilots.js';
 export * from './a1-situational-pilots.js';
 export * from './a2-b2-expanded-pilots.js';
+export * from './a2-b2-second-dialogue-pilots.js';
 
 export * from './guided-dialogues.js';
 export * from './free-resources.js';
