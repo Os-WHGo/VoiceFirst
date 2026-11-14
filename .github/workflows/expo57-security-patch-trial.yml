@@ -58,7 +58,12 @@ jobs:
                 requiresMinimatch:value.dependencies?.minimatch??null}));
             console.log('SDK57 candidate '+name+': '+JSON.stringify(copies));
             if(name==='@expo/fingerprint'){
-              if(!copies.length||copies.some(c=>!/^0\\.20\\.\\d+$/.test(c.version??'')))
+              if(!copies.length||copies.some(c=>{
+                const parts=String(c.version??'').split('.');
+                const patch=Number(parts[2]);
+                return parts.length!==3||parts[0]!=='0'||parts[1]!=='20'||
+                  !Number.isSafeInteger(patch)||String(patch)!==parts[2];
+              }))
                 throw Error('Fingerprint escaped Expo SDK57 0.20.x support family');
             }
           }
