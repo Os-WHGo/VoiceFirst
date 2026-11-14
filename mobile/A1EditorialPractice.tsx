@@ -43,6 +43,7 @@ export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;ta
  const examples=a1EditorialAuthoredTypedExamples(state);
  const listening=a1EditorialListeningTurns(state);
  const playTurn=(turn:A1EditorialListeningTurn)=>{
+  stopAudio();
   const token=++request.current;
   setPlayingTurn(turn.audioId);
   setSpeechStatus('Ensayo con voz del sistema; funcionamiento sin red no certificado.');
