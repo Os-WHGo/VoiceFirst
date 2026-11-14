@@ -5,6 +5,7 @@ import {a1EditorialSceneTopics,startA1EditorialReview,currentA1EditorialReview,s
 import {playCuratedVoice,stopCuratedVoice} from './curated-voice-output';
 import {loadA1LocalReviewManifest,reviewA1LocalAudio} from './a1-editorial-local-audio';
 import {createA1EditorialExpoPlayer} from './a1-editorial-native-player';
+import {selectAndInstallA1EditorialAudio} from './install-a1-editorial-audio';
 export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;target:TargetLanguage;rate:number}){
  const [topic,setTopic]=useState(a1EditorialSceneTopics[0]!);
  const [state,setState]=useState<A1EditorialReviewState|null>(null);
@@ -13,6 +14,9 @@ export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;ta
  const [showTranscript,setShowTranscript]=useState(false);
  const [showVariants,setShowVariants]=useState(false);
  const request=useRef(0);
+ const importRequest=useRef(0);
+ const importLock=useRef(false);
+ const [importBusy,setImportBusy]=useState(false);
  const localPlayer=useMemo(createA1EditorialExpoPlayer,[]);
  const [localPlayingTurn,setLocalPlayingTurn]=useState<string|null>(null);
  const [playingTurn,setPlayingTurn]=useState<string|null>(null);
@@ -32,11 +36,11 @@ export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;ta
   return()=>subscription.remove();
  },[stopAudio]);
  useEffect(()=>{
-  stopAudio();
+  stopAudio();importRequest.current++;
   setSpeechStatus('');setLocalAudioStatus('');
   setState(startA1EditorialReview(known,target,topic));
   setAnswerText('');setFeedback('');setShowTranscript(false);setShowVariants(false);
-  return()=>{request.current++;localPlayer.stop();void stopCuratedVoice();};
+  return()=>{request.current++;importRequest.current++;localPlayer.stop();void stopCuratedVoice();};
  },[known,target,topic,stopAudio]);
  const step=currentA1EditorialReview(state);
  const transcript=a1EditorialReviewTranscript(state);
@@ -83,6 +87,37 @@ export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;ta
    }
   });
  };
+ const importOriginalScene=()=>{
+  if(!__DEV__||!transcript||importLock.current)return;
+  stopAudio();
+  const sceneId=transcript.sceneId;
+  const id=++importRequest.current;
+  importLock.current=true;
+  setImportBusy(true);
+  setLocalAudioStatus('Selecciona la carpeta privada con manifest.json y seis turn-N.wav. Ningún audio se publica.');
+  void (async()=>{
+   try{
+    const outcome=await selectAndInstallA1EditorialAudio(sceneId);
+    if(id!==importRequest.current)return;
+    if(outcome.kind==='cancelled'){
+     setLocalAudioStatus('Importación editorial cancelada; no se modificó el paquete anterior.');
+    }else if(outcome.kind==='rejected'){
+     setLocalAudioStatus('Importación rechazada: '+outcome.reason);
+    }else{
+     const checked=await reviewA1LocalAudio(sceneId);
+     if(id===importRequest.current)
+      setLocalAudioStatus(checked.ready?
+       'Se copiaron y verificaron seis WAV privados. Escucha editorial habilitada; derechos, calidad y publicación pendientes.':
+       'Se copiaron archivos pero la verificación posterior falló; no se habilita la reproducción original.');
+    }
+   }catch{
+    if(id===importRequest.current)setLocalAudioStatus('No fue posible importar el paquete A1 privado.');
+   }finally{
+    importLock.current=false;
+    setImportBusy(false);
+   }
+  })();
+ };
  const submit=(response:{kind:'choice';optionId:string}|{kind:'typed';text:string}|{kind:'skip'})=>{
   stopAudio();
   const out=submitA1EditorialReview(state,response);
@@ -91,6 +126,7 @@ export function A1EditorialPractice({known,target,rate}:{known:TargetLanguage;ta
  return <View>
   <Text>Ensayo editorial A1. Sin audio, puntuación ni progreso.</Text>
   {transcript&&<View>
+   <Pressable accessibilityRole="button" disabled={importBusy} onPress={importOriginalScene}><Text>{importBusy?'Importando seis archivos A1…':'Importar seis grabaciones A1 originales (solo desarrollo)'}</Text></Pressable>
    <Pressable accessibilityRole="button" onPress={()=>{
     stopAudio();
     const token=++request.current;
