@@ -190,3 +190,4 @@ export * from './advanced-review-manifest.js';
 export * from './a1-editorial-feedback-review.js';
 export * from './a1-editorial-listening-rehearsal.js';
 export * from './a1-editorial-six-turn-audio.js';
+export * from './a1-editorial-clip-player.js';
